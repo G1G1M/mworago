@@ -68,13 +68,14 @@ func flagValues(_ name: String) -> [String] {
 let explainWords = flagValues("--explain")
 let doSweep = args.contains("--sweep")
 let buildCount = flagValues("--build-cases").first.flatMap(Int.init)
+let segmentInputs = flagValues("--segment")
 // --explain 뒤에 오는 낱말들은 위치 인자가 아니다
 let positional: [String] = {
     var result: [String] = []
     var i = 1
     while i < args.count {
         if args[i].hasPrefix("--") {
-            let consumesValues = args[i] == "--explain" || args[i] == "--build-cases"
+            let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -124,6 +125,32 @@ if !explainWords.isEmpty {
             print("\(i + 1). \(result.headword.padded(14))\(result.reading.padded(14))\(String(format: "%6.1f", result.score))  \(rule)\(result.entry.glosses.prefix(2).joined(separator: ", "))")
         }
         if results.count > 10 { print("   … 외 \(results.count - 10)개") }
+    }
+    exit(0)
+}
+
+// MARK: --segment
+
+if !segmentInputs.isEmpty {
+    // --cost 로 조각 비용을 바꿔 가며 시험한다
+    let cost = flagValues("--cost").first.flatMap(Double.init) ?? Segmenter.defaultSegmentCost
+    print("조각 비용 \(cost)")
+    for input in segmentInputs {
+        let start = Date()
+        let segments = Segmenter.segment(input, in: index, frequency: frequency, segmentCost: cost)
+        let elapsed = -start.timeIntervalSinceNow * 1000
+
+        let joined = segments.map { segment in
+            segment.results.first.map { "\($0.headword)" } ?? "?"
+        }.joined(separator: " ")
+        print("\n\(input)  →  \(joined)   (\(String(format: "%.1f", elapsed))ms)")
+
+        for segment in segments {
+            let top = segment.results.prefix(3).map { result in
+                "\(result.headword)(\(result.reading))" + (result.deinflection.map { "·\($0)" } ?? "")
+            }.joined(separator: " · ")
+            print("  \(segment.hangul.padded(14))\(top.isEmpty ? "— 사전에 없음" : top)")
+        }
     }
     exit(0)
 }
