@@ -2,8 +2,8 @@
 
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-142%2F150%20%2894%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-148%2F150%20%2898%25%29-171717?style=flat-square)
-![쿼리](https://img.shields.io/badge/%EC%BF%BC%EB%A6%AC-0.13ms-4a4a4a?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-79%EA%B0%9C-4a4a4a?style=flat-square)
+![쿼리](https://img.shields.io/badge/%EC%BF%BC%EB%A6%AC-0.15ms-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-131%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -22,19 +22,35 @@
 
 ```
 아타마가이타이  →  頭が痛い        あたまがいたい
-이타이야메로    →  痛い · 止める[명령형]
-다이죠부데스카  →  大丈夫 · です · か
+이타이야메로    →  痛いやめろ      痛い · 止める[명령형]
+다이죠부데스카  →  大丈夫ですか    大丈夫 · です · か
 ```
 
 띄어 쓰지 않아도 어디서 끊을지 사전이 정하고, 활용형은 사전형으로 되돌려 찾으며,
 무엇을 되돌렸는지(`명령형`)까지 알려 준다.
+
+**되살린 문장이 맨 위에 온다.** 문장을 치고 들어왔으니 문장부터 돌려준다.
+이때 조각의 1위를 그냥 이어 붙이면 딴 문장이 된다 — 활용을 되돌려 찾았으므로
+조각이 사전형으로 돌아와 있어, 이타이야메로가 `痛い止める`라는 아무도 하지 않은 말이
+된다. 사용자가 실제로 한 말은 `痛いやめろ` 다. 조각을 누르면 그 낱말 카드로 간다.
 
 세 층으로 보인다 — **가나 · 한자 · 한글**. 가나가 맨 위인 것은 소리를 듣고 찾아온
 사람에게 가장 가까운 것이 가나이기 때문이다. 한자는 아직 못 읽을 수 있고,
 일본어를 배우며 처음 만나는 것도 가나다. 어디까지 볼지는 사용자가 정한다
 (`가나만` / `한자까지` / `한글까지`).
 
-모델은 아직 쓰지 않는다.
+**검색은 모델 없이 한다.** Apple Intelligence 를 지원하지 않는 기본 iPad 에서도
+그대로 돌아간다 — 폴백이 곧 시장 확대다.
+
+모델은 **뜻을 미리 굽는 데** 쓴다. JMdict 는 영일 사전이라 뜻이 영어뿐인데
+(독일어 33만·네덜란드어 27만 개가 있고 한국어는 0개다) 검색할 때마다 번역하면
+0.1ms 짜리 검색이 수백 ms 가 된다. 그래서 자주 쓰는 낱말을 온디바이스 모델로 미리
+옮겨 색인에 넣는다(`Tools/Translator`). 조사·조동사는 뜻이 아니라 기능이라
+그 길로 옮길 수 없어 손으로 적은 표를 쓴다(`Tools/data/function-gloss.tsv`) —
+`の → ~의, ~것` 처럼 뜻이 아니라 **자리**를 적는다.
+
+한자에는 한국 독음을 곁들인다(`大丈夫` 대장부). 뜻이 아니라 단서라 뜻 자리가 아니라
+한자 옆에 회색으로 둔다.
 
 ## 왜 어려운가
 
@@ -73,40 +89,77 @@
 
 폴더 구조는 SpringLab 을 따른다. 역할별로 나누고, 앱에 실리지 않는 것은 `Tools/` 로 뺀다.
 
+코어가 SPM 패키지(`MworagoCore`)로 서 있다. 앱과 측정 도구가 **같은 로직**을 쓰므로
+스파이크에서 잰 숫자가 그대로 앱의 숫자다.
+
 ```
-Mworago/
+Mworago/                  MworagoCore — 앱·도구가 함께 쓰는 순수 로직
   Model/
     Hangul.swift          한글 음절 분해. U+AC00 기반 나눗셈 세 번
     KanaTable.swift       훈령식 로마자 ↔ 가나
+    KanaToHangul.swift    반대 방향. 답이 하나라 케이스 생성에 쓴다
+    JapaneseReading.swift macOS 토크나이저로 일본어 분절 + 읽기
+    HanjaReading.swift    한자의 한국 독음 (kanjidic2)
+    WordClass.swift       품사. 옮길 수 있는 낱말인가를 여기서 가른다
+    KoreanGloss.swift     모델이 준 뜻을 화면에 올릴 만한 것으로 다듬기
   Store/
     JMDict.swift          JMdict XML 스트리밍 파서와 읽기 색인
+    DictionaryStore.swift 미리 구운 SQLite 색인. 여는 데 0.001초
     FrequencyList.swift   애니 도메인 빈도 목록
   Runner/
     Transliterator.swift  한글 → 가나 후보 생성
     Deinflector.swift     활용형을 사전형으로 되돌리기
+    Segmenter.swift       띄어 쓰지 않은 문장을 낱말로 나누기
+    Sentence.swift        조각들을 도로 한 문장으로 잇기
     Ranker.swift          살아남은 후보 줄 세우기
-MworagoTests/             테스트 79개
+MworagoApp/               앱. 폴더 자리는 SpringLab 을 따른다
+  App/ · Store/ · Views/
+MworagoTests/             테스트 131개. 평면으로 두고 파일 이름으로 구분한다
 Tools/
-  SpikeRunner/            M0 측정 도구
-  fetch-jmdict.sh         JMdict 내려받기
-  data/                   측정 케이스와 사전 원본
+  SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
+  Translator/             한국어 뜻을 온디바이스 모델로 미리 굽는다
+  fetch-*.sh              사전·빈도·폰트 내려받기
+  data/                   원본과 측정 케이스 (큰 것은 레포에 없다)
 docs/                     기록
 ```
 
 ## 실행
 
 ```sh
-swift test                  # 테스트
+swift test                  # 테스트 131개
 ./Tools/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```
+
+앱은 자료를 먼저 구워야 한다. 색인(38MB)과 빈도 목록은 원본에서 만들어 내는 것이라
+레포에 두지 않는다.
+
+```sh
+./Tools/setup-app-resources.sh   # 색인·빈도·폰트를 굽고 번들 폴더에 넣는다
+xcodegen generate
+xcodebuild -project Mworago.xcodeproj -scheme Mworago \
+  -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M5)' build
+```
+
+시뮬레이터에 한글을 타이핑하지 않고 화면을 확인하려고 실행 인자를 넷 두었다.
+
+```sh
+xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
+#   --query=<검색어>              검색 결과 화면
+#   --select=<N>                  N 번째 조각을 고른 상태
+#   --aid=kana|kanji|hangul       읽기 보조 다이얼
+#   --guide                       입력 도움말
+```
+
+**색인 스키마를 바꾸면 `schemaVersion` 을 올리고 다시 구울 것.** 안 그러면 앱이
+"색인이 낡았다(판 2, 필요한 판 3)"고 알려 준다 — 예전에는 `no such column` 으로 죽었다.
 
 ## M0 결과
 
 > 맨 위 뱃지의 숫자는 자동으로 갱신되지 않는다. `swift run SpikeRunner` 의 결과가
 > 바뀌면 뱃지와 이 절을 함께 고쳐야 한다. 안 고치면 거짓말하는 뱃지가 된다.
 
-케이스 150개 기준 **142/150 (94%)**, 3위 안 **148/150 (98%)**, 쿼리 0.13ms.
+케이스 150개 기준 **142/150 (94%)**, 3위 안 **148/150 (98%)**, 쿼리 0.15ms.
 
 표본을 늘리자 숫자가 떨어졌다. 그 뒤 가타카나 구멍과 `uk` 태그를 고쳐 다시 올렸다.
 
@@ -136,12 +189,37 @@ swift run SpikeRunner       # 측정
 **가중치는 손으로 정하지 않는다.** `SpikeRunner --sweep`이 768개 조합을 훑어 고른다.
 스윕이 가르지 못하는 자리에서만 설계 원칙이 결정한다.
 
+**표기법대로 적은 사람이 못 찾고 있었다.** 국립국어원 표기법은 `じゃ·じゅ·じょ`를
+"자·주·조"로, `つ`를 "쓰"로 적는다. 그런데 규칙은 관용 표기("죠"·"츠") 쪽 길만 내고
+있어서, 少女를 "쇼조"로 치면 `しょじょ` 조차 나오지 않았다. 두 길을 열자
+쇼조 → 少女 · 쓰쿠에 → 机 · 쓰나미 → 津波 가 모두 1위로 나오고, **후보가 늘었는데도
+순위는 흔들리지 않았다**(142/150 그대로).
+
+그 덕에 입력 도움말이 셋에서 하나로 줄었다. 가려 적어야 하는 것은 이제
+탁음(갓코 学校 / 캇코 格好)뿐이다. **설명해야 할 제약을 줄이는 편이 설명을 잘 쓰는
+것보다 낫다** — 짧은 도움말이 읽히는 도움말이다.
+
 자세한 분석은 [docs/M0-결과.md](docs/M0-결과.md).
 
-## 사전
+## 쓰는 자료
 
-[JMdict](https://www.edrdg.org/jmdict/j_jmdict.html), EDRDG 배포, CC BY-SA 4.0.
-재배포 시 출처 표시가 의무라 앱 설정 화면에 명시한다.
+전부 `Tools/fetch-*.sh` 로 받아 쓰고 레포에 넣지 않는다.
+**CC BY-SA 는 재배포 시 출처 표시가 의무**라 앱 설정 화면에도 명시한다.
+
+| 무엇 | 어디에 쓰나 | 라이선스 |
+|---|---|---|
+| [JMdict](https://www.edrdg.org/jmdict/j_jmdict.html) | 사전 본체. 표제항 26.5만 | EDRDG · CC BY-SA 4.0 |
+| [kanjidic2](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project) | 한자의 한국 독음 6,293자 | EDRDG · CC BY-SA 4.0 |
+| [Tanaka Corpus](https://www.edrdg.org/wiki/index.php/Tanaka_Corpus) | 문장 분절의 정답 | EDRDG · CC BY-SA 4.0 |
+| [JESC](https://nlp.stanford.edu/projects/jesc/) | 구어체 빈도. 자막 279만 문장 | Stanford · CC BY-SA 4.0 |
+| [Jiten](https://jiten.moe/frequency-dictionaries) | 애니 빈도(도입 예정) | CC BY-SA 4.0 |
+| JPDB v2.2 | **측정 기준선으로만** | 재배포 조건 불분명 |
+| Zen Maru Gothic · 고운돋움 | 폰트 | SIL OFL 1.1 |
+
+**JPDB 는 배포판에 실을 수 없다.** 지금 M0 숫자는 그것으로 잰 것이고, 배포하려면
+JESC 나 Jiten 으로 갈아야 한다. 낱말 검색은 거의 같지만(142 대 140/150) **분절이
+훨씬 민감하다**(완전일치 42.7% 대 30.0%) — 검색은 하나만 맞히면 되지만 분절은
+문장의 모든 낱말을 찾아야 하기 때문이다. `--freq` 로 언제든 견줄 수 있다.
 
 ## 라이선스
 
