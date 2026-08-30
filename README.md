@@ -1,5 +1,13 @@
 # 뭐라고
 
+![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-142%2F150%20%2894%25%29-171717?style=flat-square)
+![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-148%2F150%20%2898%25%29-171717?style=flat-square)
+![쿼리](https://img.shields.io/badge/%EC%BF%BC%EB%A6%AC-0.13ms-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-79%EA%B0%9C-4a4a4a?style=flat-square)
+![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
+![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
+![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
+
 한글로 들리는 대로 치면 원래 일본어를 찾아주는 iPadOS 앱.
 
 애니를 보다 걸린 대사를 한글로 검색하면 원문이 나오고, 그게 모여 그 화의 교재가 되고,
@@ -77,7 +85,7 @@ Mworago/
     Transliterator.swift  한글 → 가나 후보 생성
     Deinflector.swift     활용형을 사전형으로 되돌리기
     Ranker.swift          살아남은 후보 줄 세우기
-MworagoTests/             테스트 43개
+MworagoTests/             테스트 79개
 Tools/
   SpikeRunner/            M0 측정 도구
   fetch-jmdict.sh         JMdict 내려받기
@@ -95,13 +103,18 @@ swift run SpikeRunner       # 측정
 
 ## M0 결과
 
-케이스 150개 기준 **140/150 (93%)**, 3위 안 **149/150 (99%)**, 쿼리 0.10ms.
+> 맨 위 뱃지의 숫자는 자동으로 갱신되지 않는다. `swift run SpikeRunner` 의 결과가
+> 바뀌면 뱃지와 이 절을 함께 고쳐야 한다. 안 고치면 거짓말하는 뱃지가 된다.
 
-| | 손으로 쓴 50개 | 데이터가 고른 150개 |
-|---|---|---|
-| 재현율 — 정답이 후보 안에 있는가 | 100% | **98%** |
-| 정확도 — 1위가 정답인가 | 94% | **93%** |
-| 3위 안 | 98% | **99%** |
+케이스 150개 기준 **142/150 (94%)**, 3위 안 **148/150 (98%)**, 쿼리 0.13ms.
+
+표본을 늘리자 숫자가 떨어졌다. 그 뒤 가타카나 구멍과 `uk` 태그를 고쳐 다시 올렸다.
+
+| | 손으로 쓴 50개 | 늘린 직후 | 지금 |
+|---|---|---|---|
+| 재현율 — 정답이 후보 안에 있는가 | 100% | 98% | 98% |
+| 정확도 — 1위가 정답인가 | 94% | 91% | **94%** |
+| 3위 안 | 98% | 98% | **98%** |
 
 케이스를 손으로 고르면 "내가 아는 표현"만 모여 재현율이 부풀려진다.
 그래서 낱말 선택은 JPDB 애니 빈도에 맡기고, 사람이 하는 일은 음차 규칙을 쓰는 것뿐이다
