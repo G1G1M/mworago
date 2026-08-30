@@ -74,7 +74,7 @@ public enum KanaToHangul {
     ]
 
     public static func transliterate(_ kana: String) -> String {
-        let normalized = katakanaToHiragana(kana)
+        let normalized = KanaTable.toHiragana(kana)
         var result = ""
         var pending: (initial: Int, medial: Int)?   // 아직 받침이 붙을 수 있는 음절
 
@@ -136,14 +136,6 @@ public enum KanaToHangul {
         }
         flush()
         return result
-    }
-
-    /// 가타카나를 히라가나로. 두 표는 같은 순서로 배열돼 있어 오프셋만 빼면 된다.
-    private static func katakanaToHiragana(_ text: String) -> String {
-        String(String.UnicodeScalarView(text.unicodeScalars.map { scalar in
-            (0x30A1...0x30F6).contains(scalar.value)
-                ? Unicode.Scalar(scalar.value - 0x60)! : scalar
-        }))
     }
 
     private static func syllable(_ initial: Int, _ medial: Int, _ final: Int) -> Character {

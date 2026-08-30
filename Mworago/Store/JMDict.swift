@@ -138,7 +138,9 @@ public struct DictIndex: Sendable {
         for entry in entries {
             for reading in entry.readings {
                 // 점수는 찾은 그 읽기의 것이다. 항목의 다른 읽기가 벌어온 점수를 물려주지 않는다.
-                index[reading.text, default: []].append(
+                // 키는 히라가나로 맞춘다 — 외래어 표제어는 가타카나로 실려 있다.
+                // 돌려줄 때의 reading 은 원래 표기 그대로 둔다(화면에 그렇게 보여야 한다).
+                index[KanaTable.toHiragana(reading.text), default: []].append(
                     DictHit(entry: entry, reading: reading.text, priority: reading.priority))
             }
         }
@@ -149,6 +151,6 @@ public struct DictIndex: Sendable {
     }
 
     public func lookup(_ reading: String) -> [DictHit] {
-        byReading[reading] ?? []
+        byReading[KanaTable.toHiragana(reading)] ?? []
     }
 }

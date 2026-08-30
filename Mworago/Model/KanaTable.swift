@@ -52,6 +52,17 @@ public enum KanaTable {
         return table
     }()
 
+    /// 가타카나를 히라가나로. 두 표는 같은 순서로 배열돼 있어 오프셋만 빼면 된다.
+    ///
+    /// 사전 조회 전에 반드시 거쳐야 한다. JMdict 는 외래어 표제어를 가타카나로 싣는데
+    /// (`ポイント`), 규칙이 만드는 후보는 히라가나(`ぽいんと`)라 그냥 두면 영영 만나지 못한다.
+    public static func toHiragana(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.map { scalar in
+            (0x30A1...0x30F6).contains(scalar.value)
+                ? Unicode.Scalar(scalar.value - 0x60)! : scalar
+        }))
+    }
+
     /// 로마자 모라 하나를 가나로. 일본어에 없는 소리면 nil.
     public static func kana(for mora: String) -> String? {
         table[mora]

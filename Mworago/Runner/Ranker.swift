@@ -36,14 +36,21 @@ public enum Ranker {
         /// 기본값은 손으로 정한 것이 아니라 케이스 50개를 훑어 고른 값이다
         /// (`SpikeRunner --sweep`). 케이스가 늘면 다시 훑어야 한다.
         ///
-        /// `jmdictWeight`가 0.3까지 내려간 것이 이 스윕의 결론이다. JMdict의 빈도 태그는
-        /// 신문 말뭉치 기준이라 애니 대사에서는 **잡음에 가깝다.** 완전히 0으로 두어도
-        /// 성적은 같지만, 도메인 목록에 없는 낱말들끼리의 순서는 여전히 이쪽이 정해준다.
+        /// `jmdictWeight`가 0인 것이 이 스윕의 결론이다. JMdict의 빈도 태그는 신문 말뭉치
+        /// 기준이라 애니 대사에서는 **잡음이다.** 케이스 50개에서도 150개에서도 상위 조합이
+        /// 예외 없이 0을 골랐다.
+        ///
+        /// 다만 도메인 빈도 목록이 없으면 `search`가 이 값을 1로 되돌린다. 그때는 신문 빈도라도
+        /// 있는 편이 아무 신호도 없는 것보다 낫다.
+        ///
+        /// `deinflectionPenalty`는 0·25·60·120이 모두 같은 성적이었다. 스윕이 가르지 못하는
+        /// 자리라 설계 원칙으로 골랐다 — 사전에 그대로 실린 형태(`疲れた`)가 활용을 되돌려
+        /// 찾은 것(`疲れる`)보다 확실한 답이다.
         public init(rankPenalty: Double = 0,
                     longVowelPenalty: Double = 6,
-                    deinflectionPenalty: Double = 25,
+                    deinflectionPenalty: Double = 60,
                     domainWeight: Double = 1,
-                    jmdictWeight: Double = 0.3) {
+                    jmdictWeight: Double = 0) {
             self.rankPenalty = rankPenalty
             self.longVowelPenalty = longVowelPenalty
             self.deinflectionPenalty = deinflectionPenalty
@@ -86,10 +93,14 @@ public enum Ranker {
                               weights: Weights = Weights()) -> [SearchResult] {
         var results: [SearchResult] = []
 
+        // 도메인 빈도가 없으면 JMdict 점수라도 써야 한다. 그러지 않으면 모두 0점이 되어
+        // 후보 순서만으로 줄을 세우게 된다.
+        let jmdictWeight = frequency == nil ? max(weights.jmdictWeight, 1) : weights.jmdictWeight
+
         for candidate in Transliterator.candidates(for: hangul) {
             for deinflection in Deinflector.candidates(for: candidate.kana) {
                 for hit in index.lookup(deinflection.form) {
-                    var score = weights.jmdictWeight * Double(hit.priority)
+                    var score = jmdictWeight * Double(hit.priority)
                     if let frequency, weights.domainWeight != 0 {
                         score += weights.domainWeight * domainScore(hit.entry, reading: hit.reading, in: frequency)
                     }

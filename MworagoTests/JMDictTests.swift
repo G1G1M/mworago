@@ -68,4 +68,17 @@ struct JMDictTests {
 
         #expect(index.lookup("ありがとう").isEmpty)
     }
+
+    @Test("가타카나 표제어도 히라가나 후보로 찾힌다")
+    func 가타카나표제어() throws {
+        let xml = """
+        <JMdict><entry><ent_seq>1</ent_seq>
+        <r_ele><reb>ポイント</reb></r_ele>
+        <sense><gloss>point</gloss></sense>
+        </entry></JMdict>
+        """
+        let index = DictIndex(entries: try JMDictParser.parse(xml: xml))
+        let hit = try #require(index.lookup("ぽいんと").first)
+        #expect(hit.reading == "ポイント")
+    }
 }
