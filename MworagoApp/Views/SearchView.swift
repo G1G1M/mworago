@@ -24,6 +24,8 @@ enum ReadingAid: Int, CaseIterable, Identifiable {
 struct SearchView: View {
     /// 한 줄이 지나치게 길어지면 눈이 되돌아올 곳을 잃는다. iPad 에서 특히 그렇다.
     private static let contentWidth: CGFloat = 640
+    /// 입력 바가 차지하는 높이. 그 위에 다른 것을 놓을 때 겹치지 않게 비워 둘 만큼이다.
+    private static let inputBarHeight: CGFloat = 92
 
     @State private var engine = SearchEngine()
     /// 실행 인자로 검색어를 넣을 수 있다 (`--query=다이죠부`).
@@ -32,13 +34,20 @@ struct SearchView: View {
         .first { $0.hasPrefix("--query=") }
         .map { String($0.dropFirst("--query=".count)) } ?? ""
     @State private var aid: ReadingAid = .hangul
+    /// 문장에서 고른 조각. 아무것도 안 골랐을 때가 기본이고, 그때는 카드가 전부 보인다.
+    ///
+    /// `--select=1` 로 고른 상태를 띄울 수 있다. `--query=` 와 같은 뜻으로, 시뮬레이터를
+    /// 손으로 두드리지 않고 화면을 확인하기 위한 것이다.
+    @State private var selected: Int? = ProcessInfo.processInfo.arguments
+        .first { $0.hasPrefix("--select=") }
+        .flatMap { Int($0.dropFirst("--select=".count)) }
     @FocusState private var inputFocused: Bool
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Theme.paper.ignoresSafeArea()
 
-            results
+            content
             inputBar
         }
         .onAppear {
@@ -48,28 +57,67 @@ struct SearchView: View {
 
     // MARK: 결과
 
+    @ViewBuilder
+    private var content: some View {
+        if let failure = engine.failure {
+            resting { notice("사전을 열지 못했습니다", detail: failure) }
+        } else if input.isEmpty {
+            resting { emptyState }
+        } else if engine.segments.isEmpty {
+            resting { notice("찾지 못했습니다", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.") }
+        } else {
+            results
+        }
+    }
+
+    /// 아직 답이 없을 때 놓이는 자리 — **입력 바 바로 위**다.
+    ///
+    /// 위에 붙여 두면 아이패드에서 화면 절반이 통째로 비고, 시선이 맨 위와 맨 아래로 갈라진다.
+    /// 손이 있는 곳도 글을 읽을 곳도 아래쪽이므로 한 덩어리로 모으고, 남는 여백은 위에 둔다.
+    private func resting<V: View>(@ViewBuilder _ inner: () -> V) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 0)
+            inner()
+        }
+        .frame(maxWidth: Self.contentWidth, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, Self.inputBarHeight)
+    }
+
     private var results: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                if let failure = engine.failure {
-                    notice("사전을 열지 못했습니다", detail: failure)
-                } else if input.isEmpty {
-                    emptyState
-                } else if engine.segments.isEmpty {
-                    notice("찾지 못했습니다", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.")
-                } else {
-                    ForEach(Array(engine.segments.enumerated()), id: \.offset) { _, segment in
-                        SegmentCard(segment: segment, aid: aid, hanja: engine.hanja)
-                        Divider().foregroundStyle(Theme.grey3)
+        ScrollViewReader { scroller in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    // 되살린 원문이 맨 위에 온다. 문장을 치고 들어왔으니 문장부터 돌려준다.
+                    //
+                    // 조각이 하나뿐이면 내보내지 않는다. 그때는 문장이 곧 낱말이라
+                    // 바로 아래 카드와 같은 말을 두 번 하게 된다 (아타마가이타이 → 頭が痛い 는
+                    // 사전에 통째로 실려 있어 한 조각으로 나온다).
+                    if engine.segments.count > 1 {
+                        SentenceHeader(segments: engine.segments, aid: aid, selected: $selected)
+                        Divider().overlay(Theme.grey3)
+                    }
+
+                    ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
+                        SegmentCard(segment: segment, aid: aid, hanja: engine.hanja,
+                                    isSelected: selected == index)
+                            .id(index)
+                        Divider().overlay(Theme.grey3)
                     }
                 }
+                .padding(.top, 12)
+                .padding(.bottom, 120)   // 입력 바에 가리지 않도록
+                .frame(maxWidth: Self.contentWidth, alignment: .leading)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.top, 12)
-            .padding(.bottom, 120)   // 입력 바에 가리지 않도록
-            .frame(maxWidth: Self.contentWidth, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .scrollDismissesKeyboard(.interactively)
+            // 문장에서 조각을 누르면 그 낱말로 데려간다. 긴 문장에서 카드가 화면 밖에 있으면
+            // 눌러도 아무 일이 없어 보이기 때문이다.
+            .onChange(of: selected) { _, new in
+                guard let new else { return }
+                withAnimation(.snappy(duration: 0.25)) { scroller.scrollTo(new, anchor: .top) }
+            }
         }
-        .scrollDismissesKeyboard(.interactively)
     }
 
     private var emptyState: some View {
@@ -104,7 +152,7 @@ struct SearchView: View {
             .padding(.top, 6)
         }
         .padding(.horizontal, 24)
-        .padding(.top, 40)
+        .padding(.bottom, 24)
     }
 
     private func notice(_ title: String, detail: String) -> some View {
@@ -113,7 +161,7 @@ struct SearchView: View {
             Text(detail).font(Theme.korean(14)).foregroundStyle(Theme.grey2)
         }
         .padding(.horizontal, 24)
-        .padding(.top, 40)
+        .padding(.bottom, 24)
     }
 
     // MARK: 입력 바 — 떠 있는 컨트롤에만 유리를 쓴다
@@ -132,7 +180,11 @@ struct SearchView: View {
                     .submitLabel(.search)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
-                    .onChange(of: input) { _, new in engine.search(new) }
+                    .onChange(of: input) { _, new in
+                        // 조각이 다시 나뉘므로 번호로 잡아 둔 선택은 뜻을 잃는다.
+                        selected = nil
+                        engine.search(new)
+                    }
                 if !input.isEmpty {
                     Button {
                         input = ""

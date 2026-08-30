@@ -12,9 +12,15 @@ struct SegmentCard: View {
     let aid: ReadingAid
     /// 한자의 한국 독음. 뜻이 아니라 단서라, 뜻 자리가 아니라 한자 곁에 둔다.
     var hanja: HanjaReading = HanjaReading(tsv: "")
+    /// 문장에서 이 조각을 골랐는가.
+    ///
+    /// 고른 카드는 왼쪽에 선 하나를 세워 표시한다. 문장 쪽 강조가 이미 반전이라
+    /// 여기까지 반전하면 화면에 검은 덩어리가 둘이 되어 어느 쪽이 답인지 흐려진다.
+    var isSelected: Bool = false
 
     private var top: SearchResult? { segment.results.first }
-    private var alternates: [SearchResult] { Array(segment.results.dropFirst().prefix(2)) }
+    /// 1위와 같은 낱말은 걸러진 채로 온다 — 大丈夫 가 두 번 보이지 않도록.
+    private var alternates: [SearchResult] { segment.alternates() }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -33,6 +39,11 @@ struct SegmentCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)
         .padding(.vertical, 18)
+        .overlay(alignment: .leading) {
+            Theme.ink
+                .frame(width: 3)
+                .opacity(isSelected ? 1 : 0)
+        }
     }
 
     // MARK: 첫 번째 답
@@ -102,11 +113,15 @@ struct SegmentCard: View {
     }
 
     /// 이 후보를 첫 줄의 답과 갈라 주는 것.
+    ///
+    /// **첫 줄과 무엇이 다른지가 곧 이 후보의 이름이다.** 한자가 다르면 한자로,
+    /// 한자가 같다면 소리로 가른다(机 つくえ · つき). 둘 다 같은 후보는 애초에
+    /// `alternates()` 가 걸러 내므로 여기까지 오지 않는다.
     private func distinguisher(_ result: SearchResult) -> String {
-        if aid.showsKanji, result.headword != result.reading { return result.headword }
-        // 한자를 끈 상태이거나 가나로만 쓰는 낱말이라면, 읽기가 다를 때만 그것으로 가른다.
-        // 그마저 같으면 뜻만 남는다 — 그때는 뜻이 유일한 구분점이다.
-        return result.reading == top?.reading ? "" : result.reading
+        guard let top else { return result.headword }
+        if aid.showsKanji, result.headword != top.headword { return result.headword }
+        if result.reading != top.reading { return result.reading }
+        return aid.showsKanji ? result.headword : ""
     }
 
     // MARK: 못 찾은 조각

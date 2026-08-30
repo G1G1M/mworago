@@ -4,6 +4,41 @@ import Foundation
 public struct Segment: Sendable {
     public let hangul: String            // 이 조각의 한글 음차
     public let results: [SearchResult]   // 이 조각을 찾아본 결과. 비어 있으면 사전에 없는 조각이다
+
+    /// 첫 답 다음에 곁들일 후보들.
+    ///
+    /// 1위가 정답인 비율은 94%지만 3위 안에 있을 비율은 98%다. 그 4%를 사용자가 직접
+    /// 고르게 하려고 대안을 곁에 둔다. 그러려면 대안이 **1위와 달라 보여야** 한다.
+    ///
+    /// **사전이 한 낱말로 실은 것은 한 낱말이다.** 같은 표제항이 여러 번 걸려 나오는 길은 둘이다 —
+    /// 뜻갈래가 갈려 항목이 나뉘어 있거나(大丈夫는 형용동사와 명사로 두 번 실린다),
+    /// 표제항 하나가 이표기를 달고 있거나(大丈夫 = だいじょうぶ · だいじょぶ).
+    /// "다이죠부"는 두 읽기를 다 만들어 내므로 뒤쪽은 반드시 일어난다.
+    /// 어느 쪽이든 화면에는 같은 낱말이 두 번 보일 뿐이다.
+    ///
+    /// 기준은 **화면에서 갈라 보이는가** 하나다. 표기가 다르면 그것으로 갈리고,
+    /// 표기가 같아도 사전이 다른 낱말로 실었고 읽기까지 다르면 소리로 갈린다 —
+    /// 机(つくえ)와 机(つき)가 그렇다. 그 밖에는 같은 답이 두 번 보이는 것뿐이다.
+    public func alternates(limit: Int = 2) -> [SearchResult] {
+        guard let top = results.first else { return [] }
+        var picked: [SearchResult] = []
+        for result in results.dropFirst() where picked.count < limit {
+            guard !Self.sameWord(result, top),
+                  !picked.contains(where: { Self.sameWord($0, result) })
+            else { continue }
+            picked.append(result)
+        }
+        return picked
+    }
+
+    /// 사용자 눈에 같은 낱말인가.
+    ///
+    /// 표기가 같은데 표제항까지 같다면 이표기다(大丈夫 = だいじょうぶ · だいじょぶ).
+    /// 표제항이 달라도 읽기가 같다면 뜻갈래가 갈려 나뉜 것이다(大丈夫: 형용동사 / 명사).
+    /// 둘 다 화면에는 똑같은 글자로 보인다.
+    private static func sameWord(_ a: SearchResult, _ b: SearchResult) -> Bool {
+        a.headword == b.headword && (a.entry == b.entry || a.reading == b.reading)
+    }
 }
 
 /// 한글 음차 문장을 낱말 단위로 나눈다.
