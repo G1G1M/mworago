@@ -65,4 +65,15 @@ struct FrequencyListTests {
         #expect(list.isEmpty)
         #expect(list.score(writing: "次", reading: "つぎ") == 0)
     }
+
+    @Test("표기만으로 찾는 길을 따로 둔다")
+    func 표기조회() {
+        // 빈도를 세는 쪽이 何 를 늘 なん 으로 읽으면 なに 항목이 없다.
+        // 그래도 何 라는 낱말이 흔하다는 사실은 알려 줄 수 있다.
+        // 다만 그 읽기가 정말 그 낱말의 읽기인지는 사전만 안다 — 여기서는 묻지 않는다.
+        let list = FrequencyList(tsv: "term\treading\tfrequency\n何\tなん\t23\n")
+        #expect(list.rank(writing: "何", reading: "なに") == nil)   // 정확 조회는 여전히 엄격하다
+        #expect(list.rankByWriting("何") == 23)
+        #expect(list.rankByWriting("痛い") == nil)
+    }
 }

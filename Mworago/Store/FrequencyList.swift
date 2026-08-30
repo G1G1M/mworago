@@ -24,6 +24,8 @@ public struct FrequencyList: Sendable {
     }
 
     private let ranks: [Key: Int]
+    /// 표기만으로 찾을 때 쓸 최고 순위(가장 흔한 읽기의 것).
+    private let ranksByWriting: [String: Int]
 
     public var isEmpty: Bool { ranks.isEmpty }
     public var count: Int { ranks.count }
@@ -38,7 +40,15 @@ public struct FrequencyList: Sendable {
             if let existing = ranks[key], existing <= rank { continue }
             ranks[key] = rank
         }
+
+        var byWriting: [String: Int] = [:]
+        for (key, rank) in ranks {
+            if let existing = byWriting[key.writing], existing <= rank { continue }
+            byWriting[key.writing] = rank
+        }
+
         self.ranks = ranks
+        self.ranksByWriting = byWriting
     }
 
     public init(contentsOfFile path: String) {
@@ -52,8 +62,24 @@ public struct FrequencyList: Sendable {
     }
 
     /// 이 낱말의 순위. 표기를 주지 않으면 가나로만 쓰는 낱말로 보고 찾는다.
+    /// 표기와 읽기가 **둘 다** 맞아야 한다 — `痛い`는 `つう`로 읽지 않는다.
     public func rank(writing: String?, reading: String) -> Int? {
         ranks[Key(writing: writing ?? reading, reading: reading)]
+    }
+
+    /// 읽기를 묻지 않고 표기만으로 찾은 최고 순위.
+    ///
+    /// 빈도를 세는 쪽이 `何`를 늘 `なん`으로만 읽어 `なに` 항목이 없는 일이 있다.
+    /// 같은 표기의 다른 읽기라도 그 낱말이 흔하다는 사실은 알려 준다.
+    /// **다만 그 읽기가 정말 그 낱말의 읽기인지는 이쪽에서 알 수 없다.**
+    /// 사전 항목을 손에 쥔 쪽(`Ranker`)만 그 판단을 할 수 있으므로, 거기서만 써야 한다.
+    public func rankByWriting(_ writing: String) -> Int? {
+        ranksByWriting[writing]
+    }
+
+    public func scoreByWriting(_ writing: String) -> Double {
+        guard let rank = rankByWriting(writing), rank > 0 else { return 0 }
+        return max(0, 120 - 20 * log10(Double(rank)))
     }
 
     /// 순위를 점수로. 순위는 로그 스케일로 벌어지므로 그대로 쓰면 상위권이 뭉친다.

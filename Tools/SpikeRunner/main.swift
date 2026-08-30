@@ -182,7 +182,10 @@ if let buildFrequencyLimit {
         if lineCount % 200_000 < 5_000 { log("  \(lineCount)줄…") }
     }
 
-    // 많이 나온 순으로 줄을 세워 순위를 매긴다. 형식은 JPDB 배포본과 같다.
+    // 사전에 없는 (표기, 읽기) 쌍을 걸러 보았으나 **결과가 나빴다.**
+    // 토크나이저 오류가 빠지는 대신 어휘가 81,218 → 42,946 으로 반토막 나고
+    // 정확도가 140 → 138 로 떨어졌다. 노이즈를 지운 것보다 잃은 낱말이 많았다.
+    // 한 번만 나온 낱말을 버리는 것으로 족하다.
     let ranked = counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key.writing < $1.key.writing }
     log("문장 \(lineCount)줄 · 낱말 \(ranked.count)종 · \(String(format: "%.0f", -start.timeIntervalSinceNow))초")
 
