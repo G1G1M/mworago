@@ -14,7 +14,7 @@ import Foundation
 /// frequency는 **순위**여서 작을수록 흔하다.
 public struct FrequencyList: Sendable {
 
-    private struct Key: Hashable {
+    struct Key: Hashable {
         let writing: String
         let reading: String
     }
@@ -39,6 +39,12 @@ public struct FrequencyList: Sendable {
 
     public init(contentsOfFile path: String) {
         self.init(tsv: (try? String(contentsOfFile: path, encoding: .utf8)) ?? "")
+    }
+
+    /// 순위가 앞선 것부터 (순위, 표기, 읽기). 케이스를 뽑을 때 쓴다.
+    public func sortedEntries() -> [(rank: Int, writing: String, reading: String)] {
+        ranks.map { (rank: $0.value, writing: $0.key.writing, reading: $0.key.reading) }
+            .sorted { $0.rank < $1.rank }
     }
 
     /// 이 낱말의 순위. 표기를 주지 않으면 가나로만 쓰는 낱말로 보고 찾는다.

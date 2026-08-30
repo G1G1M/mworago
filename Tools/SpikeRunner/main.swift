@@ -67,13 +67,14 @@ func flagValues(_ name: String) -> [String] {
 }
 let explainWords = flagValues("--explain")
 let doSweep = args.contains("--sweep")
+let buildCount = flagValues("--build-cases").first.flatMap(Int.init)
 // --explain 뒤에 오는 낱말들은 위치 인자가 아니다
 let positional: [String] = {
     var result: [String] = []
     var i = 1
     while i < args.count {
         if args[i].hasPrefix("--") {
-            let consumesValues = args[i] == "--explain"
+            let consumesValues = args[i] == "--explain" || args[i] == "--build-cases"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -87,14 +88,15 @@ let dictPath = positional.dropFirst().first ?? "Tools/data/JMdict_e"
 
 let cases = loadCases(casesPath)
 
-print("사전 읽는 중… \(dictPath)")
+func log(_ message: String) { FileHandle.standardError.write(Data((message + "\n").utf8)) }
+log("사전 읽는 중… \(dictPath)")
 let loadStart = Date()
 guard let dictData = FileManager.default.contents(atPath: dictPath) else {
     FileHandle.standardError.write(Data("사전 파일 없음. Tools/fetch-jmdict.sh 를 먼저 실행\n".utf8))
     exit(1)
 }
 let index = DictIndex(entries: try JMDictParser.parse(data: dictData))
-print("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초")
+log("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초")
 
 // 도메인 빈도는 선택 사항이다. 없으면 JMdict 점수만으로 돈다.
 let frequencyPath = "Tools/data/jpdb_freq.csv"
@@ -103,7 +105,7 @@ let frequency: FrequencyList? = {
     guard !list.isEmpty else { return nil }
     return list
 }()
-print(frequency.map { "도메인 빈도 \($0.count)개 (\(frequencyPath))\n" } ?? "도메인 빈도 없음 — JMdict 점수만 사용\n")
+log(frequency.map { "도메인 빈도 \($0.count)개 (\(frequencyPath))\n" } ?? "도메인 빈도 없음 — JMdict 점수만 사용\n")
 
 // MARK: --explain
 
@@ -123,6 +125,89 @@ if !explainWords.isEmpty {
         }
         if results.count > 10 { print("   … 외 \(results.count - 10)개") }
     }
+    exit(0)
+}
+
+// MARK: --build-cases
+//
+// 케이스를 손으로 고르면 "내가 아는 표현"만 모인다. 내가 모르는 실패 유형은 표본에
+// 들어오지 않고, 그래서 재현율이 부풀려진다.
+//
+// 그래서 **낱말은 빈도 데이터가 고르게 하고**, 사람이 하는 일은 음차 규칙을 쓰는 것뿐이다.
+// 정답은 뽑힌 그 낱말이라 지어낼 여지가 없다.
+
+if let buildCount {
+    guard let frequency else {
+        FileHandle.standardError.write(Data("빈도 목록이 필요하다. Tools/fetch-frequency.sh 를 먼저 실행\n".utf8))
+        exit(1)
+    }
+    let existing = Set(cases.map(\.hangul))
+
+    struct Candidate {
+        let rank: Int, writing: String, reading: String, hangul: String
+    }
+    var candidates: [Candidate] = []
+
+    for (rank, writing, reading) in frequency.sortedEntries() {
+        // 150위 위쪽은 조사·조동사가 몰려 있어 검색 대상이 아니다
+        guard rank >= 150, reading.count >= 2, reading.count <= 7 else { continue }
+        guard writing.count >= 2 || writing.contains(where: \.isKanji) else { continue }
+
+        // 사전에 실제로 있는 낱말만. 없으면 채점할 수가 없다
+        let inDictionary = index.lookup(reading).contains { hit in
+            hit.entry.writings.contains { $0.text == writing } ||
+            (hit.entry.writings.isEmpty && writing == reading)
+        }
+        guard inDictionary else { continue }
+
+        let hangul = KanaToHangul.transliterate(reading)
+        guard !hangul.isEmpty, HangulSyllable.decompose(hangul) != nil, !existing.contains(hangul) else { continue }
+        candidates.append(Candidate(rank: rank, writing: writing, reading: reading, hangul: hangul))
+    }
+
+    // 순위 구간을 로그 스케일로 갈라 고르게 뽑는다. 상위권만 뽑으면 쉬운 문제만 모인다
+    let bands = [(150, 500), (500, 1500), (1500, 4000), (4000, 12000)]
+    let perBand = buildCount / bands.count
+    var picked: [Candidate] = []
+    var seenHangul = existing
+
+    for (low, high) in bands {
+        let pool = candidates.filter { $0.rank >= low && $0.rank < high }
+        guard !pool.isEmpty else { continue }
+        // 균등 간격으로 집는다. 난수를 쓰지 않아 돌릴 때마다 같은 표본이 나온다
+        let step = max(1, pool.count / perBand)
+        for i in stride(from: 0, to: pool.count, by: step) {
+            let candidate = pool[i]
+            guard seenHangul.insert(candidate.hangul).inserted else { continue }
+            picked.append(candidate)
+            if picked.count % perBand == 0 && picked.count >= perBand * (bands.firstIndex(where: { $0 == (low, high) })! + 1) { break }
+        }
+    }
+
+    /// 한글 음차가 무엇을 잃었는지로 난이도를 매긴다
+    func tags(_ reading: String, _ hangul: String) -> String {
+        var tags: [String] = []
+        if reading.contains("っ") { tags.append("촉음") }
+        if reading.contains("ん") { tags.append("발음") }
+        if reading.contains("つ") || reading.contains("ず") { tags.append("つ") }
+        if reading.contains(where: { "ゃゅょ".contains($0) }) { tags.append("요음") }
+        if reading.contains(where: { "がぎぐげござじずぜぞだぢづでどばびぶべぼ".contains($0) }) { tags.append("탁음모호") }
+        // o단·u단 뒤의 う는 한글에 적히지 않고 사라진다
+        let oOrU = Set("おこごそぞとどのほぼぽもよろをょうくぐすずつづぬふぶぷむゆるゅ")
+        var previous: Character?
+        for character in reading {
+            if character == "う", let previous, oOrU.contains(previous) { tags.append("장음"); break }
+            previous = character
+        }
+        return tags.isEmpty ? "기본" : tags.joined(separator: ",")
+    }
+
+    print("# 자동 생성 케이스 — 낱말은 JPDB 빈도가 고르고, 음차는 KanaToHangul 이 썼다")
+    print("# 한글음차\t정답읽기(가나)\t정답표기\t난이도태그\t사전형표기(활용형일 때)")
+    for candidate in picked.sorted(by: { $0.rank < $1.rank }) {
+        print("\(candidate.hangul)\t\(candidate.reading)\t\(candidate.writing)\t\(tags(candidate.reading, candidate.hangul))")
+    }
+    FileHandle.standardError.write(Data("생성 \(picked.count)개 (후보 \(candidates.count)개 중)\n".utf8))
     exit(0)
 }
 
