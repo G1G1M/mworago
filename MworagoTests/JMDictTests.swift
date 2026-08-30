@@ -81,4 +81,26 @@ struct JMDictTests {
         let hit = try #require(index.lookup("ぽいんと").first)
         #expect(hit.reading == "ポイント")
     }
+
+    @Test("가나로 쓰는 낱말(uk)과 검색 전용 표기(sK)를 읽는다")
+    func 표지읽기() throws {
+        // XMLParser 는 내부 DTD 엔티티를 확장하지 않는다. 그냥 두면 이 정보가 통째로 사라진다.
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE JMdict [
+        <!ENTITY uk "word usually written using kana alone">
+        <!ENTITY sK "search-only kanji form">
+        ]>
+        <JMdict><entry><ent_seq>1</ent_seq>
+        <k_ele><keb>止める</keb></k_ele>
+        <k_ele><keb>乃</keb><ke_inf>&sK;</ke_inf></k_ele>
+        <r_ele><reb>やめる</reb></r_ele>
+        <sense><misc>&uk;</misc><gloss>to stop</gloss></sense>
+        </entry></JMdict>
+        """
+        let entry = try #require(JMDictParser.parse(xml: xml).first)
+        #expect(entry.usuallyKana)
+        #expect(entry.writings.count == 2)
+        #expect(entry.usableWritings.map(\.text) == ["止める"])   // 乃 는 검색 전용이라 빠진다
+    }
 }

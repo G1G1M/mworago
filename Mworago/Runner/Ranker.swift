@@ -71,12 +71,16 @@ public enum Ranker {
     static func domainScore(_ entry: DictEntry, reading: String, in list: FrequencyList) -> Double {
         let readingForms = Deinflector.candidates(for: reading)
 
-        guard !entry.writings.isEmpty else {
-            return readingForms.map { list.score(writing: nil, reading: $0.form) }.max() ?? 0
+        // 실제로 쓰이는 한자 표기가 없거나, 사전이 "보통 가나로 쓴다"(uk)고 말하면
+        // 가나 빈도로 재야 한다. 아무도 안 쓰는 한자 표기의 빈도로 재면
+        // 止める(やめる)가 16601위, の(조사)가 0점이 되어 버린다.
+        var best = 0.0
+        if entry.usableWritings.isEmpty || entry.usuallyKana {
+            best = readingForms.map { list.score(writing: nil, reading: $0.form) }.max() ?? 0
+            if entry.usableWritings.isEmpty { return best }
         }
 
-        var best = 0.0
-        for writing in entry.writings {
+        for writing in entry.usableWritings {
             for writingForm in Deinflector.candidates(for: writing.text) {
                 // 표기와 읽기를 같은 활용 규칙으로 되돌린 짝만 맞춰 본다
                 for readingForm in readingForms where readingForm.rule == writingForm.rule {

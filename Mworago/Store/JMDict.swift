@@ -4,6 +4,14 @@ import Foundation
 public struct DictForm: Sendable, Equatable {
     public let text: String
     public let priority: Int
+    /// 검색 전용(`sK`)이거나 거의 안 쓰는(`rK`) 표기. 실제로 그렇게 적는 사람이 없다.
+    public let isRare: Bool
+
+    public init(text: String, priority: Int, isRare: Bool = false) {
+        self.text = text
+        self.priority = priority
+        self.isRare = isRare
+    }
 }
 
 /// JMdict 표제항 하나.
@@ -11,8 +19,22 @@ public struct DictEntry: Sendable, Equatable {
     public let readings: [DictForm]   // 가나 읽기. 이표기가 있으면 여럿
     public let writings: [DictForm]   // 한자 표기. 가나로만 쓰는 낱말은 비어 있다
     public let glosses: [String]      // 영어 뜻
+    /// JMdict 의 `uk` 태그 — "보통 가나로 쓰는 낱말". 한자 표기가 실려 있어도 쓰이지 않는다.
+    /// `止める`(やめる)가 그렇다. 사전이 스스로 알려주는 정보인데 읽지 않으면
+    /// 아무도 안 쓰는 한자 표기의 빈도로 그 낱말을 재게 된다.
+    public let usuallyKana: Bool
 
-    public var headword: String { writings.first?.text ?? readings.first?.text ?? "" }
+    public init(readings: [DictForm], writings: [DictForm], glosses: [String], usuallyKana: Bool = false) {
+        self.readings = readings
+        self.writings = writings
+        self.glosses = glosses
+        self.usuallyKana = usuallyKana
+    }
+
+    /// 실제로 쓰이는 표기만. 전부 희귀 표기라면 가나로 쓰는 낱말이나 마찬가지다.
+    public var usableWritings: [DictForm] { writings.filter { !$0.isRare } }
+
+    public var headword: String { usableWritings.first?.text ?? readings.first?.text ?? "" }
 }
 
 /// 색인이 돌려주는 한 건. 점수는 **찾은 그 읽기의** 점수다.
@@ -32,7 +54,45 @@ public enum JMDictParser {
         return try parse(data: data)
     }
 
+    /// XML 표준이 정한 다섯 엔티티. 이것만은 파서가 알아서 푼다.
+    private static let standardEntities: Set<String> = ["amp", "lt", "gt", "quot", "apos"]
+
+    /// JMdict 의 표지(`&uk;`·`&sK;`)를 파서가 읽을 수 있는 텍스트로 바꾼다.
+    ///
+    /// `XMLParser`는 내부 DTD 에 선언된 엔티티를 **확장하지 않고 빈 문자열로 만든다.**
+    /// 그래서 `<misc>&uk;</misc>`가 빈 값으로 들어와, 사전이 알려주는 "가나로 쓰는 낱말"
+    /// 정보를 통째로 놓치게 된다.
+    ///
+    /// 60MB 짜리 문서라 정규식으로 훑기에는 무겁다. `&`와 `;`만 공백으로 바꾸면
+    /// 길이가 변하지 않아 제자리에서 끝난다.
+    static func exposeEntities(_ data: Data) -> Data {
+        var bytes = [UInt8](data)
+        let ampersand = UInt8(ascii: "&"), semicolon = UInt8(ascii: ";"), hash = UInt8(ascii: "#")
+        let space = UInt8(ascii: " ")
+
+        var index = 0
+        while index < bytes.count {
+            defer { index += 1 }
+            guard bytes[index] == ampersand else { continue }
+
+            // 엔티티 이름은 짧다. 20바이트 안에 ; 가 없으면 그냥 & 문자다
+            var end = index + 1
+            while end < bytes.count, end - index < 20, bytes[end] != semicolon { end += 1 }
+            guard end < bytes.count, bytes[end] == semicolon, end > index + 1 else { continue }
+            guard bytes[index + 1] != hash else { continue }   // &#39; 같은 문자 참조
+
+            let name = String(decoding: bytes[(index + 1)..<end], as: UTF8.self)
+            guard !standardEntities.contains(name) else { continue }
+
+            bytes[index] = space
+            bytes[end] = space
+            index = end
+        }
+        return Data(bytes)
+    }
+
     public static func parse(data: Data) throws -> [DictEntry] {
+        let data = exposeEntities(data)
         let parser = XMLParser(data: data)
         let collector = Collector()
         parser.delegate = collector
@@ -72,20 +132,22 @@ public enum JMDictParser {
         // (机는 つくえ로 유명하지만 つき로도 읽힌다).
         private var formText = ""
         private var formPriority = 0
+        private var formIsRare = false
+        private var usuallyKana = false
 
         private var buffer = ""
         private var capturing = false
 
-        private static let captured: Set<String> = ["keb", "reb", "gloss", "ke_pri", "re_pri"]
+        private static let captured: Set<String> = ["keb", "reb", "gloss", "ke_pri", "re_pri", "ke_inf", "misc"]
 
         func parser(_ parser: XMLParser, didStartElement elementName: String,
                     namespaceURI: String?, qualifiedName: String?,
                     attributes attributeDict: [String: String] = [:]) {
             switch elementName {
             case "entry":
-                readings = []; writings = []; glosses = []
+                readings = []; writings = []; glosses = []; usuallyKana = false
             case "k_ele", "r_ele":
-                formText = ""; formPriority = 0
+                formText = ""; formPriority = 0; formIsRare = false
             default: break
             }
             if Self.captured.contains(elementName) {
@@ -107,16 +169,22 @@ public enum JMDictParser {
             switch elementName {
             case "keb", "reb": formText = text
             case "ke_pri", "re_pri": formPriority += JMDictParser.priorityScore(text)
+            case "ke_inf":
+                // exposeEntities 를 거쳐 표지 이름이 그대로 들어온다: sK · rK · iK
+                if text == "sK" || text == "rK" { formIsRare = true }
+            case "misc":
+                if text == "uk" { usuallyKana = true }
             case "k_ele":
                 guard !formText.isEmpty else { return }
-                writings.append(DictForm(text: formText, priority: formPriority))
+                writings.append(DictForm(text: formText, priority: formPriority, isRare: formIsRare))
             case "r_ele":
                 guard !formText.isEmpty else { return }
                 readings.append(DictForm(text: formText, priority: formPriority))
             case "gloss": if glosses.count < 5 { glosses.append(text) }
             case "entry":
                 guard !readings.isEmpty else { return }
-                entries.append(DictEntry(readings: readings, writings: writings, glosses: glosses))
+                entries.append(DictEntry(readings: readings, writings: writings,
+                                         glosses: glosses, usuallyKana: usuallyKana))
             default: break
             }
         }
