@@ -20,3 +20,11 @@ Tools/data/jesc_freq*.tsv
 
 # 구운 사전 색인 (Tools/build-index.sh)
 Tools/data/mworago-dict.db
+
+# xcodegen 이 만드는 것들 (project.yml 만 관리한다)
+Mworago.xcodeproj/
+.build-ios/
+
+# 앱 번들에 넣는 자료는 Tools 에서 구워 복사한다 (Tools/setup-app-resources.sh)
+MworagoApp/Resources/*.db
+MworagoApp/Resources/*.tsv

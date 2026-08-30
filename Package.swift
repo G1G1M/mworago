@@ -8,7 +8,10 @@ import PackageDescription
 //   docs/          기록
 let package = Package(
     name: "Mworago",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v15), .iOS(.v18)],
+    products: [
+        .library(name: "MworagoCore", targets: ["MworagoCore"]),
+    ],
     targets: [
         // 앱으로 그대로 옮겨갈 순수 로직. Foundation 외 의존성 없음.
         .target(name: "MworagoCore", path: "Mworago",

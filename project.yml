@@ -1,0 +1,40 @@
+name: Mworago
+options:
+  bundleIdPrefix: com.g1g1e
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+packages:
+  MworagoCore:
+    path: .
+
+targets:
+  Mworago:
+    type: application
+    platform: iOS
+    sources:
+      - path: MworagoApp
+        excludes: ["Resources"]
+      - path: MworagoApp/Resources
+        buildPhase: resources
+    dependencies:
+      - package: MworagoCore
+        product: MworagoCore
+    info:
+      path: MworagoApp/Info.plist
+      properties:
+        CFBundleDisplayName: 뭐라고
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiresFullScreen: false
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1,2"      # iPhone·iPad 유니버설
+        SWIFT_VERSION: "6.0"
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
