@@ -25,6 +25,13 @@ public enum JapaneseReading {
 
     public static func analyze(_ text: String) -> [JapaneseToken] {
         guard !text.isEmpty else { return [] }
+        // **문장에 가나가 한 자도 없으면 일본어가 아니다.** 조사와 어미가 가나라서
+        // 일본어 문장은 거의 언제나 가나를 품는다. 한자만 늘어선 줄은 중국어인데,
+        // 한자는 중국어에도 쓰이므로 낱말 하나만 보고는 가릴 수 없다.
+        // 그대로 두면 토크나이저가 그 한자를 일본어 음으로 읽어 빈도에 실어 버린다 —
+        // 我 가 が 로, 生 이 せい 로. (중국어 음을 로마자로 읽은 뒤 가나로 옮겨
+        // しぇえんぐ·ふぇえん·しゃんぐ 같은 것이 목록에 앉기도 했다.)
+        guard text.contains(where: isKana) else { return [] }
 
         let nsText = text as NSString
         let tokenizer = CFStringTokenizerCreate(nil, text as CFString,
@@ -42,6 +49,9 @@ public enum JapaneseReading {
             guard let romaji = CFStringTokenizerCopyCurrentTokenAttribute(
                     tokenizer, kCFStringTokenizerAttributeLatinTranscription) as? String,
                   let kana = toHiragana(romaji),
+                  // 빈 읽기를 막는다. allSatisfy 는 빈 것에 참이라 그냥 두면
+                  // 읽기 없는 낱말이 그대로 통과한다(你好 가 그랬다).
+                  !kana.isEmpty,
                   kana.allSatisfy(isKana)
             else { continue }   // 문장부호·로마자·숫자는 읽기가 나오지 않는다
 
@@ -58,7 +68,7 @@ public enum JapaneseReading {
         return buffer as String
     }
 
-    private static func isKana(_ character: Character) -> Bool {
+    static func isKana(_ character: Character) -> Bool {
         character.unicodeScalars.allSatisfy { (0x3041...0x30FF).contains($0.value) }
     }
 
