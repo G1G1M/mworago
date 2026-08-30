@@ -26,15 +26,23 @@ public struct DictEntry: Sendable, Equatable {
     /// `止める`(やめる)가 그렇다. 사전이 스스로 알려주는 정보인데 읽지 않으면
     /// 아무도 안 쓰는 한자 표기의 빈도로 그 낱말을 재게 된다.
     public let usuallyKana: Bool
+    /// JMdict 의 품사 태그(`v5u`·`prt`·`adj-na`…). 먼저 쓰인 순서를 지킨다.
+    /// 뜻을 한국어로 옮길 때 동사를 동사로 옮기고, 조사를 아예 건드리지 않기 위해 필요하다.
+    public let partsOfSpeech: [String]
 
     public init(readings: [DictForm], writings: [DictForm], glosses: [String],
-                usuallyKana: Bool = false, koreanGloss: String? = nil) {
+                usuallyKana: Bool = false, koreanGloss: String? = nil,
+                partsOfSpeech: [String] = []) {
         self.readings = readings
         self.writings = writings
         self.glosses = glosses
         self.usuallyKana = usuallyKana
         self.koreanGloss = koreanGloss
+        self.partsOfSpeech = partsOfSpeech
     }
+
+    /// 이 낱말의 큰 갈래.
+    public var wordClass: WordClass { WordClass(tags: partsOfSpeech) }
 
     /// 화면에 보일 뜻. 한국어가 있으면 그것이 먼저다.
     public var displayGloss: String {
@@ -135,6 +143,8 @@ public enum JMDictParser {
         private var readings: [DictForm] = []
         private var writings: [DictForm] = []
         private var glosses: [String] = []
+        // 품사는 뜻갈래(sense)마다 되풀이된다. 순서는 지키고 중복만 걷어낸다.
+        private var partsOfSpeech: [String] = []
 
         // 지금 읽고 있는 k_ele / r_ele 하나의 상태.
         // 빈도 태그는 표기·읽기 **하나하나에** 붙기 때문에 이 단위로 모아야 한다.
@@ -148,7 +158,7 @@ public enum JMDictParser {
         private var buffer = ""
         private var capturing = false
 
-        private static let captured: Set<String> = ["keb", "reb", "gloss", "ke_pri", "re_pri", "ke_inf", "misc"]
+        private static let captured: Set<String> = ["keb", "reb", "gloss", "ke_pri", "re_pri", "ke_inf", "misc", "pos"]
 
         func parser(_ parser: XMLParser, didStartElement elementName: String,
                     namespaceURI: String?, qualifiedName: String?,
@@ -156,6 +166,7 @@ public enum JMDictParser {
             switch elementName {
             case "entry":
                 readings = []; writings = []; glosses = []; usuallyKana = false
+                partsOfSpeech = []
             case "k_ele", "r_ele":
                 formText = ""; formPriority = 0; formIsRare = false
             default: break
@@ -193,10 +204,13 @@ public enum JMDictParser {
             // 뜻은 앞의 둘만 싣는다. 다섯을 다 실으면 색인이 눈에 띄게 커지는데,
             // 화면에 보이는 것은 어차피 앞의 한둘이다.
             case "gloss": if glosses.count < 2 { glosses.append(text) }
+            // exposeEntities 덕에 &v5u; 가 표지 이름 그대로 들어온다.
+            case "pos": if !text.isEmpty && !partsOfSpeech.contains(text) { partsOfSpeech.append(text) }
             case "entry":
                 guard !readings.isEmpty else { return }
                 entries.append(DictEntry(readings: readings, writings: writings,
-                                         glosses: glosses, usuallyKana: usuallyKana))
+                                         glosses: glosses, usuallyKana: usuallyKana,
+                                         partsOfSpeech: partsOfSpeech))
             default: break
             }
         }

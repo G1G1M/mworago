@@ -1,0 +1,143 @@
+import Testing
+import Foundation
+@testable import MworagoCore
+
+/// 품사는 화면보다 **번역**을 위해 필요하다.
+///
+/// 영어 뜻만 넘겨 주면 `思う`(to think)가 "생각"으로 온다 — 동사가 명사가 되어 돌아온다.
+/// 그리고 빈도 최상위는 전부 조사·조동사인데, 그것들은 뜻이 아니라 기능이라
+/// 낱말 뜻으로 옮기려 들면 설명문이 나온다(`よ` → "안녕, 너").
+/// 둘 다 사전이 이미 알고 있는 것을 안 읽어서 생긴 일이다.
+@Suite("품사")
+struct WordClassTests {
+
+    static let sample = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE JMdict [
+    <!ENTITY prt "particle">
+    <!ENTITY v5u "Godan verb with 'u' ending">
+    <!ENTITY vt "transitive verb">
+    <!ENTITY adj-na "adjectival nouns or quasi-adjectives">
+    <!ENTITY n "noun">
+    <!ENTITY cop "copula">
+    <!ENTITY adv "adverb">
+    <!ENTITY exp "expressions (phrases, clauses, etc.)">
+    <!ENTITY suf "suffix">
+    <!ENTITY pref "prefix">
+    <!ENTITY int "interjection (kandoushi)">
+    ]>
+    <JMdict>
+    <entry>
+    <r_ele><reb>の</reb></r_ele>
+    <sense><pos>&prt;</pos><gloss>indicates possessive</gloss></sense>
+    </entry>
+    <entry>
+    <k_ele><keb>思う</keb></k_ele>
+    <r_ele><reb>おもう</reb></r_ele>
+    <sense><pos>&v5u;</pos><pos>&vt;</pos><gloss>to think</gloss><gloss>to consider</gloss></sense>
+    <sense><pos>&v5u;</pos><pos>&vt;</pos><gloss>to judge</gloss></sense>
+    </entry>
+    <entry>
+    <k_ele><keb>大丈夫</keb></k_ele>
+    <r_ele><reb>だいじょうぶ</reb></r_ele>
+    <sense><pos>&adj-na;</pos><pos>&n;</pos><gloss>safe</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>だ</reb></r_ele>
+    <sense><pos>&cop;</pos><gloss>be</gloss></sense>
+    </entry>
+    <entry>
+    <k_ele><keb>元</keb></k_ele>
+    <r_ele><reb>もと</reb></r_ele>
+    <sense><pos>&n;</pos><gloss>origin</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>とても</reb></r_ele>
+    <sense><pos>&adv;</pos><gloss>very</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>だろう</reb></r_ele>
+    <sense><pos>&exp;</pos><gloss>seems</gloss><gloss>I think</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>さん</reb></r_ele>
+    <sense><pos>&suf;</pos><gloss>Mr</gloss><gloss>Mrs</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>お</reb></r_ele>
+    <sense><pos>&pref;</pos><gloss>honorific prefix</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>ありがとう</reb></r_ele>
+    <sense><pos>&int;</pos><gloss>thank you</gloss></sense>
+    </entry>
+    </JMdict>
+    """
+
+    static func 항목(_ 읽기: String) throws -> DictEntry {
+        let entries = try JMDictParser.parse(xml: sample)
+        return try #require(entries.first { $0.readings.contains { $0.text == 읽기 } })
+    }
+
+    @Test("품사 태그를 뽑는다")
+    func 파싱() throws {
+        #expect(try Self.항목("おもう").partsOfSpeech == ["v5u", "vt"])
+        #expect(try Self.항목("の").partsOfSpeech == ["prt"])
+    }
+
+    @Test("같은 태그가 뜻갈래마다 되풀이돼도 한 번만 담는다")
+    func 중복제거() throws {
+        // 思う 는 sense 가 둘이고 둘 다 v5u·vt 다. 그대로 쌓으면 네 개가 된다.
+        #expect(try Self.항목("おもう").partsOfSpeech.count == 2)
+    }
+
+    @Test("큰 갈래로 묶는다")
+    func 분류() throws {
+        #expect(try Self.항목("おもう").wordClass == .verb)
+        #expect(try Self.항목("だいじょうぶ").wordClass == .adjective)
+        #expect(try Self.항목("もと").wordClass == .noun)
+        #expect(try Self.항목("とても").wordClass == .adverb)
+    }
+
+    @Test("조사와 계사는 기능어다")
+    func 기능어() throws {
+        #expect(try Self.항목("の").wordClass == .function)
+        #expect(try Self.항목("だ").wordClass == .function)
+        // 번역 대상에서 빼는 판단은 이 한 줄로 한다.
+        #expect(try Self.항목("の").wordClass.isTranslatable == false)
+        #expect(try Self.항목("おもう").wordClass.isTranslatable)
+    }
+
+    @Test("형용동사는 명사 태그를 겸해도 형용사로 본다")
+    func 겸업() throws {
+        // 大丈夫 는 adj-na 와 n 을 함께 단다. 먼저 쓰인 쪽이 그 낱말의 얼굴이다.
+        #expect(try Self.항목("だいじょうぶ").partsOfSpeech == ["adj-na", "n"])
+        #expect(try Self.항목("だいじょうぶ").wordClass == .adjective)
+    }
+
+    @Test("품사가 없는 항목도 죽지 않는다")
+    func 태그없음() throws {
+        let entry = DictEntry(readings: [DictForm(text: "ゆき", priority: 0)], writings: [], glosses: ["snow"])
+        #expect(entry.partsOfSpeech.isEmpty)
+        #expect(entry.wordClass == .other)
+        // 모르는 것을 기능어로 몰면 멀쩡한 낱말이 통째로 번역에서 빠진다.
+        #expect(entry.wordClass.isTranslatable)
+    }
+
+    @Test("관용구와 접사는 낱말 뜻으로 옮기지 않는다")
+    func 옮길수없는것() throws {
+        // だろう(exp)·さん(suf)·お(pref) 는 사전에 뜻이 달려 있어도 그 뜻이 낱말이 아니다.
+        // 실측에서 각각 "보인다", "시스터, 브레이어", "오!" 가 나왔다.
+        #expect(try Self.항목("だろう").wordClass == .expression)
+        #expect(try Self.항목("さん").wordClass == .affix)
+        #expect(try Self.항목("お").wordClass == .affix)
+        #expect(try Self.항목("だろう").wordClass.isTranslatable == false)
+        #expect(try Self.항목("さん").wordClass.isTranslatable == false)
+    }
+
+    @Test("감탄사는 옮긴다 — 그것은 뜻이 있는 낱말이다")
+    func 감탄사() throws {
+        // ありがとう 를 접사와 한데 묶어 버리면 정작 애니에서 가장 많이 들리는 말이 빠진다.
+        #expect(try Self.항목("ありがとう").wordClass.isTranslatable)
+    }
+}

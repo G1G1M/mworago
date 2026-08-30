@@ -11,19 +11,22 @@ struct DictionaryStoreTests {
     <!DOCTYPE JMdict [
     <!ENTITY uk "word usually written using kana alone">
     <!ENTITY sK "search-only kanji form">
+    <!ENTITY adj-na "adjectival nouns or quasi-adjectives">
+    <!ENTITY v1 "Ichidan verb">
+    <!ENTITY n "noun">
     ]>
     <JMdict>
     <entry>
     <k_ele><keb>大丈夫</keb><ke_pri>ichi1</ke_pri><ke_pri>nf05</ke_pri></k_ele>
     <r_ele><reb>だいじょうぶ</reb><re_pri>ichi1</re_pri><re_pri>nf05</re_pri></r_ele>
     <r_ele><reb>だいじょぶ</reb></r_ele>
-    <sense><gloss>safe</gloss><gloss>all right</gloss></sense>
+    <sense><pos>&adj-na;</pos><pos>&n;</pos><gloss>safe</gloss><gloss>all right</gloss></sense>
     </entry>
     <entry>
     <k_ele><keb>止める</keb></k_ele>
     <k_ele><keb>已める</keb><ke_inf>&sK;</ke_inf></k_ele>
     <r_ele><reb>やめる</reb></r_ele>
-    <sense><misc>&uk;</misc><gloss>to stop</gloss></sense>
+    <sense><pos>&v1;</pos><misc>&uk;</misc><gloss>to stop</gloss></sense>
     </entry>
     <entry>
     <r_ele><reb>ポイント</reb></r_ele>
@@ -154,5 +157,31 @@ struct DictionaryStoreTests {
         #expect(throws: DictionaryStore.StoreError.self) {
             _ = try DictionaryStore(path: path)
         }
+    }
+
+    @Test("품사도 색인을 왕복한다")
+    func 품사왕복() throws {
+        let (store, path) = try Self.색인()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        // 굽고 다시 읽어도 태그와 그 순서가 그대로여야 한다.
+        // 순서가 흐트러지면 大丈夫(adj-na·n)가 형용사가 아니라 명사로 분류된다.
+        let 대장부 = try #require(store.lookup("だいじょうぶ").first).entry
+        #expect(대장부.partsOfSpeech == ["adj-na", "n"])
+        #expect(대장부.wordClass == .adjective)
+
+        let 야메루 = try #require(store.lookup("やめる").first).entry
+        #expect(야메루.wordClass == .verb)
+    }
+
+    @Test("품사가 없는 낱말도 구워진다")
+    func 품사없음() throws {
+        let (store, path) = try Self.색인()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        // ポイント 에는 pos 가 없다. 빈 칸이 빈 배열로 돌아와야지, [""] 가 되면 안 된다.
+        let 포인트 = try #require(store.lookup("ぽいんと").first).entry
+        #expect(포인트.partsOfSpeech.isEmpty)
+        #expect(포인트.wordClass == .other)
     }
 }
