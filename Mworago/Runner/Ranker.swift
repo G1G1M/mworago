@@ -47,10 +47,10 @@ public enum Ranker {
         /// `疲れた`가 `疲れる`의 빈도를 물려받아 동점이 되고, 되돌리지 않은 쪽이 페널티가 없다.
         /// 그래서 값이 클 필요가 없고, JESC 기준 스윕은 25를 골랐다.
         ///
-        /// 빈도 목록을 JPDB 에서 JESC(자막)로 바꾸면서 다시 훑었다. 목록이 바뀌면 최적 가중치도
-        /// 함께 움직인다 — 장음 페널티가 6에서 0으로, 후보 순서 페널티가 0에서 5로 옮겨 갔다.
-        public init(rankPenalty: Double = 5,
-                    longVowelPenalty: Double = 0,
+        /// 빈도 목록이 바뀌면 최적 가중치도 함께 움직인다. JESC(자막)로 바꿔 훑었을 때는
+        /// 장음 6→0, 후보 순서 0→5로 옮겨 갔다. 지금 기준선은 JPDB 쪽 값이다.
+        public init(rankPenalty: Double = 0,
+                    longVowelPenalty: Double = 6,
                     deinflectionPenalty: Double = 25,
                     domainWeight: Double = 1,
                     jmdictWeight: Double = 0) {

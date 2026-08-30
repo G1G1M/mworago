@@ -104,8 +104,11 @@ log("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(St
 
 // 도메인 빈도는 선택 사항이다. 없으면 JMdict 점수만으로 돈다.
 // --freq 로 다른 빈도 목록을 물려 비교할 수 있다
-// 기본은 JESC 다. JPDB 가 두 건 더 맞히지만 재배포 조건이 불분명해 앱에 실을 수 없다.
-let frequencyPath = flagValues("--freq").first ?? "Tools/data/jesc_freq.tsv"
+// 측정 기준선은 지금 가장 나은 것으로 둔다. JESC(CC BY-SA)는 낱말 검색에서는 거의 같지만
+// (140 vs 142) 분절에서 확실히 뒤진다(30.0% vs 42.7%) — 어휘가 3분의 1이고 토크나이저가
+// 何 를 なん 으로만 읽어 なに 항목이 없다. 배포용으로는 JESC 가 답이지만 품질을 더 올려야 한다.
+// 비교하려면 --freq Tools/data/jesc_freq.tsv
+let frequencyPath = flagValues("--freq").first ?? "Tools/data/jpdb_freq.csv"
 let frequency: FrequencyList? = {
     let list = FrequencyList(contentsOfFile: frequencyPath)
     guard !list.isEmpty else { return nil }
