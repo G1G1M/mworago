@@ -28,3 +28,6 @@ Mworago.xcodeproj/
 # 앱 번들에 넣는 자료는 Tools 에서 구워 복사한다 (Tools/setup-app-resources.sh)
 MworagoApp/Resources/*.db
 MworagoApp/Resources/*.tsv
+
+# 모델로 구운 한국어 뜻 (swift run Translator)
+Tools/data/korean-gloss.tsv

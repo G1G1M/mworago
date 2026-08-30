@@ -36,7 +36,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
 
         // 조회는 한 문장으로 끝난다. 미리 준비해 두고 매번 바인딩만 바꾼다.
         let sql = """
-            SELECT r.display, r.priority, e.writings, e.glosses, e.usually_kana, e.readings
+            SELECT r.display, r.priority, e.writings, e.glosses, e.usually_kana, e.readings, e.korean
             FROM readings r JOIN entries e ON e.id = r.entry_id
             WHERE r.reading = ? ORDER BY r.priority DESC, r.entry_id ASC
             """
@@ -75,9 +75,11 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             // 표제항의 읽기를 전부 되살린다. 매칭된 하나만 남기면 headword 가 달라지고
             // (표기가 없는 낱말은 첫 읽기가 표제어다) 도메인 빈도 조회도 어긋난다.
             let readings = Self.decodeForms(column(5) ?? "")
+            let korean = column(6).flatMap { $0.isEmpty ? nil : $0 }
 
             let entry = DictEntry(readings: readings.isEmpty ? [DictForm(text: display, priority: priority)] : readings,
-                                  writings: writings, glosses: glosses, usuallyKana: usuallyKana)
+                                  writings: writings, glosses: glosses,
+                                  usuallyKana: usuallyKana, koreanGloss: korean)
             hits.append(DictHit(entry: entry, reading: display, priority: priority))
         }
         return hits
@@ -89,7 +91,9 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
 
     // MARK: 굽기
 
-    public static func build(entries: [DictEntry], at path: String) throws {
+    /// 한국어 뜻은 따로 구워 둔 표에서 온다. (표기, 읽기) 로 찾는다.
+    public static func build(entries: [DictEntry], at path: String,
+                             koreanGlosses: [String: String] = [:]) throws {
         try? FileManager.default.removeItem(atPath: path)
 
         var handle: OpaquePointer?
@@ -102,7 +106,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
         try exec(db, "PRAGMA journal_mode = OFF; PRAGMA synchronous = OFF;")
         try exec(db, """
             CREATE TABLE entries (id INTEGER PRIMARY KEY, writings TEXT, glosses TEXT,
-                                  usually_kana INTEGER, readings TEXT);
+                                  usually_kana INTEGER, readings TEXT, korean TEXT);
             CREATE TABLE readings (reading TEXT NOT NULL, display TEXT NOT NULL,
                                    priority INTEGER NOT NULL, entry_id INTEGER NOT NULL);
             -- 점수가 같으면 사전에 실린 순서를 따른다. 메모리 색인과 답이 갈리지 않게 하는 장치다.
@@ -111,7 +115,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
 
         var entryStatement: OpaquePointer?
         var readingStatement: OpaquePointer?
-        sqlite3_prepare_v2(db, "INSERT INTO entries VALUES (?, ?, ?, ?, ?)", -1, &entryStatement, nil)
+        sqlite3_prepare_v2(db, "INSERT INTO entries VALUES (?, ?, ?, ?, ?, ?)", -1, &entryStatement, nil)
         sqlite3_prepare_v2(db, "INSERT INTO readings VALUES (?, ?, ?, ?)", -1, &readingStatement, nil)
         defer {
             sqlite3_finalize(entryStatement)
@@ -126,6 +130,12 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             sqlite3_bind_text(entryStatement, 3, entry.glosses.joined(separator: recordSeparator), -1, transient)
             sqlite3_bind_int(entryStatement, 4, entry.usuallyKana ? 1 : 0)
             sqlite3_bind_text(entryStatement, 5, encodeForms(entry.readings), -1, transient)
+            // 표기·읽기 어느 짝으로든 한국어 뜻을 찾아 본다
+            let korean = entry.readings.lazy.compactMap { reading in
+                entry.usableWritings.lazy.compactMap { koreanGlosses["\($0.text)\t\(reading.text)"] }.first
+                    ?? koreanGlosses["\(reading.text)\t\(reading.text)"]
+            }.first
+            sqlite3_bind_text(entryStatement, 6, korean ?? "", -1, transient)
             sqlite3_step(entryStatement)
             sqlite3_reset(entryStatement)
 

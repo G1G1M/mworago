@@ -119,9 +119,23 @@ if let useIndexPath, buildIndexPath == nil {
     log("표제항 \(memoryIndex.entryCount)개 · 읽기 \(memoryIndex.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초")
 
     if let buildIndexPath {
+        // 한국어 뜻은 따로 구워 둔 표에서 온다. 없으면 영어 뜻만 실린다.
+        var koreanGlosses: [String: String] = [:]
+        let koreanPath = "Tools/data/korean-gloss.tsv"
+        if let text = try? String(contentsOfFile: koreanPath, encoding: .utf8) {
+            for line in text.split(separator: "\n") where !line.hasPrefix("#") {
+                let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
+                guard columns.count >= 3, !columns[2].isEmpty else { continue }
+                koreanGlosses["\(columns[0])\t\(columns[1])"] = String(columns[2])
+            }
+            log("한국어 뜻 \(koreanGlosses.count)개 (\(koreanPath))")
+        } else {
+            log("한국어 뜻 없음 — 영어 뜻만 싣는다 (swift run Translator 로 만든다)")
+        }
+
         log("색인 굽는 중… \(buildIndexPath)")
         let bakeStart = Date()
-        try DictionaryStore.build(entries: parsed, at: buildIndexPath)
+        try DictionaryStore.build(entries: parsed, at: buildIndexPath, koreanGlosses: koreanGlosses)
         let size = (try? FileManager.default.attributesOfItem(atPath: buildIndexPath)[.size] as? Int) ?? 0
         print(String(format: "색인 완료 · %.1fMB · %.1f초", Double(size ?? 0) / 1_048_576, -bakeStart.timeIntervalSinceNow))
         exit(0)

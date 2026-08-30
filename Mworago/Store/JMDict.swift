@@ -18,17 +18,27 @@ public struct DictForm: Sendable, Equatable {
 public struct DictEntry: Sendable, Equatable {
     public let readings: [DictForm]   // 가나 읽기. 이표기가 있으면 여럿
     public let writings: [DictForm]   // 한자 표기. 가나로만 쓰는 낱말은 비어 있다
-    public let glosses: [String]      // 영어 뜻
+    public let glosses: [String]      // 영어 뜻 (JMdict 는 영일 사전이다)
+    /// 미리 구워 둔 한국어 뜻. 공개된 한일 사전이 없어 모델로 만든다.
+    /// 자주 쓰는 낱말만 채우므로 없을 수 있고, 그때는 영어 뜻이 남는다.
+    public let koreanGloss: String?
     /// JMdict 의 `uk` 태그 — "보통 가나로 쓰는 낱말". 한자 표기가 실려 있어도 쓰이지 않는다.
     /// `止める`(やめる)가 그렇다. 사전이 스스로 알려주는 정보인데 읽지 않으면
     /// 아무도 안 쓰는 한자 표기의 빈도로 그 낱말을 재게 된다.
     public let usuallyKana: Bool
 
-    public init(readings: [DictForm], writings: [DictForm], glosses: [String], usuallyKana: Bool = false) {
+    public init(readings: [DictForm], writings: [DictForm], glosses: [String],
+                usuallyKana: Bool = false, koreanGloss: String? = nil) {
         self.readings = readings
         self.writings = writings
         self.glosses = glosses
         self.usuallyKana = usuallyKana
+        self.koreanGloss = koreanGloss
+    }
+
+    /// 화면에 보일 뜻. 한국어가 있으면 그것이 먼저다.
+    public var displayGloss: String {
+        koreanGloss ?? glosses.joined(separator: " · ")
     }
 
     /// 실제로 쓰이는 표기만. 전부 희귀 표기라면 가나로 쓰는 낱말이나 마찬가지다.

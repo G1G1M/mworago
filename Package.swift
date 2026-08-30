@@ -21,6 +21,9 @@ let package = Package(
         // M0 측정 도구. 케이스를 돌려 정확도 표를 찍는다.
         .executableTarget(name: "SpikeRunner", dependencies: ["MworagoCore"], path: "Tools/SpikeRunner"),
 
+        // 한국어 뜻을 미리 굽는다. 온디바이스 모델을 쓰므로 macOS 26 이상에서만 동작한다.
+        .executableTarget(name: "Translator", dependencies: ["MworagoCore"], path: "Tools/Translator"),
+
         .testTarget(name: "MworagoTests", dependencies: ["MworagoCore"], path: "MworagoTests"),
     ]
 )

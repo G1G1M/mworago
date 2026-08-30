@@ -108,4 +108,29 @@ struct DictionaryStoreTests {
         let entry = try #require(store.lookup("だいじょぶ").first?.entry)
         #expect(entry.readings.map(\.text) == ["だいじょうぶ", "だいじょぶ"])
     }
+
+    @Test("한국어 뜻을 구워 넣고 꺼낸다")
+    func 한국어뜻() throws {
+        let path = NSTemporaryDirectory() + "mworago-korean-\(UUID().uuidString).db"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let entries = try JMDictParser.parse(xml: Self.sample)
+        try DictionaryStore.build(entries: entries, at: path,
+                                  koreanGlosses: ["大丈夫\tだいじょうぶ": "괜찮다"])
+        let store = try DictionaryStore(path: path)
+
+        let entry = try #require(store.lookup("だいじょうぶ").first?.entry)
+        #expect(entry.koreanGloss == "괜찮다")
+        #expect(entry.displayGloss == "괜찮다")   // 한국어가 있으면 그것이 먼저다
+    }
+
+    @Test("한국어 뜻이 없으면 영어가 남는다")
+    func 뜻없음() throws {
+        let (store, path) = try Self.색인()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let entry = try #require(store.lookup("だいじょうぶ").first?.entry)
+        #expect(entry.koreanGloss == nil)
+        #expect(entry.displayGloss == "safe · all right")
+    }
 }

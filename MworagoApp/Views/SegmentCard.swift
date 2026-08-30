@@ -18,8 +18,8 @@ struct SegmentCard: View {
         VStack(alignment: .leading, spacing: 12) {
             if let top {
                 headline(top)
-                if !top.entry.glosses.isEmpty {
-                    Text(top.entry.glosses.joined(separator: " · "))
+                if !top.entry.displayGloss.isEmpty {
+                    Text(top.entry.displayGloss)
                         .font(Theme.korean(15))
                         .foregroundStyle(Theme.grey1)
                 }
@@ -82,7 +82,7 @@ struct SegmentCard: View {
                     Text(distinguisher(result))
                         .font(Theme.japanese(18))
                         .foregroundStyle(Theme.grey1)
-                    Text(result.entry.glosses.first ?? "")
+                    Text(result.entry.koreanGloss ?? result.entry.glosses.first ?? "")
                         .font(Theme.korean(13))
                         .foregroundStyle(Theme.grey2)
                         .lineLimit(1)
