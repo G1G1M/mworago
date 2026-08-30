@@ -63,10 +63,10 @@ struct RootView: View {
                 Label("연습", systemImage: "waveform")
             }
         }
-        // 애플 사진 앱과 같은 구성 — 상단 탭바에 사이드바 토글이 붙는다.
-        // 아이패드의 상단 탭바는 시스템이 글자만 그리므로(사진 앱의 보관함·모음도 그렇다)
-        // 아이콘을 보고 싶은 사람은 사이드바를 펼치면 된다. 아이폰은 하단 아이콘 탭바 그대로다.
-        .tabViewStyle(.sidebarAdaptable)
+        // **탭바를 아래에 둔다.** 아이패드의 상단 탭바는 시스템이 글자만 그려서
+        // (애플 사진 앱의 보관함·모음도 그렇다) 무엇을 하는 자리인지 아이콘으로 알 수 없다.
+        // 가로 사이즈 클래스를 compact 로 주면 아이폰과 같은 하단 아이콘 탭바가 된다.
+        .environment(\.horizontalSizeClass, .compact)
         .tint(Theme.ink)
     }
 }
