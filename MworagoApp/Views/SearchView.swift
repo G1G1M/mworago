@@ -1,20 +1,23 @@
 import SwiftUI
 import MworagoCore
 
-/// 읽기를 얼마나 보여줄지. 듀오링고가 발음 표시를 끄고 켜게 하듯,
+/// 무엇까지 보여줄지. 듀오링고가 발음 표시를 끄고 켜게 하듯,
 /// 익숙해질수록 아래 층부터 끄는 다이얼이다.
+///
+/// **가나가 맨 위다.** 소리를 듣고 찾아온 사람에게 가장 가까운 것이 가나이기 때문이다.
+/// 한자는 아직 못 읽을 수 있고, 일본어를 배우며 처음 만나는 것도 가나다.
 enum ReadingAid: Int, CaseIterable, Identifiable {
-    case hangul, kana, kanji
+    case hangul, kanji, kana
 
     var id: Int { rawValue }
     var label: String {
         switch self {
         case .hangul: "한글까지"
-        case .kana: "가나까지"
-        case .kanji: "한자만"
+        case .kanji: "한자까지"
+        case .kana: "가나만"
         }
     }
-    var showsKana: Bool { self != .kanji }
+    var showsKanji: Bool { self != .kana }
     var showsHangul: Bool { self == .hangul }
 }
 
