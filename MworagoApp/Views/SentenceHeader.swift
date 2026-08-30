@@ -6,6 +6,10 @@ import MworagoCore
 /// 문장을 치고 들어온 사람에게 문장을 돌려준다. 지금까지는 낱말 카드만 늘어놓아서
 /// 원문을 사용자가 머릿속으로 이어 붙이고 있었다.
 ///
+/// **가나가 맨 위다.** 낱말 카드와 같은 순서다 — 소리를 듣고 찾아온 사람에게 가장 가까운 것이
+/// 가나이기 때문이다. 문장만 한자를 앞세우면 한 화면 안에서 층의 순서가 둘로 갈린다.
+/// 어디까지 볼지도 카드와 같은 다이얼이 정한다.
+///
 /// 조각마다 누를 수 있다. **강조는 반전 하나로만** 한다 — 누르지 않았을 때 문장은
 /// 평평하고, 누른 조각 하나만 검게 채워진다. 읽기 보조 다이얼과 같은 문법이라
 /// 규칙을 새로 하나도 늘리지 않는다.
@@ -19,14 +23,19 @@ struct SentenceHeader: View {
     @Binding var selected: Int?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             pieces
 
-            // 한자를 켠 상태에서만 소리를 따로 적는다. 가나만 보고 있다면 위가 이미 소리다.
-            if aid.showsKanji, segments.kana != segments.japanese {
-                Text(segments.kana)
-                    .font(Theme.japanese(15))
-                    .foregroundStyle(Theme.grey2)
+            // 가나로만 쓰는 문장은 한자가 읽기와 같다. 같은 것을 두 번 보일 필요는 없다.
+            if aid.showsKanji, segments.japanese != segments.kana {
+                Text(segments.japanese)
+                    .font(Theme.japanese(18))
+                    .foregroundStyle(Theme.grey1)
+            }
+            if aid.showsHangul {
+                Text(segments.map(\.hangul).joined())
+                    .font(Theme.korean(14))
+                    .foregroundStyle(Theme.grey3)
             }
         }
         .padding(.horizontal, 24)
@@ -48,7 +57,10 @@ struct SentenceHeader: View {
                 } label: {
                     // 가로로는 한 픽셀도 벌리지 않는다. 되살린 문장이라 원문처럼 붙어 있어야 하고,
                     // 조각의 경계는 눌렀을 때 배경으로만 드러낸다.
-                    Text(aid.showsKanji ? segment.japanese : segment.kana)
+                    //
+                    // 여기 놓이는 가나는 **표면형**이다. 카드는 표제어를 보이는 자리라 사전형이 맞지만
+                    // (やめる), 문장은 사용자가 한 말을 되살리는 자리다 (やめろ).
+                    Text(segment.kana)
                         .font(Theme.japanese(30, weight: .medium))
                         .padding(.vertical, 3)
                         .background(isSelected ? Theme.ink : .clear,
