@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SQLite3
 @testable import MworagoCore
 
 @Suite("사전 색인 파일")
@@ -132,5 +133,26 @@ struct DictionaryStoreTests {
         let entry = try #require(store.lookup("だいじょうぶ").first?.entry)
         #expect(entry.koreanGloss == nil)
         #expect(entry.displayGloss == "safe · all right")
+    }
+
+    @Test("낡은 색인은 열지 않고 다시 구우라고 말한다")
+    func 낡은색인() throws {
+        // 스키마를 바꾸고 다시 굽지 않으면 no such column 같은 말로 실패한다.
+        // 무엇이 잘못됐는지 바로 알 수 있어야 한다.
+        let path = NSTemporaryDirectory() + "mworago-stale-\(UUID().uuidString).db"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let entries = try JMDictParser.parse(xml: Self.sample)
+        try DictionaryStore.build(entries: entries, at: path)
+
+        // 판 번호를 낮춰 낡은 색인을 흉내 낸다
+        var handle: OpaquePointer?
+        sqlite3_open_v2(path, &handle, SQLITE_OPEN_READWRITE, nil)
+        sqlite3_exec(handle, "UPDATE schema_version SET version = 1", nil, nil, nil)
+        sqlite3_close(handle)
+
+        #expect(throws: DictionaryStore.StoreError.self) {
+            _ = try DictionaryStore(path: path)
+        }
     }
 }

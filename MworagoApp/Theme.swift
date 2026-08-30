@@ -13,11 +13,13 @@ enum Theme {
     static let grey3 = Color(white: 0.70)   // 구분선·비활성
     static let grey4 = Color(white: 0.92)   // 면
 
-    /// 일본어는 둥근 고딕이 어울린다. 번들 폰트가 없으면 시스템이 대신 고른다.
+    /// 일본어는 Zen Maru Gothic. 둥근 고딕이라 딱딱하지 않고, 가나가 화면의 얼굴인 이 앱에 맞는다.
     static func japanese(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .custom(weight == .regular ? "ZenMaruGothic-Regular" : "ZenMaruGothic-Medium", size: size)
     }
+
+    /// 한글은 고운돋움. 굵기가 하나뿐이라 위계는 크기와 색으로 만든다.
     static func korean(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight)
+        .custom("GowunDodum-Regular", size: size)
     }
 }

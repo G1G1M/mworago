@@ -23,6 +23,12 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
     private static let fieldSeparator = "\u{1F}"
     private static let recordSeparator = "\u{1E}"
 
+    /// 색인 판 번호. 스키마를 바꿀 때마다 올린다.
+    ///
+    /// 색인은 구워서 앱에 싣는 물건이라, 코드만 고치고 다시 굽지 않으면
+    /// `no such column` 같은 말로 실패한다. 무엇이 잘못됐는지 바로 알 수 있게 새겨 둔다.
+    static let schemaVersion = 2
+
     public init(path: String) throws {
         var handle: OpaquePointer?
         guard sqlite3_open_v2(path, &handle, SQLITE_OPEN_READONLY, nil) == SQLITE_OK,
@@ -33,6 +39,19 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             throw StoreError.cannotOpen(path: path, message: message)
         }
         self.handle = opened
+
+        // 판이 맞는지 먼저 본다. 안 맞으면 다시 구우라고 말해 준다.
+        var versionStatement: OpaquePointer?
+        var found = 0
+        if sqlite3_prepare_v2(opened, "SELECT version FROM schema_version", -1, &versionStatement, nil) == SQLITE_OK,
+           sqlite3_step(versionStatement) == SQLITE_ROW {
+            found = Int(sqlite3_column_int(versionStatement, 0))
+        }
+        sqlite3_finalize(versionStatement)
+        guard found == Self.schemaVersion else {
+            sqlite3_close(opened)
+            throw StoreError.staleIndex(found: found, expected: Self.schemaVersion)
+        }
 
         // 조회는 한 문장으로 끝난다. 미리 준비해 두고 매번 바인딩만 바꾼다.
         let sql = """
@@ -109,8 +128,10 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
                                   usually_kana INTEGER, readings TEXT, korean TEXT);
             CREATE TABLE readings (reading TEXT NOT NULL, display TEXT NOT NULL,
                                    priority INTEGER NOT NULL, entry_id INTEGER NOT NULL);
+            CREATE TABLE schema_version (version INTEGER);
             -- 점수가 같으면 사전에 실린 순서를 따른다. 메모리 색인과 답이 갈리지 않게 하는 장치다.
             """)
+        try exec(db, "INSERT INTO schema_version VALUES (\(schemaVersion))")
         try exec(db, "BEGIN")
 
         var entryStatement: OpaquePointer?
@@ -180,11 +201,14 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
     public enum StoreError: Error, CustomStringConvertible {
         case cannotOpen(path: String, message: String)
         case sqlFailed(String)
+        case staleIndex(found: Int, expected: Int)
 
         public var description: String {
             switch self {
             case .cannotOpen(let path, let message): "색인을 열 수 없다: \(path) — \(message)"
             case .sqlFailed(let message): "색인 작업 실패: \(message)"
+            case .staleIndex(let found, let expected):
+                "색인이 낡았다 (판 \(found), 필요한 판 \(expected)). ./Tools/build-index.sh 로 다시 구워야 한다."
             }
         }
     }

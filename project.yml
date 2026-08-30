@@ -26,6 +26,10 @@ targets:
       properties:
         CFBundleDisplayName: 뭐라고
         UILaunchScreen: {}
+        UIAppFonts:
+          - ZenMaruGothic-Regular.ttf
+          - ZenMaruGothic-Medium.ttf
+          - GowunDodum-Regular.ttf
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

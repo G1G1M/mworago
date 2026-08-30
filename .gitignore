@@ -31,3 +31,6 @@ MworagoApp/Resources/*.tsv
 
 # 모델로 구운 한국어 뜻 (swift run Translator)
 Tools/data/korean-gloss.tsv
+
+# 폰트는 Google Fonts(OFL)에서 받는다 (Tools/fetch-fonts.sh)
+MworagoApp/Resources/Fonts/

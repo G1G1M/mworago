@@ -11,6 +11,8 @@ cd "$(dirname "$0")/.."
 [ -f Tools/data/mworago-dict.db ] || ./Tools/build-index.sh
 [ -f Tools/data/jesc_freq.tsv ] || swift run SpikeRunner --build-frequency 3000000 > Tools/data/jesc_freq.tsv
 
+[ -d MworagoApp/Resources/Fonts ] || ./Tools/fetch-fonts.sh
+
 mkdir -p MworagoApp/Resources
 cp Tools/data/mworago-dict.db MworagoApp/Resources/
 cp Tools/data/jesc_freq.tsv MworagoApp/Resources/
