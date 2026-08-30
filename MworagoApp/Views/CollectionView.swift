@@ -26,15 +26,36 @@ struct CollectionView: View {
     private var list: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
+                header
                 ForEach(collection.words) { word in
                     row(word)
                     Divider().overlay(Theme.grey3)
                 }
             }
-            .padding(.top, 8)
             .frame(maxWidth: Self.contentWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+    }
+
+    /// 화면의 이름.
+    ///
+    /// 탭바에서 글자를 빼고 아이콘만 남겼으므로, **여기가 어디인지 말해 주는 것이
+    /// 화면 안에 있어야 한다.** 찾기는 입력 바가 그 일을 하지만 목록은 그렇지 않다.
+    /// 첫 낱말이 상태 표시줄에 바로 붙던 것도 함께 풀린다.
+    ///
+    /// 개수를 곁들이는 것은 세어 보라는 뜻이 아니라, 쌓이고 있다는 것이 보이라는 뜻이다.
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("모은 것")
+                .font(Theme.korean(24, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+            Text("\(collection.words.count)")
+                .font(Theme.korean(15))
+                .foregroundStyle(Theme.grey2)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 18)
+        .padding(.bottom, 14)
     }
 
     private func row(_ word: CollectedWord) -> some View {
