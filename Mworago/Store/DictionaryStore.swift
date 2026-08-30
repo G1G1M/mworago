@@ -154,10 +154,18 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             sqlite3_bind_text(entryStatement, 3, entry.glosses.joined(separator: recordSeparator), -1, transient)
             sqlite3_bind_int(entryStatement, 4, entry.usuallyKana ? 1 : 0)
             sqlite3_bind_text(entryStatement, 5, encodeForms(entry.readings), -1, transient)
-            // 표기·읽기 어느 짝으로든 한국어 뜻을 찾아 본다
-            let korean = entry.readings.lazy.compactMap { reading in
-                entry.usableWritings.lazy.compactMap { koreanGlosses["\($0.text)\t\(reading.text)"] }.first
-                    ?? koreanGlosses["\(reading.text)\t\(reading.text)"]
+            // 표기·읽기 짝으로 한국어 뜻을 찾는다.
+            //
+            // **읽기만으로 찾는 길은 표기가 없는 낱말에만 연다.** 표기가 있는데도 열어 두면
+            // 소리가 같다는 이유로 남의 뜻을 물려받는다 — 家(か)가 조사 か 의 "질문 표시"를
+            // 가져가 화면에 그대로 나왔다. 조사와 한자어가 소리를 나눠 갖는 일은 흔하다.
+            let korean = entry.readings.lazy.compactMap { reading -> String? in
+                if entry.usableWritings.isEmpty {
+                    return koreanGlosses["\(reading.text)\t\(reading.text)"]
+                }
+                return entry.usableWritings.lazy.compactMap {
+                    koreanGlosses["\($0.text)\t\(reading.text)"]
+                }.first
             }.first
             sqlite3_bind_text(entryStatement, 6, korean ?? "", -1, transient)
             sqlite3_bind_text(entryStatement, 7, entry.partsOfSpeech.joined(separator: recordSeparator), -1, transient)

@@ -113,6 +113,39 @@ struct DictionaryStoreTests {
         #expect(entry.readings.map(\.text) == ["だいじょうぶ", "だいじょぶ"])
     }
 
+    @Test("표기가 있는 낱말은 소리가 같다고 남의 뜻을 가져오지 않는다")
+    func 읽기폴백남용() throws {
+        let path = NSTemporaryDirectory() + "mworago-bleed-\(UUID().uuidString).db"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        // 읽기만으로 찾는 길은 **표기가 없는 가나 낱말**을 위한 것이다.
+        // 표기가 있는 낱말에도 열어 두면 동음이의어가 조사의 뜻을 물려받는다 —
+        // 실제로 家(か)가 조사 か의 "질문 표시"를 가져가 화면에 그대로 나왔다.
+        let entries = try JMDictParser.parse(xml: Self.sample)
+        try DictionaryStore.build(entries: entries, at: path,
+                                  koreanGlosses: ["だいじょうぶ\tだいじょうぶ": "조사 뜻"])
+        let store = try DictionaryStore(path: path)
+
+        // 大丈夫 는 표기가 있으므로 だいじょうぶ 라는 소리만 같은 항목의 뜻을 가져오면 안 된다.
+        let 대장부 = try #require(store.lookup("だいじょうぶ").first?.entry)
+        #expect(대장부.koreanGloss == nil)
+    }
+
+    @Test("표기가 없는 낱말은 읽기로 찾는다")
+    func 가나낱말() throws {
+        let path = NSTemporaryDirectory() + "mworago-kana-\(UUID().uuidString).db"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        // ポイント 는 표기가 없다. 이런 낱말에는 읽기로 찾는 길이 유일하다.
+        let entries = try JMDictParser.parse(xml: Self.sample)
+        try DictionaryStore.build(entries: entries, at: path,
+                                  koreanGlosses: ["ポイント\tポイント": "요점"])
+        let store = try DictionaryStore(path: path)
+
+        let 포인트 = try #require(store.lookup("ぽいんと").first?.entry)
+        #expect(포인트.koreanGloss == "요점")
+    }
+
     @Test("한국어 뜻을 구워 넣고 꺼낸다")
     func 한국어뜻() throws {
         let path = NSTemporaryDirectory() + "mworago-korean-\(UUID().uuidString).db"

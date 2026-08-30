@@ -80,6 +80,14 @@ struct KoreanGlossTests {
         #expect(KoreanGloss.tidy("실재”") == "실재")
     }
 
+    @Test("조사의 자리 표시는 깎지 않는다")
+    func 조사자리() {
+        // 기능어는 뜻이 아니라 자리를 적는다(`~의`처럼 붙여 쓰는 꼴 그대로).
+        // `~` 를 구분자로 두면 그 표가 통째로 깎인다.
+        #expect(KoreanGloss.tidy("~의, ~것") == "~의, ~것")
+        #expect(KoreanGloss.tidy("~하지 마, ~구나") == "~하지 마, ~구나")
+    }
+
     @Test("멀쩡한 뜻은 그대로 둔다")
     func 그대로() {
         #expect(KoreanGloss.tidy("생각하다") == "생각하다")

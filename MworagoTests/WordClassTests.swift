@@ -30,6 +30,7 @@ struct WordClassTests {
     <!ENTITY v1 "Ichidan verb">
     <!ENTITY vs "noun or participle which takes the aux. verb suru">
     <!ENTITY aux-v "auxiliary verb">
+    <!ENTITY conj "conjunction">
     ]>
     <JMdict>
     <entry>
@@ -94,6 +95,14 @@ struct WordClassTests {
     <entry>
     <r_ele><reb>ちゃう</reb></r_ele>
     <sense><pos>&aux-v;</pos><gloss>to do completely</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>も</reb></r_ele>
+    <sense><pos>&prt;</pos><pos>&adv;</pos><gloss>too</gloss><gloss>also</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>と</reb></r_ele>
+    <sense><pos>&prt;</pos><pos>&conj;</pos><pos>&n;</pos><gloss>if</gloss><gloss>when</gloss></sense>
     </entry>
     </JMdict>
     """
@@ -187,5 +196,18 @@ struct WordClassTests {
         // 勉強 은 n·vs 다. vs 는 "する 가 붙는 낱말"이라는 표지지 동사 태그가 아니다.
         // 먼저 쓰인 n 이 이 낱말의 얼굴이다.
         #expect(try Self.항목("べんきょう").wordClass == .noun)
+    }
+
+    @Test("조사가 부사나 명사를 겸해도 조사다")
+    func 조사겸업() throws {
+        // も 는 prt·adv, と 는 prt·conj·n 이다. 실질 품사를 먼저 보게 하면
+        // 이것들이 부사와 명사로 새어 나가 번역 대상이 된다 —
+        // 실제로 も 가 "도움’를 줄’것—" 로, と 가 "만약, 언제" 로 왔다.
+        //
+        // **JMdict 는 주된 품사를 먼저 적는다.** する 는 vs-i 가 먼저고 も 는 prt 가 먼저다.
+        // 어느 쪽을 우선할지 정할 것이 아니라 사전이 적은 순서를 그대로 따르면 둘 다 맞는다.
+        #expect(try Self.항목("も").wordClass == .function)
+        #expect(try Self.항목("と").wordClass == .function)
+        #expect(try Self.항목("する").wordClass == .verb)
     }
 }

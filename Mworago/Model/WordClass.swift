@@ -51,25 +51,26 @@ public enum WordClass: String, Sendable {
     /// 한 낱말이 태그를 여럿 단다(`大丈夫`는 `adj-na`와 `n`을 겸한다).
     /// **먼저 쓰인 쪽이 그 낱말의 얼굴이므로** 태그 순서대로 훑어 처음 잡히는 갈래를 쓴다.
     ///
-    /// **실질 품사를 먼저 본다.** 기능 태그가 하나라도 있으면 기능어로 몰던 때가 있었는데,
-    /// する(`vs-i·vi·vt·suf·aux-v`)와 見る(`v1·vt·aux-v`)가 통째로 걸러졌다 —
-    /// 뒤에 붙은 `suf`·`aux-v` 는 "보조로도 쓰인다"는 표지일 뿐인데 그것이 낱말을 삼켰다.
-    /// 애니에서 가장 흔한 동사 여덟(する·見る·行く·来る·いる·くれる·やる·しまう)이
-    /// 그렇게 뜻을 잃고 있었다. **혼자 서지 못하는 것과 혼자도 서는 것은 다르다** —
-    /// 기능 태그는 실질 품사가 하나도 없을 때에만 갈래를 정한다.
+    /// **순서가 전부다.** 어느 갈래를 우선할지 정하려고 두 번 헤맸는데, 둘 다 틀렸다.
+    /// 기능 태그를 먼저 보면 する(`vs-i·vi·vt·suf·aux-v`)와 見る(`v1·vt·aux-v`)가
+    /// 뒤에 붙은 suf·aux-v 때문에 삼켜져, 애니에서 가장 흔한 동사 여덟이 뜻을 잃는다.
+    /// 실질 품사를 먼저 보면 이번엔 も(`prt·adv`)와 と(`prt·conj·n`)가 부사와 명사로
+    /// 새어 나가 "도움’를 줄’것—" 같은 것이 뜻 자리에 앉는다.
+    ///
+    /// **JMdict 는 주된 품사를 먼저 적는다.** する 는 vs-i 가 먼저고 も 는 prt 가 먼저다.
+    /// 우선순위를 내가 정할 일이 아니라 사전이 적은 차례를 그대로 따르면 양쪽이 다 맞는다.
     public init(tags: [String]) {
         for tag in tags {
+            if Self.functionTags.contains(tag) { self = .function; return }
+            if tag == "exp" { self = .expression; return }
+            if Self.affixTags.contains(tag) { self = .affix; return }
             // `vs`(する가 붙는 낱말)는 동사 태그가 아니라 명사에 붙는 표지다.
-            // 그런 낱말은 `n` 을 먼저 달고 있으므로 이 순서가 알아서 걸러 준다(勉強 = n·vs).
+            // 그런 낱말은 `n` 을 먼저 달고 있으므로 이 차례가 알아서 걸러 준다(勉強 = n·vs).
             if tag.hasPrefix("v") && !tag.hasPrefix("vulg") { self = .verb; return }
             if tag.hasPrefix("adj") { self = .adjective; return }
             if tag.hasPrefix("adv") { self = .adverb; return }
             if tag == "n" || tag.hasPrefix("n-") || tag == "pn" { self = .noun; return }
         }
-        // 여기까지 왔다면 실질 품사가 하나도 없다 — 혼자 서지 못하는 낱말이다.
-        if tags.contains("exp") { self = .expression; return }
-        if tags.contains(where: Self.affixTags.contains) { self = .affix; return }
-        if tags.contains(where: Self.functionTags.contains) { self = .function; return }
         self = .other
     }
 

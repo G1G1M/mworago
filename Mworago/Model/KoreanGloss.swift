@@ -67,8 +67,11 @@ public enum KoreanGloss {
     /// 붙여 두면 낱말에 검불이 붙은 꼴이 된다(`실재”` · `잠깐만 봐봐——`).
     ///
     /// **물음표와 느낌표는 여기 없다.** `뭐야?` 와 `오!` 에서는 그것이 뜻의 일부다.
+    /// **여기 없는 것은 재어 보니 없었기 때문이다.** `~` 를 예방 삼아 넣었다가
+    /// 손으로 적은 기능어 표의 `~의` 가 `의` 로 깎였다. 나오지 않은 문자를 미리 막으면
+    /// 막지 않아도 될 것을 막는다.
     private static func isSeparator(_ character: Character) -> Bool {
-        ",;·/、，´’”“°¸±—–~".contains(character)
+        ",;·/、，´’”“°¸±—–".contains(character)
     }
 
     private static func isHangul(_ character: Character) -> Bool {
