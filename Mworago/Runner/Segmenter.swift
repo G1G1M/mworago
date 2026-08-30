@@ -27,7 +27,10 @@ public enum Segmenter {
     /// 조각 비용보다 훨씬 커야 한다. 그러지 않으면 "나누느니 모르는 채로 두자"가 이겨서
     /// 입력 전체가 한 덩어리의 미지 조각이 된다. 길이와 무관하게 한 번만 깎는 것은,
     /// 정말 모르는 구간이라면 잘게 쪼개는 것보다 통째로 두는 편이 낫기 때문이다.
-    private static let unknownScore = -500.0
+    ///
+    /// 스윕에서 -350 이하는 결과가 모두 같았다. 정확한 값이 중요한 게 아니라
+    /// **충분히 크기만 하면 되는** 값이라, 여유를 둔 -500을 쓴다.
+    public static let defaultUnknownScore = -500.0
 
     /// 조각 하나를 만들 때마다 무는 비용.
     ///
@@ -35,19 +38,21 @@ public enum Segmenter {
     /// 최상위 빈도라, `다이죠부`가 `[다][이죠부]`로 갈리고도 점수에서 이겨 버린다.
     /// 낱말 수는 적을수록 낫다는 것을 값으로 넣어 주는 자리다.
     ///
-    /// 다른 가중치들과 달리 이 값은 아직 손으로 정한 것이다. 문장 케이스가 없어
-    /// 훑을 수가 없다. 문장 표본을 만들면 `--sweep`으로 넘겨야 한다.
-    public static let defaultSegmentCost = 150.0
+    /// Tanaka Corpus 문장 300개를 훑어 고른 값이다(`SpikeRunner --segment-sweep`).
+    /// 곡선이 뚜렷하다 — 50이면 잘게 부수고(정밀도 0.50), 300이면 뭉뚱그린다(재현율 0.24).
+    public static let defaultSegmentCost = 120.0
 
     public static func segment(_ input: String,
                                in index: DictIndex,
                                frequency: FrequencyList? = nil,
                                weights: Ranker.Weights = Ranker.Weights(),
-                               segmentCost: Double = defaultSegmentCost) -> [Segment] {
+                               segmentCost: Double = defaultSegmentCost,
+                               unknownScore: Double = defaultUnknownScore) -> [Segment] {
         var segments: [Segment] = []
         // 사람이 띄어 썼다면 그 뜻을 존중한다. 어절 안쪽만 사전을 보고 나눈다.
         for word in input.split(whereSeparator: \.isWhitespace) {
-            segments += segmentWord(String(word), in: index, frequency: frequency, weights: weights, segmentCost: segmentCost)
+            segments += segmentWord(String(word), in: index, frequency: frequency,
+                                    weights: weights, segmentCost: segmentCost, unknownScore: unknownScore)
         }
         return segments
     }
@@ -56,7 +61,8 @@ public enum Segmenter {
                                     in index: DictIndex,
                                     frequency: FrequencyList?,
                                     weights: Ranker.Weights,
-                                    segmentCost: Double) -> [Segment] {
+                                    segmentCost: Double,
+                                    unknownScore: Double) -> [Segment] {
         let syllables = Array(word)
         guard !syllables.isEmpty else { return [] }
 

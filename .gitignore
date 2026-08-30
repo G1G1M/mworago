@@ -8,3 +8,7 @@ Tools/data/JMdict_e
 Tools/data/JMdict_e.gz
 # JPDB 빈도 목록. 재배포 조건이 불분명해 저장소에 넣지 않는다
 Tools/data/jpdb_freq.csv
+
+# 예문 코퍼스도 받아 쓴다 (Tools/fetch-tanaka.sh)
+Tools/data/examples.utf
+Tools/data/examples.utf.gz

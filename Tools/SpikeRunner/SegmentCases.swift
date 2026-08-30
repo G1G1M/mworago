@@ -1,0 +1,155 @@
+import Foundation
+import MworagoCore
+
+// 분절 케이스는 Tanaka Corpus(EDRDG, CC BY-SA)에서 만든다.
+//
+// 문장을 내가 지어내면 낱말 케이스와 같은 편향이 반복된다. Tanaka Corpus 는
+// 문장마다 **사람이 손으로 나눈 낱말 경계와 읽기**를 달고 있어, 정답을 내가 정하지 않아도 된다.
+//
+//   A: 彼は本を読む。
+//   B: 彼(かれ)[01] は 本(ほん) を 読む
+//        ↑ 경계와 읽기가 이미 있다
+
+enum TanakaCorpus {
+
+    struct Token {
+        let headword: String   // 표기
+        let reading: String    // 읽기(가나)
+        let hasSurface: Bool   // {활용형} 이 붙어 있었나
+    }
+
+    /// `표제어(읽기)[센스]{표면형}~` 하나를 뜯는다.
+    static func parseToken(_ token: String) -> Token? {
+        var rest = Substring(token)
+        if rest.hasSuffix("~") { rest = rest.dropLast() }
+
+        var hasSurface = false
+        if let open = rest.firstIndex(of: "{"), rest.lastIndex(of: "}") != nil {
+            hasSurface = true
+            rest = rest[..<open]
+        }
+        if let open = rest.firstIndex(of: "["), let close = rest.lastIndex(of: "]") {
+            rest = rest[..<open] + rest[rest.index(after: close)...]
+        }
+        var reading: String?
+        if let open = rest.firstIndex(of: "("), let close = rest.lastIndex(of: ")") {
+            let inside = String(rest[rest.index(after: open)..<close])
+            // で(#2028980) 처럼 괄호 안이 JMdict 시퀀스 번호인 경우가 있다. 읽기가 아니다.
+            if !inside.hasPrefix("#") { reading = inside }
+            rest = rest[..<open]
+        }
+
+        let headword = String(rest)
+        guard !headword.isEmpty else { return nil }
+        // 읽기가 안 적혔으면 표제어 자체가 가나다 (조사 등)
+        return Token(headword: headword, reading: reading ?? headword, hasSurface: hasSurface)
+    }
+
+    /// B 라인 하나를 낱말 열로.
+    static func parseLine(_ line: String) -> [Token] {
+        line.dropFirst(3)                       // "B: "
+            .split(separator: " ")
+            .compactMap { parseToken(String($0)) }
+    }
+}
+
+/// 분절 케이스 하나.
+struct SegmentCase {
+    let hangul: String          // 입력 — 붙여 쓴 한글 음차
+    let words: [String]         // 정답 낱말(표기)
+    let readings: [String]      // 정답 낱말의 읽기
+    /// 각 낱말을 따로 음차한 것. 분절 결과와 맞대 보는 자리다.
+    let pieces: [String]
+}
+
+enum SegmentCaseBuilder {
+
+    /// 활용형이 붙은 토큰은 읽기가 표제어 기준이라 실제 발음과 어긋난다. 그런 문장은 버린다.
+    static func build(from path: String, limit: Int) -> [SegmentCase] {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return [] }
+
+        var cases: [SegmentCase] = []
+        var seen = Set<String>()
+
+        for line in text.split(separator: "\n") where line.hasPrefix("B: ") {
+            let tokens = TanakaCorpus.parseLine(String(line))
+            guard (3...8).contains(tokens.count) else { continue }
+            guard tokens.allSatisfy({ !$0.hasSurface }) else { continue }
+
+            // 읽기가 전부 가나여야 음차할 수 있다
+            guard tokens.allSatisfy({ $0.reading.allSatisfy(\.isKana) }) else { continue }
+
+            let pieces = tokens.map { KanaToHangul.transliterate($0.reading) }
+            guard pieces.allSatisfy({ !$0.isEmpty && HangulSyllable.decompose($0) != nil }) else { continue }
+
+            let hangul = pieces.joined()
+            guard (4...20).contains(hangul.count), seen.insert(hangul).inserted else { continue }
+
+            cases.append(SegmentCase(hangul: hangul,
+                                     words: tokens.map(\.headword),
+                                     readings: tokens.map(\.reading),
+                                     pieces: pieces))
+            if cases.count >= limit { break }
+        }
+        return cases
+    }
+}
+
+extension Character {
+    /// 히라가나·가타카나·장음 부호
+    var isKana: Bool {
+        unicodeScalars.allSatisfy { (0x3041...0x30FF).contains($0.value) }
+    }
+}
+
+
+// MARK: 분절 측정
+
+enum SegmentEval {
+    struct Score {
+        var exact = 0            // 조각이 정답과 완전히 같은 문장 수
+        var boundaryHit = 0      // 맞힌 경계 수
+        var boundaryFound = 0    // 내가 그은 경계 수
+        var boundaryTruth = 0    // 정답 경계 수
+        var total = 0
+
+        var exactRate: Double { total == 0 ? 0 : Double(exact) / Double(total) }
+        var precision: Double { boundaryFound == 0 ? 0 : Double(boundaryHit) / Double(boundaryFound) }
+        var recall: Double { boundaryTruth == 0 ? 0 : Double(boundaryHit) / Double(boundaryTruth) }
+        var f1: Double {
+            let (p, r) = (precision, recall)
+            return p + r == 0 ? 0 : 2 * p * r / (p + r)
+        }
+    }
+
+    /// 조각 길이 열을 경계 위치 집합으로. 마지막 경계(문장 끝)는 누구나 맞히므로 뺀다.
+    static func boundaries(_ pieces: [String]) -> Set<Int> {
+        var result: Set<Int> = []
+        var cursor = 0
+        for piece in pieces.dropLast() {
+            cursor += piece.count
+            result.insert(cursor)
+        }
+        return result
+    }
+
+    static func evaluate(_ cases: [SegmentCase], index: DictIndex,
+                         frequency: FrequencyList?, segmentCost: Double,
+                         unknownScore: Double = Segmenter.defaultUnknownScore) -> Score {
+        var score = Score()
+        for testCase in cases {
+            let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
+                                             segmentCost: segmentCost, unknownScore: unknownScore)
+            let mine = segments.map(\.hangul)
+            score.total += 1
+            if mine == testCase.pieces { score.exact += 1 }
+
+            let truth = boundaries(testCase.pieces)
+            let found = boundaries(mine)
+            score.boundaryHit += found.intersection(truth).count
+            score.boundaryFound += found.count
+            score.boundaryTruth += truth.count
+        }
+        return score
+    }
+}
