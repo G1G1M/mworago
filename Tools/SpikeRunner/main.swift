@@ -104,7 +104,8 @@ log("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(St
 
 // 도메인 빈도는 선택 사항이다. 없으면 JMdict 점수만으로 돈다.
 // --freq 로 다른 빈도 목록을 물려 비교할 수 있다
-let frequencyPath = flagValues("--freq").first ?? "Tools/data/jpdb_freq.csv"
+// 기본은 JESC 다. JPDB 가 두 건 더 맞히지만 재배포 조건이 불분명해 앱에 실을 수 없다.
+let frequencyPath = flagValues("--freq").first ?? "Tools/data/jesc_freq.tsv"
 let frequency: FrequencyList? = {
     let list = FrequencyList(contentsOfFile: frequencyPath)
     guard !list.isEmpty else { return nil }

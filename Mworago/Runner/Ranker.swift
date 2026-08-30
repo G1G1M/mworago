@@ -43,12 +43,15 @@ public enum Ranker {
         /// 다만 도메인 빈도 목록이 없으면 `search`가 이 값을 1로 되돌린다. 그때는 신문 빈도라도
         /// 있는 편이 아무 신호도 없는 것보다 낫다.
         ///
-        /// `deinflectionPenalty`는 0·25·60·120이 모두 같은 성적이었다. 스윕이 가르지 못하는
-        /// 자리라 설계 원칙으로 골랐다 — 사전에 그대로 실린 형태(`疲れた`)가 활용을 되돌려
-        /// 찾은 것(`疲れる`)보다 확실한 답이다.
-        public init(rankPenalty: Double = 0,
-                    longVowelPenalty: Double = 6,
-                    deinflectionPenalty: Double = 60,
+        /// `deinflectionPenalty`는 빈도 목록이 있는 한 등재형이 어차피 이긴다 —
+        /// `疲れた`가 `疲れる`의 빈도를 물려받아 동점이 되고, 되돌리지 않은 쪽이 페널티가 없다.
+        /// 그래서 값이 클 필요가 없고, JESC 기준 스윕은 25를 골랐다.
+        ///
+        /// 빈도 목록을 JPDB 에서 JESC(자막)로 바꾸면서 다시 훑었다. 목록이 바뀌면 최적 가중치도
+        /// 함께 움직인다 — 장음 페널티가 6에서 0으로, 후보 순서 페널티가 0에서 5로 옮겨 갔다.
+        public init(rankPenalty: Double = 5,
+                    longVowelPenalty: Double = 0,
+                    deinflectionPenalty: Double = 25,
                     domainWeight: Double = 1,
                     jmdictWeight: Double = 0) {
             self.rankPenalty = rankPenalty

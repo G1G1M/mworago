@@ -48,8 +48,11 @@ struct RankerTests {
 
     @Test("사전에 그대로 실린 형태가 활용 복원보다 위")
     func 등재형우선() {
+        // 빈도 목록이 있으면 疲れた 도 疲れる 의 빈도를 물려받아 동점이 된다.
+        // 그다음은 활용을 되돌렸는지가 가른다 — 그대로 실린 쪽이 확실한 답이다.
         let index = Self.사전([("疲れた", "つかれた", 0), ("疲れる", "つかれる", 50)])
-        let 결과 = Ranker.search("츠카레타", in: index)
+        let frequency = FrequencyList(tsv: "term\treading\tfrequency\n疲れる\tつかれる\t1500\n")
+        let 결과 = Ranker.search("츠카레타", in: index, frequency: frequency)
         #expect(결과.first?.entry.headword == "疲れた")
         #expect(결과.first?.deinflection == nil)
     }
