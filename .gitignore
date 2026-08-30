@@ -3,6 +3,8 @@
 *.xcodeproj
 *.xcworkspace
 
-# 사전 원본은 용량이 커서 받아 쓴다 (Scripts/fetch-jmdict.sh)
-Data/JMdict_e
-Data/JMdict_e.gz
+# 사전 원본은 용량이 커서 받아 쓴다 (Tools/fetch-jmdict.sh)
+Tools/data/JMdict_e
+Tools/data/JMdict_e.gz
+# JPDB 빈도 목록. 재배포 조건이 불분명해 저장소에 넣지 않는다
+Tools/data/jpdb_freq.csv

@@ -47,10 +47,10 @@ func makeMatcher(_ testCase: Case) -> (SearchResult) -> Bool {
 }
 
 /// 케이스 전체를 한 가중치로 돌려 몇 개를 맞혔는지 센다.
-func evaluate(_ cases: [Case], index: DictIndex, weights: Ranker.Weights) -> (top1: Int, top3: Int) {
+func evaluate(_ cases: [Case], index: DictIndex, frequency: FrequencyList?, weights: Ranker.Weights) -> (top1: Int, top3: Int) {
     var top1 = 0, top3 = 0
     for testCase in cases {
-        let results = Ranker.search(testCase.hangul, in: index, weights: weights)
+        let results = Ranker.search(testCase.hangul, in: index, frequency: frequency, weights: weights)
         let matches = makeMatcher(testCase)
         if results.first.map(matches) ?? false { top1 += 1 }
         if results.prefix(3).contains(where: matches) { top3 += 1 }
@@ -82,19 +82,28 @@ let positional: [String] = {
     }
     return result
 }()
-let casesPath = positional.first ?? "Data/spike-cases.tsv"
-let dictPath = positional.dropFirst().first ?? "Data/JMdict_e"
+let casesPath = positional.first ?? "Tools/data/spike-cases.tsv"
+let dictPath = positional.dropFirst().first ?? "Tools/data/JMdict_e"
 
 let cases = loadCases(casesPath)
 
 print("사전 읽는 중… \(dictPath)")
 let loadStart = Date()
 guard let dictData = FileManager.default.contents(atPath: dictPath) else {
-    FileHandle.standardError.write(Data("사전 파일 없음. Scripts/fetch-jmdict.sh 를 먼저 실행\n".utf8))
+    FileHandle.standardError.write(Data("사전 파일 없음. Tools/fetch-jmdict.sh 를 먼저 실행\n".utf8))
     exit(1)
 }
 let index = DictIndex(entries: try JMDictParser.parse(data: dictData))
-print("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초\n")
+print("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초")
+
+// 도메인 빈도는 선택 사항이다. 없으면 JMdict 점수만으로 돈다.
+let frequencyPath = "Tools/data/jpdb_freq.csv"
+let frequency: FrequencyList? = {
+    let list = FrequencyList(contentsOfFile: frequencyPath)
+    guard !list.isEmpty else { return nil }
+    return list
+}()
+print(frequency.map { "도메인 빈도 \($0.count)개 (\(frequencyPath))\n" } ?? "도메인 빈도 없음 — JMdict 점수만 사용\n")
 
 // MARK: --explain
 
@@ -105,7 +114,7 @@ if !explainWords.isEmpty {
         let preview = candidates.prefix(10).map { "\($0.kana)\($0.longVowelsAdded > 0 ? "(장음+\($0.longVowelsAdded))" : "")" }
         print("가나 후보 \(candidates.count)개: \(preview.joined(separator: " · "))\(candidates.count > 10 ? " …" : "")")
 
-        let results = Ranker.search(word, in: index)
+        let results = Ranker.search(word, in: index, frequency: frequency)
         print("표제어        읽기          점수   활용     뜻")
         print(String(repeating: "─", count: 76))
         for (i, result) in results.prefix(10).enumerated() {
@@ -124,29 +133,35 @@ if doSweep {
     var best: (weights: Ranker.Weights, top1: Int, top3: Int)?
     var rows: [(Ranker.Weights, Int, Int)] = []
 
-    for rankPenalty in [0.0, 0.5, 2.0] {
-        for longVowel in [0.0, 6.0, 12.0, 25.0, 50.0] {
+    for rankPenalty in [0.0, 0.5, 2.0, 5.0] {
+        for longVowel in [0.0, 6.0, 12.0, 25.0] {
             for deinflection in [0.0, 25.0, 60.0, 120.0] {
+              for domain in [0.0, 0.5, 1.0, 2.0] {
+               for jmdict in [0.0, 0.3, 1.0] {
                 let weights = Ranker.Weights(rankPenalty: rankPenalty,
                                              longVowelPenalty: longVowel,
-                                             deinflectionPenalty: deinflection)
-                let (top1, top3) = evaluate(cases, index: index, weights: weights)
+                                             deinflectionPenalty: deinflection,
+                                             domainWeight: domain,
+                                             jmdictWeight: jmdict)
+                let (top1, top3) = evaluate(cases, index: index, frequency: frequency, weights: weights)
                 rows.append((weights, top1, top3))
                 // 1위 정확도가 같으면 3위 안이 더 나은 쪽을 고른다
                 if best == nil || top1 > best!.top1 || (top1 == best!.top1 && top3 > best!.top3) {
                     best = (weights, top1, top3)
                 }
+               }
+              }
             }
         }
     }
 
-    print("순서   장음   활용   1위   3위안")
-    print(String(repeating: "─", count: 36))
-    for (weights, top1, top3) in rows.sorted(by: { $0.1 != $1.1 ? $0.1 > $1.1 : $0.2 > $1.2 }).prefix(12) {
-        print(String(format: "%5.1f  %5.1f  %5.1f  %4d  %4d", weights.rankPenalty, weights.longVowelPenalty, weights.deinflectionPenalty, top1, top3))
+    print("순서   장음   활용   도메인  JMdict   1위   3위안")
+    print(String(repeating: "─", count: 52))
+    for (weights, top1, top3) in rows.sorted(by: { $0.1 != $1.1 ? $0.1 > $1.1 : $0.2 > $1.2 }).prefix(14) {
+        print(String(format: "%5.1f  %5.1f  %5.1f  %6.1f  %6.1f  %4d  %4d", weights.rankPenalty, weights.longVowelPenalty, weights.deinflectionPenalty, weights.domainWeight, weights.jmdictWeight, top1, top3))
     }
     if let best {
-        print("\n최고: 순서 \(best.weights.rankPenalty) · 장음 \(best.weights.longVowelPenalty) · 활용 \(best.weights.deinflectionPenalty)")
+        print("\n최고: 순서 \(best.weights.rankPenalty) · 장음 \(best.weights.longVowelPenalty) · 활용 \(best.weights.deinflectionPenalty) · 도메인 \(best.weights.domainWeight) · JMdict \(best.weights.jmdictWeight)")
         print("      1위 \(best.top1)/\(cases.count) · 3위 안 \(best.top3)/\(cases.count)")
     }
     exit(0)
@@ -167,7 +182,7 @@ for testCase in cases {
     if candidates.contains(testCase.reading) { recall += 1 }
 
     let start = Date()
-    let results = Ranker.search(testCase.hangul, in: index)
+    let results = Ranker.search(testCase.hangul, in: index, frequency: frequency)
     queryTime += -start.timeIntervalSinceNow
 
     let matches = makeMatcher(testCase)
