@@ -42,6 +42,24 @@ public enum Deinflector {
         ("して",  ["す"],            "て형"),
         ("て",    ["る"],            "て형"),
 
+        // 진행형 축약 — ている 는 말할 때 거의 항상 てる 로 줄어든다.
+        // 애니 대사에서는 줄지 않은 쪽이 오히려 드물다. て형 규칙에 る 를 붙인 꼴이다.
+        ("ってる", ["う", "つ", "る"], "진행형"),
+        ("いてる", ["く"],            "진행형"),
+        ("いでる", ["ぐ"],            "진행형"),
+        ("んでる", ["ぶ", "む", "ぬ"], "진행형"),
+        ("してる", ["す", "する"],    "진행형"),   // 어간이 없으면 する 자체다
+        ("てる",   ["る"],            "진행형"),
+        ("でる",   ["る"],            "진행형"),
+
+        ("ってた", ["う", "つ", "る"], "진행형 과거"),
+        ("いてた", ["く"],            "진행형 과거"),
+        ("いでた", ["ぐ"],            "진행형 과거"),
+        ("んでた", ["ぶ", "む", "ぬ"], "진행형 과거"),
+        ("してた", ["す", "する"],    "진행형 과거"),
+        ("てた",   ["る"],            "진행형 과거"),
+        ("でた",   ["る"],            "진행형 과거"),
+
         // 그 밖
         ("ろ",    ["る"],            "명령형"),   // 1단: やめろ → やめる
         ("ない",  ["る"],            "부정형"),
@@ -65,7 +83,14 @@ public enum Deinflector {
 
         for rule in rules where kana.hasSuffix(rule.suffix) {
             let stem = String(kana.dropLast(rule.suffix.count))
-            guard !stem.isEmpty else { continue }
+            // 어간이 남지 않는 경우도 있다 — してる 를 떼면 아무것도 안 남지만 する 가 답이다.
+            // 그때는 붙일 것 자체가 낱말을 이루어야 한다.
+            if stem.isEmpty {
+                for replacement in rule.replacements where replacement.count >= 2 {
+                    add(replacement, rule.name)
+                }
+                continue
+            }
             for replacement in rule.replacements {
                 add(stem + replacement, rule.name)
             }

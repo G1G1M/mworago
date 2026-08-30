@@ -40,7 +40,11 @@ public enum Segmenter {
     ///
     /// Tanaka Corpus 문장 300개를 훑어 고른 값이다(`SpikeRunner --segment-sweep`).
     /// 곡선이 뚜렷하다 — 50이면 잘게 부수고(정밀도 0.50), 300이면 뭉뚱그린다(재현율 0.24).
-    public static let defaultSegmentCost = 120.0
+    ///
+    /// 활용형이 든 문장을 표본에서 빼고 쟀을 때는 120이 최적이었다. 활용형을 넣자
+    /// 135로 옮겨 갔고 완전일치도 64%에서 43%로 떨어졌다. 쉬운 문장만 골라 재면
+    /// 성적도 최적값도 함께 왜곡된다.
+    public static let defaultSegmentCost = 135.0
 
     public static func segment(_ input: String,
                                in index: DictIndex,

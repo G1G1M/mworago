@@ -13,9 +13,32 @@ import MworagoCore
 enum TanakaCorpus {
 
     struct Token {
-        let headword: String   // 표기
-        let reading: String    // 읽기(가나)
-        let hasSurface: Bool   // {활용형} 이 붙어 있었나
+        let headword: String   // 사전 표제어
+        let reading: String    // 실제 문장에서의 읽기(가나)
+        let surface: String?   // 문장에 나타난 형태. 활용했으면 표제어와 다르다
+
+        var display: String { surface ?? headword }
+    }
+
+    /// 활용형의 읽기를 만든다.
+    ///
+    /// B 라인은 표제어의 읽기만 적어 준다(`読む(よむ){読んだ}`). 실제 발음은 `よんだ`인데
+    /// 그 읽기는 어디에도 없다. 한자 어간은 활용해도 읽기가 변하지 않으므로,
+    /// 표제어에서 어간의 읽기를 떼어 내 표면형의 어미에 붙이면 된다.
+    ///
+    ///     読む(よむ) + 読んだ  →  어간 読 = よ, 어미 む → んだ  ⇒  よんだ
+    static func surfaceReading(headword: String, reading: String, surface: String) -> String? {
+        // 표면형이 전부 가나면 그 자체가 읽기다 (する{してる})
+        if surface.allSatisfy(\.isKana) { return surface }
+
+        let stem = headword.prefix { !$0.isKana }
+        guard !stem.isEmpty, surface.hasPrefix(stem) else { return nil }
+
+        let headwordTail = headword.dropFirst(stem.count)
+        let surfaceTail = surface.dropFirst(stem.count)
+        guard reading.hasSuffix(headwordTail), surfaceTail.allSatisfy(\.isKana) else { return nil }
+
+        return String(reading.dropLast(headwordTail.count)) + String(surfaceTail)
     }
 
     /// `표제어(읽기)[센스]{표면형}~` 하나를 뜯는다.
@@ -23,9 +46,9 @@ enum TanakaCorpus {
         var rest = Substring(token)
         if rest.hasSuffix("~") { rest = rest.dropLast() }
 
-        var hasSurface = false
-        if let open = rest.firstIndex(of: "{"), rest.lastIndex(of: "}") != nil {
-            hasSurface = true
+        var surface: String?
+        if let open = rest.firstIndex(of: "{"), let close = rest.lastIndex(of: "}") {
+            surface = String(rest[rest.index(after: open)..<close])
             rest = rest[..<open]
         }
         if let open = rest.firstIndex(of: "["), let close = rest.lastIndex(of: "]") {
@@ -42,7 +65,15 @@ enum TanakaCorpus {
         let headword = String(rest)
         guard !headword.isEmpty else { return nil }
         // 읽기가 안 적혔으면 표제어 자체가 가나다 (조사 등)
-        return Token(headword: headword, reading: reading ?? headword, hasSurface: hasSurface)
+        let baseReading = reading ?? headword
+
+        guard let surface else {
+            return Token(headword: headword, reading: baseReading, surface: nil)
+        }
+        guard let actual = surfaceReading(headword: headword, reading: baseReading, surface: surface) else {
+            return nil   // 읽기를 만들 수 없으면 이 문장은 쓸 수 없다
+        }
+        return Token(headword: headword, reading: actual, surface: surface)
     }
 
     /// B 라인 하나를 낱말 열로.
@@ -72,9 +103,10 @@ enum SegmentCaseBuilder {
         var seen = Set<String>()
 
         for line in text.split(separator: "\n") where line.hasPrefix("B: ") {
+            // 토큰 하나라도 읽기를 못 만들면 parseLine 이 그 토큰을 버리므로 수가 안 맞는다
+            let rawCount = String(line).dropFirst(3).split(separator: " ").count
             let tokens = TanakaCorpus.parseLine(String(line))
-            guard (3...8).contains(tokens.count) else { continue }
-            guard tokens.allSatisfy({ !$0.hasSurface }) else { continue }
+            guard tokens.count == rawCount, (3...8).contains(tokens.count) else { continue }
 
             // 읽기가 전부 가나여야 음차할 수 있다
             guard tokens.allSatisfy({ $0.reading.allSatisfy(\.isKana) }) else { continue }
@@ -86,7 +118,7 @@ enum SegmentCaseBuilder {
             guard (4...20).contains(hangul.count), seen.insert(hangul).inserted else { continue }
 
             cases.append(SegmentCase(hangul: hangul,
-                                     words: tokens.map(\.headword),
+                                     words: tokens.map(\.display),
                                      readings: tokens.map(\.reading),
                                      pieces: pieces))
             if cases.count >= limit { break }

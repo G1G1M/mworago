@@ -61,4 +61,26 @@ struct DeinflectorTests {
         #expect(Deinflector.candidates(for: "て").count == 1)
         #expect(Deinflector.candidates(for: "む").count == 1)
     }
+
+    @Test("진행형 축약 てる 를 되돌린다")
+    func 진행형축약() {
+        // 애니 대사에서 ている 는 거의 항상 てる 로 줄어든다
+        #expect(찾기("たべてる", "たべる")?.rule == "진행형")
+        #expect(찾기("よんでる", "よむ")?.rule == "진행형")
+        #expect(찾기("かいてる", "かく")?.rule == "진행형")
+        #expect(찾기("はなしてる", "はなす")?.rule == "진행형")
+    }
+
+    @Test("어간이 없는 축약도 되돌린다")
+    func 어간없는축약() {
+        // してる 는 する 의 축약이다. 떼고 나면 어간이 남지 않는다
+        #expect(찾기("してる", "する")?.rule == "진행형")
+        #expect(찾기("してた", "する")?.rule == "진행형 과거")
+    }
+
+    @Test("진행형 과거")
+    func 진행형과거() {
+        #expect(찾기("たべてた", "たべる")?.rule == "진행형 과거")
+        #expect(찾기("よんでた", "よむ")?.rule == "진행형 과거")
+    }
 }
