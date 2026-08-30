@@ -19,6 +19,15 @@ enum ReadingAid: Int, CaseIterable, Identifiable {
     }
     var showsKanji: Bool { self != .kana }
     var showsHangul: Bool { self == .hangul }
+
+    init?(name: String) {
+        switch name {
+        case "hangul": self = .hangul
+        case "kanji": self = .kanji
+        case "kana": self = .kana
+        default: return nil
+        }
+    }
 }
 
 struct SearchView: View {
@@ -33,7 +42,11 @@ struct SearchView: View {
     @State private var input = ProcessInfo.processInfo.arguments
         .first { $0.hasPrefix("--query=") }
         .map { String($0.dropFirst("--query=".count)) } ?? ""
-    @State private var aid: ReadingAid = .hangul
+    /// 읽기 보조 다이얼도 실행 인자로 고를 수 있다 (`--aid=kana`).
+    /// `--query=` 와 같은 까닭이다 — 시뮬레이터를 손으로 누르지 않고 세 상태를 다 확인하려고.
+    @State private var aid: ReadingAid = ProcessInfo.processInfo.arguments
+        .first { $0.hasPrefix("--aid=") }
+        .flatMap { ReadingAid(name: String($0.dropFirst("--aid=".count))) } ?? .hangul
     /// 문장에서 고른 조각. 아무것도 안 골랐을 때가 기본이고, 그때는 카드가 전부 보인다.
     ///
     /// `--select=1` 로 고른 상태를 띄울 수 있다. `--query=` 와 같은 뜻으로, 시뮬레이터를
@@ -42,6 +55,11 @@ struct SearchView: View {
         .first { $0.hasPrefix("--select=") }
         .flatMap { Int($0.dropFirst("--select=".count)) }
     @FocusState private var inputFocused: Bool
+    /// 치는 법을 펼쳐 놓았는가. 기본은 접힌 채다.
+    ///
+    /// `--guide` 로 열린 채 띄울 수 있다. `--query=` · `--select=` 와 같은 뜻으로,
+    /// 시뮬레이터를 손으로 두드리지 않고 화면을 확인하기 위한 것이다.
+    @State private var showingGuide = ProcessInfo.processInfo.arguments.contains("--guide")
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -52,6 +70,10 @@ struct SearchView: View {
         }
         .onAppear {
             if input.isEmpty { inputFocused = true } else { engine.search(input) }
+        }
+        .sheet(isPresented: $showingGuide) {
+            // 아이패드에서 medium 은 화면의 작은 조각이라 여섯 줄 중 둘만 보인다.
+            TypingGuide()
         }
     }
 
@@ -194,6 +216,12 @@ struct SearchView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                // 입력에 대한 도움말이라 입력 곁에 둔다. 표준 기호를 그대로 쓰고 색만 맞춘다.
+                Button { showingGuide = true } label: {
+                    Image(systemName: "info.circle").foregroundStyle(Theme.grey2)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("한글로 치는 법")
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
