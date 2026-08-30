@@ -16,6 +16,11 @@ import MworagoCore
 ///
 /// 겸사겸사 분절이 눈에 보이게 된다. 어디서 끊겼는지 문장 위에 그대로 드러나므로
 /// 잘못 끊긴 것을 사용자가 바로 알아챈다.
+///
+/// **화면에서 가장 큰 글자가 여기 있다.** 사용자가 친 것은 문장이고 카드는 그것을
+/// 뜯어본 것이라, 문장이 카드보다 작으면 조각이 원본보다 세 보인다.
+/// 44 대 26 으로 벌려 한눈에 갈리게 했다 — 문장을 키우는 것만으로는 모자라서
+/// 카드를 함께 내렸다(둘 다 30 언저리면 몇 포인트 차이는 눈에 띄지 않는다).
 struct SentenceHeader: View {
     let segments: [Segment]
     let aid: ReadingAid
@@ -23,30 +28,43 @@ struct SentenceHeader: View {
     @Binding var selected: Int?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            // 이 덩어리가 무엇인지 한 낱말로 말해 준다.
+            //
+            // 크기만으로는 "큰 카드"로 읽힌다 — 아래 카드들과 생김새가 같고 사이에 놓인 선도
+            // 같아서, 첫 번째 조각으로 보인다. 색을 더하는 길도 있지만 **강조는 반전 하나로만**
+            // 쓰기로 했으므로, 이름과 여백으로 가른다.
+            Text("문장")
+                .font(Theme.korean(12))
+                .foregroundStyle(Theme.grey3)
+
             pieces
 
             // 가나로만 쓰는 문장은 한자가 읽기와 같다. 같은 것을 두 번 보일 필요는 없다.
             if aid.showsKanji, segments.japanese != segments.kana {
                 Text(segments.japanese)
-                    .font(Theme.japanese(18))
+                    .font(Theme.japanese(24))
                     .foregroundStyle(Theme.grey1)
             }
             if aid.showsHangul {
                 Text(segments.map(\.hangul).joined())
-                    .font(Theme.korean(14))
+                    .font(Theme.korean(16))
                     .foregroundStyle(Theme.grey3)
             }
         }
         .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 18)
+        .padding(.top, 24)
+        // 아래를 카드보다 훨씬 크게 벌린다. 카드끼리는 18 + 18 로 붙어 있고 이쪽은 32 + 18 이라,
+        // 같은 굵기의 선을 사이에 두고도 "여기서 한 덩어리가 끝난다"가 읽힌다.
+        .padding(.bottom, 32)
     }
 
     /// 조각들을 이어 붙인 한 줄. 일본어는 띄어 쓰지 않으므로 사이를 벌리지 않고,
     /// 대신 누른 조각의 배경으로만 경계를 보인다.
     private var pieces: some View {
-        FlowRow(spacing: 0) {
+        // 줄 사이는 벌리고 글자 사이는 붙인다. 44 로 키우자 세 줄이 다닥다닥 붙어 답답해졌는데,
+        // 가로로 벌릴 수는 없다 — 일본어는 띄어 쓰지 않으므로 되살린 문장도 붙어 있어야 한다.
+        FlowRow(lineSpacing: 8) {
             ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
                 let isSelected = selected == index
                 Button {
@@ -61,10 +79,10 @@ struct SentenceHeader: View {
                     // 여기 놓이는 가나는 **표면형**이다. 카드는 표제어를 보이는 자리라 사전형이 맞지만
                     // (やめる), 문장은 사용자가 한 말을 되살리는 자리다 (やめろ).
                     Text(segment.kana)
-                        .font(Theme.japanese(30, weight: .medium))
-                        .padding(.vertical, 3)
+                        .font(Theme.japanese(44, weight: .medium))
+                        .padding(.vertical, 4)
                         .background(isSelected ? Theme.ink : .clear,
-                                    in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                                    in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .foregroundStyle(pieceColor(segment, selected: isSelected))
                 }
                 .buttonStyle(.plain)
@@ -83,12 +101,15 @@ struct SentenceHeader: View {
 ///
 /// 긴 문장은 한 줄에 다 들어가지 않는데, `HStack` 은 넘쳐도 줄을 바꾸지 않고
 /// 글자를 줄여 버린다. 조각 하나하나가 눌러야 하는 것이라 통째로 `Text` 로 만들 수도 없다.
+///
+/// **벌리는 것은 줄 사이뿐이다.** 조각과 조각 사이는 언제나 0 이라 아예 값을 받지 않는다 —
+/// 일본어는 띄어 쓰지 않으므로 되살린 문장도 원문처럼 붙어 있어야 한다.
 private struct FlowRow: Layout {
-    var spacing: CGFloat = 0
+    var lineSpacing: CGFloat = 0
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
-        let height = rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(0, rows.count - 1))
+        let height = rows.reduce(0) { $0 + $1.height } + lineSpacing * CGFloat(max(0, rows.count - 1))
         return CGSize(width: proposal.width ?? rows.map(\.width).max() ?? 0, height: height)
     }
 
@@ -103,7 +124,7 @@ private struct FlowRow: Layout {
                                       proposal: ProposedViewSize(size))
                 x += size.width
             }
-            y += row.height + spacing
+            y += row.height + lineSpacing
         }
     }
 
