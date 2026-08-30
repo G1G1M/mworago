@@ -25,6 +25,11 @@ struct WordClassTests {
     <!ENTITY suf "suffix">
     <!ENTITY pref "prefix">
     <!ENTITY int "interjection (kandoushi)">
+    <!ENTITY vs-i "suru verb - irregular">
+    <!ENTITY vi "intransitive verb">
+    <!ENTITY v1 "Ichidan verb">
+    <!ENTITY vs "noun or participle which takes the aux. verb suru">
+    <!ENTITY aux-v "auxiliary verb">
     ]>
     <JMdict>
     <entry>
@@ -70,6 +75,25 @@ struct WordClassTests {
     <entry>
     <r_ele><reb>ありがとう</reb></r_ele>
     <sense><pos>&int;</pos><gloss>thank you</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>する</reb></r_ele>
+    <sense><pos>&vs-i;</pos><pos>&vi;</pos><pos>&vt;</pos><pos>&suf;</pos><pos>&aux-v;</pos>
+    <gloss>to do</gloss><gloss>to carry out</gloss></sense>
+    </entry>
+    <entry>
+    <k_ele><keb>見る</keb></k_ele>
+    <r_ele><reb>みる</reb></r_ele>
+    <sense><pos>&v1;</pos><pos>&vt;</pos><pos>&aux-v;</pos><gloss>to see</gloss></sense>
+    </entry>
+    <entry>
+    <k_ele><keb>勉強</keb></k_ele>
+    <r_ele><reb>べんきょう</reb></r_ele>
+    <sense><pos>&n;</pos><pos>&vs;</pos><gloss>study</gloss></sense>
+    </entry>
+    <entry>
+    <r_ele><reb>ちゃう</reb></r_ele>
+    <sense><pos>&aux-v;</pos><gloss>to do completely</gloss></sense>
     </entry>
     </JMdict>
     """
@@ -139,5 +163,29 @@ struct WordClassTests {
     func 감탄사() throws {
         // ありがとう 를 접사와 한데 묶어 버리면 정작 애니에서 가장 많이 들리는 말이 빠진다.
         #expect(try Self.항목("ありがとう").wordClass.isTranslatable)
+    }
+
+    @Test("보조동사로도 쓰이는 동사는 동사다")
+    func 겸업동사() throws {
+        // する 의 태그는 vs-i·vi·vt·suf·aux-v 다. 뒤에 붙은 suf·aux-v 때문에 기능어로
+        // 몰면, 애니에서 가장 흔한 동사들이 통째로 뜻을 잃는다 —
+        // する·見る·行く·来る·いる·くれる·やる·しまう 가 전부 그랬다.
+        // **혼자 서지 못하는 것과 혼자도 서는 것은 다르다.**
+        #expect(try Self.항목("する").wordClass == .verb)
+        #expect(try Self.항목("みる").wordClass == .verb)
+        #expect(try Self.항목("する").wordClass.isTranslatable)
+    }
+
+    @Test("보조 노릇만 하는 것은 기능어로 남는다")
+    func 순수보조() throws {
+        // ちゃう 는 aux-v 뿐이다. 혼자서는 뜻이 서지 않는다.
+        #expect(try Self.항목("ちゃう").wordClass == .function)
+    }
+
+    @Test("する 를 붙여 쓰는 명사는 명사다")
+    func 명사겸동사() throws {
+        // 勉強 은 n·vs 다. vs 는 "する 가 붙는 낱말"이라는 표지지 동사 태그가 아니다.
+        // 먼저 쓰인 n 이 이 낱말의 얼굴이다.
+        #expect(try Self.항목("べんきょう").wordClass == .noun)
     }
 }

@@ -22,14 +22,22 @@ struct Job {
 
 // MARK: 대상 고르기
 
-func loadJobs(indexPath: String, frequencyPath: String, limit: Int) throws -> [Job] {
+/// 건너뛴 기능어. 번역하지 않을 뿐 화면에는 나오므로, 무엇이 자주 나오는지는 알아야 한다.
+struct Skipped {
+    let writing: String
+    let reading: String
+    let wordClass: WordClass
+    let english: [String]
+}
+
+func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
+              skipped: inout [Skipped]) throws -> [Job] {
     let store = try DictionaryStore(path: indexPath)
     let frequency = FrequencyList(contentsOfFile: frequencyPath)
     guard !frequency.isEmpty else { throw Failure("빈도 목록이 비어 있다: \(frequencyPath)") }
 
     var jobs: [Job] = []
     var seen = Set<String>()
-    var skipped = 0
 
     for entry in frequency.sortedEntries() {
         guard jobs.count < limit else { break }
@@ -48,14 +56,18 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int) throws -> [J
         // 사전의 영어 뜻부터가 설명문이고(`の` → "indicates possessive"),
         // 그대로 넘기면 뜻 자리에 문장이 들어앉는다(`よ` → "안녕, 너").
         // 하필 빈도 최상위가 전부 이것들이라, 안 거르면 상위 N 개가 통째로 쓰레기가 된다.
-        guard hit.entry.wordClass.isTranslatable else { skipped += 1; continue }
+        guard hit.entry.wordClass.isTranslatable else {
+            skipped.append(Skipped(writing: entry.writing, reading: entry.reading,
+                                   wordClass: hit.entry.wordClass, english: hit.entry.glosses))
+            continue
+        }
 
         let key = "\(entry.writing)\t\(entry.reading)"
         guard seen.insert(key).inserted else { continue }
         jobs.append(Job(writing: entry.writing, reading: entry.reading,
                         english: hit.entry.glosses, wordClass: hit.entry.wordClass))
     }
-    if skipped > 0 { log("기능어 \(skipped)개는 건너뛴다 — 조사·조동사는 뜻으로 옮길 수 없다") }
+    if !skipped.isEmpty { log("기능어 \(skipped.count)개는 건너뛴다 — 조사·조동사는 뜻으로 옮길 수 없다") }
     return jobs
 }
 
@@ -112,6 +124,9 @@ let limit = value("--limit").flatMap(Int.init) ?? 20000
 // 모델에 무엇이 넘어가는지만 보고 끝낸다. 결과가 이상할 때
 // 사전에서 잘못 골랐는지 모델이 잘못 옮겼는지부터 갈라야 하기 때문이다.
 let dryRun = arguments.contains("--dry-run")
+// 건너뛴 기능어만 찍는다. 번역은 안 하지만 화면에는 나오는 낱말들이라,
+// 뜻 자리를 무엇으로 채울지 정하려면 무엇이 자주 나오는지부터 알아야 한다.
+let listSkipped = arguments.contains("--skipped")
 
 // 이미 번역한 것은 건너뛴다 — 몇 시간짜리 작업이라 중단은 예외가 아니라 일상이다.
 var done: Set<String> = []
@@ -123,7 +138,16 @@ if let existing = try? String(contentsOfFile: outputPath, encoding: .utf8) {
     log("이미 끝난 것 \(done.count)개 — 건너뛴다")
 }
 
-let jobs = try loadJobs(indexPath: indexPath, frequencyPath: frequencyPath, limit: limit)
+var skipped: [Skipped] = []
+let jobs = try loadJobs(indexPath: indexPath, frequencyPath: frequencyPath, limit: limit,
+                        skipped: &skipped)
+
+if listSkipped {
+    for word in skipped {
+        print("\(word.writing)\t\(word.reading)\t\(word.wordClass.rawValue)\t\(word.english.joined(separator: ", "))")
+    }
+    exit(0)
+}
 
 if dryRun {
     for job in jobs {
