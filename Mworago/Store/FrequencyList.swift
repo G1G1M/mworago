@@ -14,9 +14,13 @@ import Foundation
 /// frequency는 **순위**여서 작을수록 흔하다.
 public struct FrequencyList: Sendable {
 
-    struct Key: Hashable {
-        let writing: String
-        let reading: String
+    public struct Key: Hashable, Sendable {
+        public let writing: String
+        public let reading: String
+        public init(writing: String, reading: String) {
+            self.writing = writing
+            self.reading = reading
+        }
     }
 
     private let ranks: [Key: Int]

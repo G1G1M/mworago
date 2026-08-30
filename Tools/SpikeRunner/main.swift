@@ -71,13 +71,14 @@ let buildCount = flagValues("--build-cases").first.flatMap(Int.init)
 let segmentInputs = flagValues("--segment")
 let segmentCaseCount = flagValues("--segment-cases").first.flatMap(Int.init)
 let doSegmentSweep = args.contains("--segment-sweep")
+let buildFrequencyLimit = flagValues("--build-frequency").first.flatMap(Int.init)
 // --explain 뒤에 오는 낱말들은 위치 인자가 아니다
 let positional: [String] = {
     var result: [String] = []
     var i = 1
     while i < args.count {
         if args[i].hasPrefix("--") {
-            let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases"
+            let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -102,7 +103,8 @@ let index = DictIndex(entries: try JMDictParser.parse(data: dictData))
 log("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초")
 
 // 도메인 빈도는 선택 사항이다. 없으면 JMdict 점수만으로 돈다.
-let frequencyPath = "Tools/data/jpdb_freq.csv"
+// --freq 로 다른 빈도 목록을 물려 비교할 수 있다
+let frequencyPath = flagValues("--freq").first ?? "Tools/data/jpdb_freq.csv"
 let frequency: FrequencyList? = {
     let list = FrequencyList(contentsOfFile: frequencyPath)
     guard !list.isEmpty else { return nil }
@@ -127,6 +129,62 @@ if !explainWords.isEmpty {
             print("\(i + 1). \(result.headword.padded(14))\(result.reading.padded(14))\(String(format: "%6.1f", result.score))  \(rule)\(result.entry.glosses.prefix(2).joined(separator: ", "))")
         }
         if results.count > 10 { print("   … 외 \(results.count - 10)개") }
+    }
+    exit(0)
+}
+
+// MARK: --build-frequency
+//
+// 자막에서 낱말 빈도를 직접 센다.
+//
+// 지금 쓰는 JPDB 빈도는 재배포 조건이 불분명해 앱에 실을 수 없다. JESC(CC BY-SA 4.0)는
+// 영화·TV 자막 279만 문장이라 라이선스가 깨끗하고, 문어체인 Tanaka 와 달리 구어다.
+// 읽기가 없다는 문제는 JapaneseReading 이 푼다.
+
+if let buildFrequencyLimit {
+    let corpusPath = "Tools/data/split/train"
+    guard let handle = FileHandle(forReadingAtPath: corpusPath) else {
+        FileHandle.standardError.write(Data("JESC 가 없다. Tools/fetch-jesc.sh 를 먼저 실행\n".utf8))
+        exit(1)
+    }
+    defer { try? handle.close() }
+
+    log("자막 읽는 중… \(corpusPath) (최대 \(buildFrequencyLimit)줄)")
+    let start = Date()
+
+    var counts: [FrequencyList.Key: Int] = [:]
+    var lineCount = 0
+    var leftover = Data()
+
+    while lineCount < buildFrequencyLimit, let chunk = try? handle.read(upToCount: 4 << 20), !chunk.isEmpty {
+        var buffer = leftover + chunk
+        var lines: [Data] = []
+        while let newline = buffer.firstIndex(of: 0x0A) {
+            lines.append(buffer[buffer.startIndex..<newline])
+            buffer = buffer[buffer.index(after: newline)...]
+        }
+        leftover = Data(buffer)
+
+        for line in lines {
+            lineCount += 1
+            if lineCount > buildFrequencyLimit { break }
+            guard let text = String(data: line, encoding: .utf8),
+                  let tab = text.firstIndex(of: "\t") else { continue }
+            // 앞은 영어, 뒤가 일본어
+            for token in JapaneseReading.analyze(String(text[text.index(after: tab)...])) {
+                counts[FrequencyList.Key(writing: token.surface, reading: token.reading), default: 0] += 1
+            }
+        }
+        if lineCount % 200_000 < 5_000 { log("  \(lineCount)줄…") }
+    }
+
+    // 많이 나온 순으로 줄을 세워 순위를 매긴다. 형식은 JPDB 배포본과 같다.
+    let ranked = counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key.writing < $1.key.writing }
+    log("문장 \(lineCount)줄 · 낱말 \(ranked.count)종 · \(String(format: "%.0f", -start.timeIntervalSinceNow))초")
+
+    print("term\treading\tfrequency\tcount")
+    for (rank, entry) in ranked.enumerated() where entry.value >= 2 {
+        print("\(entry.key.writing)\t\(entry.key.reading)\t\(rank + 1)\t\(entry.value)")
     }
     exit(0)
 }

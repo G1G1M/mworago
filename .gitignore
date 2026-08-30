@@ -12,3 +12,8 @@ Tools/data/jpdb_freq.csv
 # 예문 코퍼스도 받아 쓴다 (Tools/fetch-tanaka.sh)
 Tools/data/examples.utf
 Tools/data/examples.utf.gz
+
+# 자막 코퍼스와 거기서 만든 빈도 목록 (Tools/fetch-jesc.sh)
+Tools/data/jesc-split.tar.gz
+Tools/data/split/
+Tools/data/jesc_freq*.tsv
