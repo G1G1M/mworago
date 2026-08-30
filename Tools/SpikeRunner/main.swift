@@ -251,8 +251,11 @@ if let buildFrequencyLimit {
     let ranked = counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key.writing < $1.key.writing }
     log("문장 \(lineCount)줄 · 낱말 \(ranked.count)종 · \(String(format: "%.0f", -start.timeIntervalSinceNow))초")
 
+    // **자른 것을 내보내지 않는다.** 임계값을 바꿔 볼 때마다 279만 문장을 다시 세면
+    // 한 번에 10분이라, 고르는 일이 실험이 아니라 각오가 된다. 전량을 내보내고
+    // 자르는 것은 쓰는 쪽에서 한다 — count 칸이 그대로 있으니 awk 한 줄이면 된다.
     print("term\treading\tfrequency\tcount")
-    for (rank, entry) in ranked.enumerated() where entry.value >= 2 {
+    for (rank, entry) in ranked.enumerated() {
         print("\(entry.key.writing)\t\(entry.key.reading)\t\(rank + 1)\t\(entry.value)")
     }
     exit(0)

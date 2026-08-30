@@ -114,6 +114,8 @@ struct OrthographyTests {
         #expect(Self.가나후보("츠").contains("つ"))
         #expect(Self.가나후보("츠쿠에").contains("つくえ"))
         #expect(Self.가나후보("스").contains("す"))
+        // "스"는 つ 로 열지 않는다 — 재어 보니 っす 가 밀려 JESC 3위 안이 하나 줄었다.
+        #expect(!Self.가나후보("스").contains("つ"))
     }
 
     @Test("엉뚱한 자리까지 요음이 번지지는 않는다")
