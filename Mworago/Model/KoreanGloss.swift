@@ -33,6 +33,11 @@ public enum KoreanGloss {
                   text.count <= maxPieceLength,
                   // 한글이 한 자도 없으면 옮기지 못한 것이다 — "(not) particularly" 가 그대로 왔다.
                   text.contains(where: isHangul),
+                  // 한 조각 안에 딴 나라 글자가 섞인 것도 옮기다 만 것이다
+                  // ("네ighborhood" · "인형 Puppet" · "간단하다 plain하다").
+                  // 조각 **사이**에 섞인 것은 이미 갈려서 걸러지므로 여기 걸리는 것은
+                  // 한 낱말 안에서 두 언어가 엉킨 경우뿐이다.
+                  !text.contains(where: isForeignLetter),
                   !pieces.contains(text)
             else { continue }
             pieces.append(text)
@@ -76,5 +81,21 @@ public enum KoreanGloss {
 
     private static func isHangul(_ character: Character) -> Bool {
         character.unicodeScalars.contains { $0.value >= 0xAC00 && $0.value <= 0xD7A3 }
+    }
+
+    /// 한국어 뜻 자리에 있어서는 안 되는 글자 — 로마자·가나·한자.
+    ///
+    /// 한자는 괄호 안에 단서로 들어오는 일이 있지만(`인격(人格)`) 그쪽은 괄호째
+    /// 걷어내므로 여기까지 오지 않는다. 괄호 없이 남은 한자는 옮기다 만 것이다.
+    private static func isForeignLetter(_ character: Character) -> Bool {
+        character.unicodeScalars.contains { scalar in
+            switch scalar.value {
+            case 0x41...0x5A, 0x61...0x7A: true      // 로마자
+            case 0xC0...0x24F: true                  // 로마자 확장 — "faveur" · "duy nhất"
+            case 0x3040...0x30FF: true               // 가나
+            case 0x4E00...0x9FFF: true               // 한자
+            default: false
+            }
+        }
     }
 }

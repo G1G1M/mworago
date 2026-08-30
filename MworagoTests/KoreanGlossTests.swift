@@ -80,6 +80,19 @@ struct KoreanGlossTests {
         #expect(KoreanGloss.tidy("실재”") == "실재")
     }
 
+    @Test("한 조각 안에 딴 나라 글자가 섞이면 그 조각을 버린다")
+    func 섞인조각() {
+        // 2,225건 중 29건이 그랬다. 조각 사이에 섞인 것은 이미 갈려서 걸러진다
+        // ("남기는; undone" → "남기는"). 남는 것은 한 조각 안에서 섞인 경우다.
+        #expect(KoreanGloss.tidy("만족신 contentment") == nil)
+        #expect(KoreanGloss.tidy("네ighborhood") == nil)
+        // 성한 조각은 살린다 — 버리는 것은 섞인 그 조각뿐이다.
+        #expect(KoreanGloss.tidy("인형, 인형 Puppet") == "인형")
+        #expect(KoreanGloss.tidy("간단하다 plain하다") == nil)
+        // 일본어가 한국어 뜻 자리에 남아서는 안 된다.
+        #expect(KoreanGloss.tidy("모두, みんな") == "모두")
+    }
+
     @Test("조사의 자리 표시는 깎지 않는다")
     func 조사자리() {
         // 기능어는 뜻이 아니라 자리를 적는다(`~의`처럼 붙여 쓰는 꼴 그대로).
