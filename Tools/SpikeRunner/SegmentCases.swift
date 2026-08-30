@@ -165,7 +165,7 @@ enum SegmentEval {
         return result
     }
 
-    static func evaluate(_ cases: [SegmentCase], index: DictIndex,
+    static func evaluate(_ cases: [SegmentCase], index: some DictionaryLookup,
                          frequency: FrequencyList?, segmentCost: Double,
                          unknownScore: Double = Segmenter.defaultUnknownScore) -> Score {
         var score = Score()

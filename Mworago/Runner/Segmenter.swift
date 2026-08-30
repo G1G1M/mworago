@@ -47,7 +47,7 @@ public enum Segmenter {
     public static let defaultSegmentCost = 135.0
 
     public static func segment(_ input: String,
-                               in index: DictIndex,
+                               in index: some DictionaryLookup,
                                frequency: FrequencyList? = nil,
                                weights: Ranker.Weights = Ranker.Weights(),
                                segmentCost: Double = defaultSegmentCost,
@@ -62,7 +62,7 @@ public enum Segmenter {
     }
 
     private static func segmentWord(_ word: String,
-                                    in index: DictIndex,
+                                    in index: some DictionaryLookup,
                                     frequency: FrequencyList?,
                                     weights: Ranker.Weights,
                                     segmentCost: Double,

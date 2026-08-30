@@ -17,3 +17,6 @@ Tools/data/examples.utf.gz
 Tools/data/jesc-split.tar.gz
 Tools/data/split/
 Tools/data/jesc_freq*.tsv
+
+# 구운 사전 색인 (Tools/build-index.sh)
+Tools/data/mworago-dict.db

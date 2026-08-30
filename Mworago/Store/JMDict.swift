@@ -180,7 +180,9 @@ public enum JMDictParser {
             case "r_ele":
                 guard !formText.isEmpty else { return }
                 readings.append(DictForm(text: formText, priority: formPriority))
-            case "gloss": if glosses.count < 5 { glosses.append(text) }
+            // 뜻은 앞의 둘만 싣는다. 다섯을 다 실으면 색인이 눈에 띄게 커지는데,
+            // 화면에 보이는 것은 어차피 앞의 한둘이다.
+            case "gloss": if glosses.count < 2 { glosses.append(text) }
             case "entry":
                 guard !readings.isEmpty else { return }
                 entries.append(DictEntry(readings: readings, writings: writings,
@@ -212,8 +214,14 @@ public struct DictIndex: Sendable {
                     DictHit(entry: entry, reading: reading.text, priority: reading.priority))
             }
         }
+        // 흔한 낱말이 먼저 오도록 줄 세우되, 점수가 같으면 사전에 실린 순서를 지킨다.
+        // Swift 의 sort 는 안정 정렬이 아니라서 그대로 두면 색인 파일과 답이 갈린다.
         for key in index.keys {
-            index[key]?.sort { $0.priority > $1.priority }
+            index[key] = index[key]?.enumerated()
+                .sorted { $0.element.priority != $1.element.priority
+                            ? $0.element.priority > $1.element.priority
+                            : $0.offset < $1.offset }
+                .map(\.element)
         }
         self.byReading = index
     }

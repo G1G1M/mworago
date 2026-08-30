@@ -47,7 +47,7 @@ func makeMatcher(_ testCase: Case) -> (SearchResult) -> Bool {
 }
 
 /// 케이스 전체를 한 가중치로 돌려 몇 개를 맞혔는지 센다.
-func evaluate(_ cases: [Case], index: DictIndex, frequency: FrequencyList?, weights: Ranker.Weights) -> (top1: Int, top3: Int) {
+func evaluate(_ cases: [Case], index: some DictionaryLookup, frequency: FrequencyList?, weights: Ranker.Weights) -> (top1: Int, top3: Int) {
     var top1 = 0, top3 = 0
     for testCase in cases {
         let results = Ranker.search(testCase.hangul, in: index, frequency: frequency, weights: weights)
@@ -72,6 +72,8 @@ let segmentInputs = flagValues("--segment")
 let segmentCaseCount = flagValues("--segment-cases").first.flatMap(Int.init)
 let doSegmentSweep = args.contains("--segment-sweep")
 let buildFrequencyLimit = flagValues("--build-frequency").first.flatMap(Int.init)
+let buildIndexPath = flagValues("--build-index").first
+let useIndexPath = flagValues("--index").first
 // --explain 뒤에 오는 낱말들은 위치 인자가 아니다
 let positional: [String] = {
     var result: [String] = []
@@ -79,6 +81,7 @@ let positional: [String] = {
     while i < args.count {
         if args[i].hasPrefix("--") {
             let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
+                || args[i] == "--build-index" || args[i] == "--index"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -93,14 +96,38 @@ let dictPath = positional.dropFirst().first ?? "Tools/data/JMdict_e"
 let cases = loadCases(casesPath)
 
 func log(_ message: String) { FileHandle.standardError.write(Data((message + "\n").utf8)) }
-log("사전 읽는 중… \(dictPath)")
-let loadStart = Date()
-guard let dictData = FileManager.default.contents(atPath: dictPath) else {
-    FileHandle.standardError.write(Data("사전 파일 없음. Tools/fetch-jmdict.sh 를 먼저 실행\n".utf8))
-    exit(1)
+
+// --index 를 주면 구워 둔 색인만 연다. XML 은 건드리지도 않는다 — 그게 이 색인의 목적이다.
+let index: any DictionaryLookup
+var memoryIndexForBuild: DictIndex?
+
+if let useIndexPath, buildIndexPath == nil {
+    let openStart = Date()
+    index = try DictionaryStore(path: useIndexPath)
+    log(String(format: "색인 열기 %@ · %.4f초", useIndexPath, -openStart.timeIntervalSinceNow))
+} else {
+    log("사전 읽는 중… \(dictPath)")
+    let loadStart = Date()
+    guard let dictData = FileManager.default.contents(atPath: dictPath) else {
+        FileHandle.standardError.write(Data("사전 파일 없음. Tools/fetch-jmdict.sh 를 먼저 실행\n".utf8))
+        exit(1)
+    }
+    let parsed = try JMDictParser.parse(data: dictData)
+    let memoryIndex = DictIndex(entries: parsed)
+    memoryIndexForBuild = memoryIndex
+    index = memoryIndex
+    log("표제항 \(memoryIndex.entryCount)개 · 읽기 \(memoryIndex.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초")
+
+    if let buildIndexPath {
+        log("색인 굽는 중… \(buildIndexPath)")
+        let bakeStart = Date()
+        try DictionaryStore.build(entries: parsed, at: buildIndexPath)
+        let size = (try? FileManager.default.attributesOfItem(atPath: buildIndexPath)[.size] as? Int) ?? 0
+        print(String(format: "색인 완료 · %.1fMB · %.1f초", Double(size ?? 0) / 1_048_576, -bakeStart.timeIntervalSinceNow))
+        exit(0)
+    }
 }
-let index = DictIndex(entries: try JMDictParser.parse(data: dictData))
-log("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초")
+_ = memoryIndexForBuild
 
 // 도메인 빈도는 선택 사항이다. 없으면 JMdict 점수만으로 돈다.
 // --freq 로 다른 빈도 목록을 물려 비교할 수 있다

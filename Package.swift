@@ -11,7 +11,9 @@ let package = Package(
     platforms: [.macOS(.v15)],
     targets: [
         // 앱으로 그대로 옮겨갈 순수 로직. Foundation 외 의존성 없음.
-        .target(name: "MworagoCore", path: "Mworago"),
+        .target(name: "MworagoCore", path: "Mworago",
+                // 사전 색인은 SQLite 파일이다. iOS·macOS 에 시스템으로 들어 있어 의존성이 늘지 않는다.
+                linkerSettings: [.linkedLibrary("sqlite3")]),
 
         // M0 측정 도구. 케이스를 돌려 정확도 표를 찍는다.
         .executableTarget(name: "SpikeRunner", dependencies: ["MworagoCore"], path: "Tools/SpikeRunner"),

@@ -95,7 +95,7 @@ public enum Ranker {
     }
 
     public static func search(_ hangul: String,
-                              in index: DictIndex,
+                              in index: some DictionaryLookup,
                               frequency: FrequencyList? = nil,
                               weights: Weights = Weights()) -> [SearchResult] {
         var results: [SearchResult] = []
