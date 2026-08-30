@@ -96,7 +96,8 @@ public enum Transliterator {
 
     /// 장음을 넣을 수 있는 자리를 모두 조합해 변형을 만든다.
     /// こう·とう처럼 어디에 들어갔는지 한글만 봐서는 알 수 없으므로 전부 시도한다.
-    static func longVowelVariants(_ morae: [String]) -> [[String]] {
+    /// 넣은 개수를 함께 돌려준다 — 한글에 없던 글자를 많이 지어낸 후보일수록 덜 그럴듯하다.
+    static func longVowelVariants(_ morae: [String]) -> [(morae: [String], added: Int)] {
         // 삽입 가능한 자리 찾기
         var slots: [(index: Int, mora: String)] = []
         for (index, mora) in morae.enumerated() {
@@ -107,7 +108,7 @@ public enum Transliterator {
         }
         slots = Array(slots.prefix(8))   // 2^8 = 256. 이 이상은 후보가 쓸모없이 불어난다
 
-        var variants: [[String]] = []
+        var variants: [(morae: [String], added: Int)] = []
         for mask in 0..<(1 << slots.count) {
             var variant: [String] = []
             var slotCursor = 0
@@ -118,15 +119,28 @@ public enum Transliterator {
                     slotCursor += 1
                 }
             }
-            variants.append(variant)
+            variants.append((variant, mask.nonzeroBitCount))
         }
-        return variants
+        // 장음을 적게 넣은 것부터 — 뒤에서 순위를 매길 때 이 순서가 곧 그럴듯함의 순서다
+        return variants.sorted { $0.added < $1.added }
     }
 
     // MARK: 낱말 전체
 
+    /// 규칙이 만들어 낸 가나 후보 하나와, 그것이 얼마나 과감한 추측인지에 대한 단서.
+    public struct KanaCandidate: Sendable, Equatable {
+        public let kana: String
+        public let rank: Int              // 규칙이 낸 순서. 앞일수록 보수적인 추측
+        public let longVowelsAdded: Int   // 한글에 없던 장음을 몇 개 지어냈나
+    }
+
     /// 한글 음차가 될 수 있는 가나 표기를 모두 만든다. 한글이 아니면 빈 배열.
     public static func kanaCandidates(for hangul: String, limit: Int = 5000) -> [String] {
+        candidates(for: hangul, limit: limit).map(\.kana)
+    }
+
+    /// 후보를 단서와 함께 만든다. 순위를 매기는 쪽이 쓴다.
+    public static func candidates(for hangul: String, limit: Int = 5000) -> [KanaCandidate] {
         guard let syllables = HangulSyllable.decompose(hangul), !syllables.isEmpty else { return [] }
 
         // 음절별 후보를 이어 붙인다(데카르트 곱). 중간에 상한을 넘으면 잘라낸다.
@@ -148,11 +162,11 @@ public enum Transliterator {
         }
 
         var seen = Set<String>()
-        var result: [String] = []
+        var result: [KanaCandidate] = []
         for sequence in sequences {
             for variant in longVowelVariants(sequence) {
-                guard let kana = KanaTable.compose(variant), seen.insert(kana).inserted else { continue }
-                result.append(kana)
+                guard let kana = KanaTable.compose(variant.morae), seen.insert(kana).inserted else { continue }
+                result.append(KanaCandidate(kana: kana, rank: result.count, longVowelsAdded: variant.added))
                 if result.count >= limit { return result }
             }
         }

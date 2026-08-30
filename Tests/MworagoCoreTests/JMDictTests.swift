@@ -5,7 +5,7 @@ import Foundation
 @Suite("JMdict 파싱")
 struct JMDictTests {
 
-    // JMdict 실물에서 잘라온 모양. 엔티티(&adj-na;)와 빈도 태그(nf05)까지 그대로 둔다.
+    // JMdict 실물에서 잘라온 모양. 빈도 태그가 읽기마다 따로 붙는 것이 핵심이다.
     static let sample = """
     <?xml version="1.0" encoding="UTF-8"?>
     <!DOCTYPE JMdict [
@@ -33,8 +33,8 @@ struct JMDictTests {
         #expect(entries.count == 2)
 
         let 대장부 = entries[0]
-        #expect(대장부.writings == ["大丈夫"])
-        #expect(대장부.readings == ["だいじょうぶ", "だいじょぶ"])
+        #expect(대장부.writings.map(\.text) == ["大丈夫"])
+        #expect(대장부.readings.map(\.text) == ["だいじょうぶ", "だいじょぶ"])
         #expect(대장부.glosses.first == "safe")
     }
 
@@ -42,21 +42,30 @@ struct JMDictTests {
     func 가나전용() throws {
         let entries = try JMDictParser.parse(xml: Self.sample)
         #expect(entries[1].writings.isEmpty)
-        #expect(entries[1].readings == ["やばい"])
+        #expect(entries[1].readings.map(\.text) == ["やばい"])
     }
 
-    @Test("빈도 태그가 있으면 점수가 높다")
-    func 빈도점수() throws {
-        let entries = try JMDictParser.parse(xml: Self.sample)
-        #expect(entries[0].priority > entries[1].priority)
-        #expect(entries[1].priority == 0)   // 태그가 없으면 0점
+    @Test("빈도 점수는 읽기마다 따로 매겨진다")
+    func 읽기별점수() throws {
+        let 대장부 = try JMDictParser.parse(xml: Self.sample)[0]
+        // だいじょうぶ에만 태그가 붙어 있다. 이표기 だいじょぶ가 그 명성을 물려받으면 안 된다.
+        #expect(대장부.readings[0].priority > 0)
+        #expect(대장부.readings[1].priority == 0)
     }
 
-    @Test("읽기로 찾는 색인")
-    func 색인조회() throws {
+    @Test("색인은 매칭된 읽기의 점수를 함께 돌려준다")
+    func 색인점수() throws {
         let index = DictIndex(entries: try JMDictParser.parse(xml: Self.sample))
-        #expect(index.lookup("だいじょうぶ").first?.writings == ["大丈夫"])
-        #expect(index.lookup("だいじょぶ").first?.writings == ["大丈夫"])   // 이표기도 같은 항목으로
+
+        let 주읽기 = try #require(index.lookup("だいじょうぶ").first)
+        #expect(주읽기.entry.writings.map(\.text) == ["大丈夫"])
+        #expect(주읽기.priority > 0)
+
+        // 같은 항목이지만 부차적 읽기로 찾으면 점수는 0이어야 한다
+        let 부읽기 = try #require(index.lookup("だいじょぶ").first)
+        #expect(부읽기.entry.writings.map(\.text) == ["大丈夫"])
+        #expect(부읽기.priority == 0)
+
         #expect(index.lookup("ありがとう").isEmpty)
     }
 }

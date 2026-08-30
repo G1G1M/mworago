@@ -2,9 +2,9 @@ import Foundation
 import MworagoCore
 
 // M0 스파이크 측정기.
-// 케이스를 돌려 두 가지를 잰다.
-//   1) 재현율  — 정답 가나가 후보 안에 들어는 있는가 (규칙의 한계)
-//   2) 정확도  — 사전으로 거른 뒤 정답이 1위/3위 안에 오는가 (사전만으로 되는가)
+//   (기본)      케이스를 돌려 재현율·정확도를 표로 찍는다
+//   --explain   한 낱말이 왜 그 순위인지 점수 내역을 펼친다
+//   --sweep     가중치를 훑어 가장 잘 맞는 조합을 찾는다
 
 struct Case {
     let hangul: String
@@ -29,40 +29,62 @@ func loadCases(_ path: String) -> [Case] {
     }
 }
 
-/// 후보 가나들을 사전에 두드려, 살아남은 표제항을 흔한 순으로 줄 세운다.
-/// 활용형은 사전에 없으므로 되돌린 형태로도 두드려 본다.
-struct Hit {
-    let kana: String            // 규칙이 만든 가나 후보
-    let deinflection: String?   // 어떤 활용을 되돌렸나
-    let entry: DictEntry
+/// 무엇으로 맞았다고 볼지는 정답의 생김새가 정한다.
+///   ① 활용형이라 사전형을 따로 적어 뒀으면 → 그 표기로 (辞める가 止める 자리를 뺏는 걸 잡는다)
+///   ② 정답에 한자가 있으면 → 표기로 (遺体가 痛い 자리를 뺏는 걸 잡는다)
+///   ③ 가나로만 쓰는 낱말이면 → 읽기로 (ありがとう의 사전 표제어는 有難う다)
+func makeMatcher(_ testCase: Case) -> (SearchResult) -> Bool {
+    let accepted = Set(Deinflector.candidates(for: testCase.reading).map(\.form))
+    return { result in
+        if testCase.baseForm != testCase.writing {
+            return result.entry.writings.contains { $0.text == testCase.baseForm }
+        }
+        if testCase.writing.contains(where: \.isKanji) {
+            return result.entry.writings.contains { $0.text == testCase.writing }
+        }
+        return result.entry.readings.contains { accepted.contains($0.text) }
+    }
 }
 
-func search(_ hangul: String, in index: DictIndex) -> [Hit] {
-    var hits: [(hit: Hit, order: Int, direct: Bool)] = []
-    for (order, kana) in Transliterator.kanaCandidates(for: hangul).enumerated() {
-        for deinflection in Deinflector.candidates(for: kana) {
-            for entry in index.lookup(deinflection.form) {
-                hits.append((Hit(kana: kana, deinflection: deinflection.rule, entry: entry),
-                             order, deinflection.rule == nil))
-            }
+/// 케이스 전체를 한 가중치로 돌려 몇 개를 맞혔는지 센다.
+func evaluate(_ cases: [Case], index: DictIndex, weights: Ranker.Weights) -> (top1: Int, top3: Int) {
+    var top1 = 0, top3 = 0
+    for testCase in cases {
+        let results = Ranker.search(testCase.hangul, in: index, weights: weights)
+        let matches = makeMatcher(testCase)
+        if results.first.map(matches) ?? false { top1 += 1 }
+        if results.prefix(3).contains(where: matches) { top3 += 1 }
+    }
+    return (top1, top3)
+}
+
+// MARK: 입력 처리
+
+let args = CommandLine.arguments
+func flagValues(_ name: String) -> [String] {
+    guard let i = args.firstIndex(of: name) else { return [] }
+    return Array(args[(i + 1)...].prefix { !$0.hasPrefix("--") })
+}
+let explainWords = flagValues("--explain")
+let doSweep = args.contains("--sweep")
+// --explain 뒤에 오는 낱말들은 위치 인자가 아니다
+let positional: [String] = {
+    var result: [String] = []
+    var i = 1
+    while i < args.count {
+        if args[i].hasPrefix("--") {
+            let consumesValues = args[i] == "--explain"
+            i += 1
+            if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
+        } else {
+            result.append(args[i]); i += 1
         }
     }
-    // 사전에 그대로 실린 형태가 먼저, 그다음 빈도, 마지막으로 규칙이 낸 순서
-    hits.sort {
-        if $0.direct != $1.direct { return $0.direct }
-        if $0.hit.entry.priority != $1.hit.entry.priority { return $0.hit.entry.priority > $1.hit.entry.priority }
-        return $0.order < $1.order
-    }
-    return hits.map(\.hit)
-}
+    return result
+}()
+let casesPath = positional.first ?? "Data/spike-cases.tsv"
+let dictPath = positional.dropFirst().first ?? "Data/JMdict_e"
 
-/// 정답 읽기를 역변환한 형태들. 사전이 `やめろ` 대신 `やめる`를 돌려줘도 맞은 것으로 친다.
-func acceptedReadings(_ reading: String) -> Set<String> {
-    Set(Deinflector.candidates(for: reading).map(\.form))
-}
-
-let casesPath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "Data/spike-cases.tsv"
-let dictPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "Data/JMdict_e"
 let cases = loadCases(casesPath)
 
 print("사전 읽는 중… \(dictPath)")
@@ -74,8 +96,66 @@ guard let dictData = FileManager.default.contents(atPath: dictPath) else {
 let index = DictIndex(entries: try JMDictParser.parse(data: dictData))
 print("표제항 \(index.entryCount)개 · 읽기 \(index.readingCount)종 · \(String(format: "%.1f", -loadStart.timeIntervalSinceNow))초\n")
 
-var recall = 0, strict = 0, practical = 0, top3 = 0, notFound = 0
-var failures: [(Case, [Hit])] = []
+// MARK: --explain
+
+if !explainWords.isEmpty {
+    for word in explainWords {
+        print("\n입력: \(word)")
+        let candidates = Transliterator.candidates(for: word)
+        let preview = candidates.prefix(10).map { "\($0.kana)\($0.longVowelsAdded > 0 ? "(장음+\($0.longVowelsAdded))" : "")" }
+        print("가나 후보 \(candidates.count)개: \(preview.joined(separator: " · "))\(candidates.count > 10 ? " …" : "")")
+
+        let results = Ranker.search(word, in: index)
+        print("표제어        읽기          점수   활용     뜻")
+        print(String(repeating: "─", count: 76))
+        for (i, result) in results.prefix(10).enumerated() {
+            let rule = (result.deinflection ?? "—").padded(9)
+            print("\(i + 1). \(result.headword.padded(14))\(result.reading.padded(14))\(String(format: "%6.1f", result.score))  \(rule)\(result.entry.glosses.prefix(2).joined(separator: ", "))")
+        }
+        if results.count > 10 { print("   … 외 \(results.count - 10)개") }
+    }
+    exit(0)
+}
+
+// MARK: --sweep
+
+if doSweep {
+    print("가중치 훑는 중…\n")
+    var best: (weights: Ranker.Weights, top1: Int, top3: Int)?
+    var rows: [(Ranker.Weights, Int, Int)] = []
+
+    for rankPenalty in [0.0, 0.5, 2.0] {
+        for longVowel in [0.0, 6.0, 12.0, 25.0, 50.0] {
+            for deinflection in [0.0, 25.0, 60.0, 120.0] {
+                let weights = Ranker.Weights(rankPenalty: rankPenalty,
+                                             longVowelPenalty: longVowel,
+                                             deinflectionPenalty: deinflection)
+                let (top1, top3) = evaluate(cases, index: index, weights: weights)
+                rows.append((weights, top1, top3))
+                // 1위 정확도가 같으면 3위 안이 더 나은 쪽을 고른다
+                if best == nil || top1 > best!.top1 || (top1 == best!.top1 && top3 > best!.top3) {
+                    best = (weights, top1, top3)
+                }
+            }
+        }
+    }
+
+    print("순서   장음   활용   1위   3위안")
+    print(String(repeating: "─", count: 36))
+    for (weights, top1, top3) in rows.sorted(by: { $0.1 != $1.1 ? $0.1 > $1.1 : $0.2 > $1.2 }).prefix(12) {
+        print(String(format: "%5.1f  %5.1f  %5.1f  %4d  %4d", weights.rankPenalty, weights.longVowelPenalty, weights.deinflectionPenalty, top1, top3))
+    }
+    if let best {
+        print("\n최고: 순서 \(best.weights.rankPenalty) · 장음 \(best.weights.longVowelPenalty) · 활용 \(best.weights.deinflectionPenalty)")
+        print("      1위 \(best.top1)/\(cases.count) · 3위 안 \(best.top3)/\(cases.count)")
+    }
+    exit(0)
+}
+
+// MARK: 기본 측정
+
+var recall = 0, top1 = 0, top3 = 0, notFound = 0
+var failures: [(Case, [SearchResult])] = []
 var failedTags: [String: Int] = [:]
 var queryTime = 0.0
 
@@ -87,47 +167,29 @@ for testCase in cases {
     if candidates.contains(testCase.reading) { recall += 1 }
 
     let start = Date()
-    let results = search(testCase.hangul, in: index)
+    let results = Ranker.search(testCase.hangul, in: index)
     queryTime += -start.timeIntervalSinceNow
 
-    let accepted = acceptedReadings(testCase.reading)
-    // 무엇으로 맞았다고 볼지는 정답의 생김새가 정한다.
-    //   ① 활용형이라 사전형을 따로 적어 뒀으면 → 그 표기로 (辞める가 止める 자리를 뺏는 걸 잡는다)
-    //   ② 정답에 한자가 있으면 → 표기로 (遺体가 痛い 자리를 뺏는 걸 잡는다)
-    //   ③ 가나로만 쓰는 낱말이면 → 읽기로 (ありがとう의 사전 표제어는 有難う다)
-    func matches(_ hit: Hit) -> Bool {
-        if testCase.baseForm != testCase.writing {
-            return hit.entry.writings.contains(testCase.baseForm)
-        }
-        if testCase.writing.contains(where: \.isKanji) {
-            return hit.entry.writings.contains(testCase.writing)
-        }
-        return hit.entry.readings.contains { accepted.contains($0) }
-    }
-
-    let strictHit = results.first.map { $0.entry.writings.contains(testCase.writing) || ($0.entry.writings.isEmpty && $0.entry.readings.contains(testCase.reading)) } ?? false
-    let practicalHit = results.first.map(matches) ?? false
+    let matches = makeMatcher(testCase)
+    let hit = results.first.map(matches) ?? false
     let inTop3 = results.prefix(3).contains(where: matches)
 
-    if strictHit { strict += 1 }
-    if practicalHit { practical += 1 }
+    if hit { top1 += 1 }
     if inTop3 { top3 += 1 }
     if results.isEmpty { notFound += 1 }
 
     let verdict: String
-    if practicalHit { verdict = strictHit ? "○" : "○ 활용복원" }
+    if hit { verdict = results.first?.deinflection == nil ? "○" : "○ 활용복원" }
     else if inTop3 { verdict = "△ 3위안" }
     else if results.isEmpty { verdict = "✗ 사전없음" }
     else { verdict = "✗ 빗나감" }
 
-    if !practicalHit {
+    if !hit {
         failures.append((testCase, results))
         for tag in testCase.tags.split(separator: ",") { failedTags[String(tag), default: 0] += 1 }
     }
 
-    let top = results.first.map { hit in
-        "\(hit.entry.headword)(\(hit.entry.readings.first ?? ""))" + (hit.deinflection.map { " ·\($0)" } ?? "")
-    } ?? "—"
+    let top = results.first.map { "\($0.headword)(\($0.reading))" + ($0.deinflection.map { " ·\($0)" } ?? "") } ?? "—"
     print("\(testCase.hangul.padded(12))\(testCase.reading.padded(14))\(String(results.count).leftPadded(6))  \(top.padded(22))\(verdict)")
 }
 
@@ -136,8 +198,7 @@ func pct(_ n: Int) -> String { "\(n)/\(total) (\(Int(Double(n) / Double(total) *
 
 print(String(repeating: "─", count: 72))
 print("재현율(후보에 정답 있음)   \(pct(recall))")
-print("정확도 (표기 일치, 활용 복원 인정) \(pct(practical))   ← M0 판정 기준")
-print("엄격 (활용 복원 없이 표기 일치) \(pct(strict))")
+print("정확도 (1위가 정답)         \(pct(top1))   ← M0 판정 기준")
 print("3위 안                      \(pct(top3))")
 print("사전에 아예 없음            \(pct(notFound))")
 print("쿼리 평균                   \(String(format: "%.2f", queryTime / Double(total) * 1000))ms")
@@ -145,9 +206,7 @@ print("쿼리 평균                   \(String(format: "%.2f", queryTime / Doub
 if !failures.isEmpty {
     print("\n놓친 케이스")
     for (testCase, results) in failures {
-        let top = results.prefix(3).map { hit in
-            "\(hit.entry.headword)(\(hit.entry.readings.first ?? ""))" + (hit.deinflection.map { "·\($0)" } ?? "")
-        }.joined(separator: ", ")
+        let top = results.prefix(3).map { "\($0.headword)(\($0.reading))" + ($0.deinflection.map { "·\($0)" } ?? "") }.joined(separator: ", ")
         print("  \(testCase.hangul) → \(testCase.writing)(\(testCase.reading))  [\(testCase.tags)]")
         print("      나온 것: \(top.isEmpty ? "없음" : top)")
     }
@@ -163,6 +222,7 @@ extension Character {
 }
 
 extension String {
+    /// 한글·가나는 폭이 두 배라 단순 count로는 표가 어긋난다.
     func padded(_ width: Int) -> String {
         let display = reduce(0) { $0 + ($1.isASCII ? 1 : 2) }
         return self + String(repeating: " ", count: max(0, width - display))
