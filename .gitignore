@@ -35,3 +35,4 @@ Tools/data/korean-gloss.tsv
 # 폰트는 Google Fonts(OFL)에서 받는다 (Tools/fetch-fonts.sh)
 MworagoApp/Resources/Fonts/
 MworagoApp/Resources/hanja-reading.tsv
+Tools/data/*.log
