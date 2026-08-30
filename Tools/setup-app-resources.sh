@@ -9,7 +9,12 @@ cd "$(dirname "$0")/.."
 [ -f Tools/data/JMdict_e ]   || ./Tools/fetch-jmdict.sh
 [ -f Tools/data/split/train ] || ./Tools/fetch-jesc.sh
 [ -f Tools/data/mworago-dict.db ] || ./Tools/build-index.sh
-[ -f Tools/data/jesc_freq.tsv ] || swift run SpikeRunner --build-frequency 3000000 > Tools/data/jesc_freq.tsv
+# 빈도는 전량을 센 뒤 여기서 자른다. count>=5 인 것만 싣는다 —
+# 한두 번 나온 낱말은 대부분 토크나이저가 잘못 읽은 것이라 도움이 아니라 방해였다.
+# 재어 보니 어휘가 112,317 에서 53,775 로 절반이 되는데 분절 완전일치는 30.0%에서
+# 30.3%로 오히려 올랐고, 낱말 검색은 그대로였다(3위 안 147/150).
+[ -f Tools/data/jesc_freq.tsv ] || swift run SpikeRunner --build-frequency 3000000 \
+  | awk -F'\t' 'NR==1 || $4>=5' > Tools/data/jesc_freq.tsv
 
 [ -d MworagoApp/Resources/Fonts ] || ./Tools/fetch-fonts.sh
 [ -f MworagoApp/Resources/hanja-reading.tsv ] || ./Tools/fetch-hanja.sh

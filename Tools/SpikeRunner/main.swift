@@ -247,7 +247,10 @@ if let buildFrequencyLimit {
     // 사전에 없는 (표기, 읽기) 쌍을 걸러 보았으나 **결과가 나빴다.**
     // 토크나이저 오류가 빠지는 대신 어휘가 81,218 → 42,946 으로 반토막 나고
     // 정확도가 140 → 138 로 떨어졌다. 노이즈를 지운 것보다 잃은 낱말이 많았다.
-    // 한 번만 나온 낱말을 버리는 것으로 족하다.
+    //
+    // **거르는 자리는 여기가 아니다.** 등장 횟수로 자르는 편이 낫고(setup-app-resources.sh
+    // 가 count>=5 로 자른다), 그 임계값은 재어 보고 정해야 하는데 279만 문장을 다시 세면
+    // 한 번에 10분이라 실험이 각오가 된다. 그래서 전량을 내보낸다.
     let ranked = counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key.writing < $1.key.writing }
     log("문장 \(lineCount)줄 · 낱말 \(ranked.count)종 · \(String(format: "%.0f", -start.timeIntervalSinceNow))초")
 
