@@ -48,19 +48,20 @@ struct JapaneseReadingTests {
 
 /// 자막 코퍼스에 섞여 든 다른 언어.
 ///
-/// JESC 는 영-일 자막 쌍인데 일본어 칸에 중국어가 섞여 있다. 한자는 중국어에도 쓰이므로
-/// 낱말 하나만 보고는 가릴 수 없고, 토크나이저는 그 한자를 중국어 발음으로 읽은 뒤
-/// 그 로마자가 가나로 변환된다 — 生 이 `しぇえんぐ`(sheng), 分 이 `ふぇえん`(fen),
-/// 上 이 `しゃんぐ`(shang) 로 빈도 목록에 실려 있었다.
+/// JESC 일본어 칸에는 중국어가 섞여 있다. 한자는 중국어에도 쓰이므로 낱말 하나만 보고는
+/// 가릴 수 없고, 토크나이저는 그 한자를 일본어 음으로 읽는다 — 我 가 が 로.
+///
+/// **걸러 보았으나 손해였다.** 문장에 가나가 없으면 건너뛰게 하자 오염은 사라졌지만
+/// 낱말 3위안이 147에서 146으로, 분절 완전일치가 30.3%에서 30.0%로 떨어졌다.
+/// 오염된 항목은 순위가 낮아 답을 바꾸지 못하는데, 함께 걸러진 짧은 일본어
+/// (한자만으로 된 줄)의 손해가 더 컸다. 그래서 지금은 거르지 않는다.
 @Suite("일본어가 아닌 문장")
 struct ForeignSentenceTests {
 
-    @Test("가나가 한 자도 없으면 일본어 문장이 아니다")
-    func 중국어() {
-        // 일본어 문장은 조사와 어미 때문에 거의 언제나 가나를 품는다.
-        // 한자만 늘어선 줄은 중국어로 본다.
-        #expect(JapaneseReading.analyze("我生分上").isEmpty)
-        #expect(JapaneseReading.analyze("你好世界").isEmpty)
+    @Test("한자만 있는 줄도 그대로 읽는다 — 걸러 보았더니 손해였다")
+    func 한자만() {
+        // 중국어가 섞여 들지만, 그 항목들은 순위가 낮아 답을 바꾸지 못한다.
+        #expect(!JapaneseReading.analyze("我生分上").isEmpty)
     }
 
     @Test("가나가 섞여 있으면 그대로 읽는다")
@@ -70,15 +71,10 @@ struct ForeignSentenceTests {
         #expect(tokens.first?.reading == "あたま")
     }
 
-    @Test("가나만 있는 문장도 일본어다")
-    func 가나만() {
-        #expect(!JapaneseReading.analyze("やめて").isEmpty)
-    }
-
     @Test("읽기가 빈 낱말은 담지 않는다")
     func 빈읽기() {
         // 你好 는 읽기가 빈 문자열로 나오는데, allSatisfy 는 빈 것에 참이라 그대로 통과했다.
-        // 읽기 없는 낱말은 빈도 목록에서 아무 쓸모가 없다.
+        // 읽기 없는 낱말은 빈도 목록에서 아무 쓸모가 없다. 이쪽은 진짜 버그라 남겨 둔다.
         #expect(JapaneseReading.analyze("你好と世界").allSatisfy { !$0.reading.isEmpty })
     }
 

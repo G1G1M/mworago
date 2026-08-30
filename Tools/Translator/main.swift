@@ -71,14 +71,26 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
     return jobs
 }
 
+func pickOnly(_ jobs: [Job], _ only: Set<String>) -> [Job] {
+    only.isEmpty ? jobs : jobs.filter { only.contains($0.writing) || only.contains($0.reading) }
+}
+
 // MARK: 번역
 
 #if canImport(FoundationModels)
 @available(macOS 26.0, *)
+/// **뜻을 배열로 받는다.** 한 칸짜리 문자열로 받으면 그 안에 무엇이든 넣을 수 있어서
+/// "무기를 가지고 있는 것과 같이 목표로 삼다– 어떤 것을..." 같은 것이 통째로 들어왔다.
+/// 칸을 나누고 개수를 못 박으면 형식이 프롬프트가 아니라 **구조**로 강제된다.
 @Generable
 struct KoreanGloss {
-    @Guide(description: "한국어 뜻. 쉼표로 나눈 낱말 하나나 둘. 설명이나 문장은 쓰지 않는다.")
-    var meaning: String
+    @Guide(description: """
+        한국어 뜻 하나. 사전에 실릴 만한 짧은 말이다.
+        낱말이나 짧은 구로 적고 설명하지 않는다. 여덟 자를 넘기지 않는다.
+        동사와 형용사는 "-다"로 끝나는 기본형으로 적는다.
+        서로 다른 뜻만 담는다. 같은 말을 두 번 적지 않는다.
+        """, .count(1...2))
+    var meanings: [String]
 }
 
 @available(macOS 26.0, *)
@@ -98,7 +110,14 @@ func translate(_ job: Job, instructions: String) async throws -> String {
         이 낱말의 한국어 뜻을 적어라.
         """
     let response = try await session.respond(to: prompt, generating: KoreanGloss.self)
-    return response.content.meaning.trimmingCharacters(in: .whitespacesAndNewlines)
+    // 칸마다 다듬고, 같은 말은 한 번만 남긴다. 합치는 것은 마지막에 한 번.
+    var seen: [String] = []
+    for meaning in response.content.meanings {
+        let text = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !seen.contains(text) else { continue }
+        seen.append(text)
+    }
+    return seen.joined(separator: ", ")
 }
 #endif
 
@@ -124,6 +143,9 @@ let limit = value("--limit").flatMap(Int.init) ?? 20000
 // 모델에 무엇이 넘어가는지만 보고 끝낸다. 결과가 이상할 때
 // 사전에서 잘못 골랐는지 모델이 잘못 옮겼는지부터 갈라야 하기 때문이다.
 let dryRun = arguments.contains("--dry-run")
+// 표기 몇 개만 골라 다시 굽는다. 프롬프트나 스키마를 손볼 때
+// 정확히 같은 낱말로 전후를 견주려면 이것이 있어야 한다.
+let only = Set((value("--only") ?? "").split(separator: ",").map(String.init))
 // 건너뛴 기능어만 찍는다. 번역은 안 하지만 화면에는 나오는 낱말들이라,
 // 뜻 자리를 무엇으로 채울지 정하려면 무엇이 자주 나오는지부터 알아야 한다.
 let listSkipped = arguments.contains("--skipped")
@@ -139,8 +161,8 @@ if let existing = try? String(contentsOfFile: outputPath, encoding: .utf8) {
 }
 
 var skipped: [Skipped] = []
-let jobs = try loadJobs(indexPath: indexPath, frequencyPath: frequencyPath, limit: limit,
-                        skipped: &skipped)
+let jobs = pickOnly(try loadJobs(indexPath: indexPath, frequencyPath: frequencyPath, limit: limit,
+                                 skipped: &skipped), only)
 
 if listSkipped {
     for word in skipped {
@@ -203,12 +225,23 @@ if #available(macOS 26.0, *) {
     try handle.seekToEnd()
     defer { try? handle.close() }
 
+    // 규칙만 늘어놓는 것보다 **보기 몇 개**가 형식을 더 잘 붙든다.
+    // 특히 "설명하지 말라"는 지시는 잘 지켜지지 않는데, 짧은 답을 보여 주면 따라온다.
     let instructions = """
-        너는 일본어를 한국어로 옮기는 사전 편집자다.
-        낱말의 뜻만 간결하게 적는다. 설명하지 않는다.
-        가장 흔한 뜻 하나나 둘만 쉼표로 나눠 적는다.
-        품사를 지킨다 — 동사와 형용사는 "-다"로 끝나는 기본형으로 적는다.
-        쉼표 말고 다른 구분 기호는 쓰지 않는다.
+        너는 일본어-한국어 사전을 만든다. 낱말의 뜻만 적는다.
+
+        약속:
+        - 사전에 실릴 만한 짧은 말로 적는다. 문장으로 설명하지 않는다.
+        - 품사를 지킨다. 동사와 형용사는 "-다"로 끝나는 기본형이다.
+        - 한국어로만 적는다. 한자·가나·로마자를 섞지 않는다.
+        - 뜻이 겹치면 하나만 적는다.
+
+        보기:
+        約束（やくそく）· 명사 · promise, agreement → 약속
+        思う（おもう）· 동사 · to think, to consider → 생각하다
+        狙う（ねらう）· 동사 · to aim at, to target → 노리다
+        不機嫌（ふきげん）· 형용사 · bad mood, sullen → 언짢은
+        宿命（しゅくめい）· 명사 · fate, destiny → 숙명
         """
     let start = Date()
     var count = 0
