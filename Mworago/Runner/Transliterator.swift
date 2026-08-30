@@ -57,6 +57,24 @@ public enum Transliterator {
         "ㅈ": "Q", "ㅊ": "Q", "ㅋ": "Q", "ㅌ": "Q", "ㅍ": "Q", "ㅂ": "Q", "ㅎ": "Q",
     ]
 
+    // MARK: 표기법이 지우는 것
+
+    /// じ·ち 계열의 초성.
+    ///
+    /// 국립국어원 표기법은 `じゃ·じゅ·じょ` 를 **자·주·조**로, `ちゃ·ちゅ·ちょ` 를
+    /// **차·추·초**로 적는다. じ 와 ち 가 이미 구개음이라 한국어에서 요음성이 표기되지 않는다.
+    /// 그래서 표기법대로 적은 사람이 오히려 못 찾았다 — "쇼조"(少女)가 しょじょ 조차 못 냈다.
+    static let palatalInitials: Set<Character> = ["ㅈ", "ㅉ", "ㅊ"]
+
+    /// `つ` 를 적는 또 하나의 길.
+    ///
+    /// 표기법은 `つ` 를 **쓰**로 적는다(쓰나미 · 쓰시마). 관용 표기인 "츠"만 길이 나 있어서,
+    /// 표기법대로 친 사람이 机(つくえ)에 닿지 못했다. ㅡ 모음에서만 열어 준다 —
+    /// "수"·"사"까지 열면 후보만 불어난다.
+    static func isTsuSpelling(_ syllable: HangulSyllable) -> Bool {
+        (syllable.initial == "ㅅ" || syllable.initial == "ㅆ") && syllable.medial == "ㅡ"
+    }
+
     // MARK: 음절 하나
 
     /// 음절 하나가 만들 수 있는 모라 열들. 일본어에 없는 소리는 여기서 이미 걸러진다.
@@ -81,10 +99,22 @@ public enum Transliterator {
                 case .yoon:  mora = consonant + "y" + String(vowel)
                 case .w:     guard consonant.isEmpty else { continue }; mora = "w" + String(vowel)
                 }
-                guard KanaTable.kana(for: mora) != nil else { continue }
-                let candidate = [mora] + tail
-                if !result.contains(candidate) { result.append(candidate) }
+                var morae = [mora]
+                // 표기법이 요음을 단모음으로 적는 자리 — 조 → じょ · 초 → ちょ
+                if kind == .plain, Self.palatalInitials.contains(syllable.initial) {
+                    morae.append(consonant + "y" + String(vowel))
+                }
+                for mora in morae {
+                    guard KanaTable.kana(for: mora) != nil else { continue }
+                    let candidate = [mora] + tail
+                    if !result.contains(candidate) { result.append(candidate) }
+                }
             }
+        }
+        // 쓰·스 → つ
+        if isTsuSpelling(syllable), KanaTable.kana(for: "tu") != nil {
+            let candidate = ["tu"] + tail
+            if !result.contains(candidate) { result.append(candidate) }
         }
         return result
     }

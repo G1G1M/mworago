@@ -42,25 +42,25 @@ struct TypingGuide: View {
              examples: [.init("센빠이", "셈빠이", result: "先輩")]),
         Rule(name: "작은 っ 은 ㅅ 받침으로",
              examples: [.init("잇쇼", result: "一緒")]),
+        Rule(name: "죠 · 쥬 · 쟈 를 조 · 주 · 자 로 적어도",
+             examples: [.init("쇼죠", "쇼조", result: "少女")]),
+        Rule(name: "つ 는 츠로도 쓰로도",
+             examples: [.init("츠쿠에", "쓰쿠에", result: "机")]),
     ]
 
     /// 가려 적어야 하는 것.
     ///
     /// 여기서 어긋나면 "못 찾았습니다"가 아니라 **엉뚱한 낱말이 나온다.** 그래서 더 헷갈린다 —
     /// 답이 나왔으니 맞게 친 줄 알게 된다. 그것을 나란히 놓아 보이는 것이 이 칸의 일이다.
+    ///
+    /// **한때 셋이었다.** 요음(쇼죠 · 쇼조)과 つ(츠쿠에 · 쓰쿠에)는 후보 생성이 흡수해서
+    /// 위 칸으로 옮겼다. 설명해야 할 제약을 줄이는 편이 설명을 잘 쓰는 것보다 낫다 —
+    /// 짧은 도움말이 읽히는 도움말이다.
     private static let careful: [Rule] = [
-        Rule(name: "죠 · 쥬 · 샤 같은 소리",
-             examples: [.init("쇼죠", result: "少女"),
-                        .init("쇼조", result: "初等")],
-             note: "다이죠부를 다이조부로 치면 아무것도 안 나온다"),
         Rule(name: "탁음",
              examples: [.init("갓코", result: "学校"),
                         .init("캇코", result: "格好")],
              note: "들리는 대로 다 · 타를 가른다"),
-        Rule(name: "つ 는 “츠”",
-             examples: [.init("츠쿠에", result: "机"),
-                        .init("쓰쿠에", result: "救え")],
-             note: "쓰 · 스로 치면 す 로 간다"),
     ]
 
     var body: some View {
