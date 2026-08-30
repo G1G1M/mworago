@@ -35,6 +35,9 @@ struct SearchView: View {
     private static let contentWidth: CGFloat = 640
     /// 입력 바가 차지하는 높이. 그 위에 다른 것을 놓을 때 겹치지 않게 비워 둘 만큼이다.
     private static let inputBarHeight: CGFloat = 92
+    /// 읽기 보조 다이얼까지 얹혔을 때의 높이. 결과가 있을 때만 다이얼이 나오므로
+    /// 목록의 아래 여백은 이쪽을 쓴다 — 120 으로 두었다가 다이얼이 카드를 덮었다.
+    private static let inputBarWithDialHeight: CGFloat = 152
 
     /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
     var collection: CollectionStore? = nil
@@ -143,7 +146,7 @@ struct SearchView: View {
                     }
                 }
                 .padding(.top, 12)
-                .padding(.bottom, 120)   // 입력 바에 가리지 않도록
+                .padding(.bottom, Self.inputBarWithDialHeight)   // 입력 바와 다이얼에 가리지 않도록
                 .frame(maxWidth: Self.contentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
@@ -268,8 +271,14 @@ struct SearchView: View {
                 }
                 .buttonStyle(.plain)
             }
-            Spacer()
         }
+        // **다이얼도 떠 있는 컨트롤이다.** 입력 바만 유리를 두르고 이쪽은 맨몸이라,
+        // 뒤로 지나가는 카드 글자가 그대로 비쳐 읽기 어려웠다.
+        // 내용만큼만 차지하게 두고 같은 유리를 씌운다.
         .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
