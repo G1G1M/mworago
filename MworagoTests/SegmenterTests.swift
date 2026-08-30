@@ -69,3 +69,43 @@ struct SegmenterTests {
         #expect(Segmenter.segment("   ", in: Self.사전들).isEmpty)
     }
 }
+
+/// 모르는 조각이 섞였을 때.
+///
+/// 오타 한 글자에 아는 낱말까지 잃으면 안 된다. 실제로 `다이죠부뷁` 을 치면
+/// 大丈夫 까지 사라지고 "사전에 없어요" 한 줄만 남았다 —
+/// 미지 조각의 벌점이 길이와 무관해서, 통째로 모르는 편이 점수가 높았기 때문이다.
+@Suite("모르는 조각")
+struct UnknownPieceTests {
+
+    static let 사전 = SegmenterTests.사전들
+
+    @Test("아는 낱말 옆에 모르는 조각이 붙어도 아는 것은 찾아 준다")
+    func 부분미지() {
+        let 결과 = Segmenter.segment("다이죠부뷁", in: Self.사전)
+        #expect(결과.contains { $0.hangul == "다이죠부" && !$0.results.isEmpty })
+        // 모르는 자리는 모르는 채로 남는다 — 구멍이 보여야 어디가 틀렸는지 안다.
+        #expect(결과.contains { $0.results.isEmpty })
+    }
+
+    @Test("앞에 붙어도 마찬가지다")
+    func 앞에붙음() {
+        let 결과 = Segmenter.segment("뷁다이죠부", in: Self.사전)
+        #expect(결과.contains { $0.hangul == "다이죠부" && !$0.results.isEmpty })
+    }
+
+    @Test("정말 모르는 구간은 통째로 둔다")
+    func 통째미지() {
+        // 잘게 쪼개 봐야 조각마다 모르기는 마찬가지다. 조각 비용만 더 든다.
+        let 결과 = Segmenter.segment("뷁뷁뷁", in: Self.사전)
+        #expect(결과.count == 1)
+        #expect(결과.first?.results.isEmpty == true)
+    }
+
+    @Test("아는 낱말들 사이에 낀 것도 가른다")
+    func 사이에낌() {
+        let 결과 = Segmenter.segment("아타마뷁이타이", in: Self.사전)
+        #expect(결과.contains { $0.hangul == "아타마" && !$0.results.isEmpty })
+        #expect(결과.contains { $0.hangul == "이타이" && !$0.results.isEmpty })
+    }
+}

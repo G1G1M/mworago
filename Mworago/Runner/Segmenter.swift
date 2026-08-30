@@ -57,15 +57,21 @@ public enum Segmenter {
     /// 제한이 없으면 긴 입력에서 후보가 제곱으로 불어난다.
     private static let maxPieceLength = 10
 
-    /// 사전에 없는 조각에 매기는 점수.
+    /// 사전에 없는 조각에 매기는 점수. **음절 하나당**이다.
     ///
-    /// 조각 비용보다 훨씬 커야 한다. 그러지 않으면 "나누느니 모르는 채로 두자"가 이겨서
-    /// 입력 전체가 한 덩어리의 미지 조각이 된다. 길이와 무관하게 한 번만 깎는 것은,
-    /// 정말 모르는 구간이라면 잘게 쪼개는 것보다 통째로 두는 편이 낫기 때문이다.
+    /// 조각 비용보다 커야 한다. 그러지 않으면 "나누느니 모르는 채로 두자"가 이겨서
+    /// 입력 전체가 한 덩어리의 미지 조각이 된다.
     ///
-    /// 스윕에서 -350 이하는 결과가 모두 같았다. 정확한 값이 중요한 게 아니라
-    /// **충분히 크기만 하면 되는** 값이라, 여유를 둔 -500을 쓴다.
-    public static let defaultUnknownScore = -500.0
+    /// 길이에 비례시키는 것이 중요하다. 한 번만 깎던 때에는 그 벌점이 아는 낱말 하나
+    /// 값보다 커서, `다이죠부뷁` 처럼 오타가 한 글자 붙은 입력이 통째로 미지가 됐다 —
+    /// 大丈夫 까지 함께 사라진다. **오타 한 글자에 아는 낱말까지 잃으면 안 된다.**
+    ///
+    /// 비례로 바꿔도 "정말 모르는 구간은 통째로 둔다"는 그대로다. 잘게 쪼개면
+    /// 벌점 합은 같은데 조각 비용만 더 들기 때문이다. 두 규칙이 서로를 붙잡는다.
+    ///
+    /// 값은 스윕이 골랐다(`--segment-sweep`). 한 번만 깎던 때의 -500 에서 -200 으로
+    /// 옮겨간 것은 이제 길이가 곱해지기 때문이다.
+    public static let defaultUnknownScore = -200.0
 
     /// 조각 하나를 만들 때마다 무는 비용.
     ///
@@ -122,7 +128,14 @@ public enum Segmenter {
                 guard let previous = best[start] else { continue }
                 let piece = String(syllables[start..<end])
                 let results = lookup(piece)
-                let score = (results.first?.score ?? unknownScore) - segmentCost
+                // **모르는 조각은 길수록 나쁘다.** 길이와 무관하게 한 번만 깎으면
+                // 아는 낱말 하나 값보다 벌점이 커서, 다이죠부뷁 처럼 오타가 한 글자 붙은 것이
+                // 통째로 미지가 됐다 — 大丈夫 까지 함께 사라진다.
+                //
+                // 길이에 비례시켜도 "정말 모르는 구간은 통째로 둔다"는 그대로다.
+                // 잘게 쪼개면 벌점 합은 같은데 조각 비용만 더 들기 때문이다.
+                let piecePenalty = unknownScore * Double(end - start)
+                let score = (results.first?.score ?? piecePenalty) - segmentCost
                 let total = previous.score + score
                 if best[end] == nil || total > best[end]!.score {
                     best[end] = (total, start)
