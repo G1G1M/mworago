@@ -10,6 +10,8 @@ import MworagoCore
 struct SegmentCard: View {
     let segment: Segment
     let aid: ReadingAid
+    /// 한자의 한국 독음. 뜻이 아니라 단서라, 뜻 자리가 아니라 한자 곁에 둔다.
+    var hanja: HanjaReading = HanjaReading(tsv: "")
 
     private var top: SearchResult? { segment.results.first }
     private var alternates: [SearchResult] { Array(segment.results.dropFirst().prefix(2)) }
@@ -55,9 +57,16 @@ struct SegmentCard: View {
 
             // 가나로만 쓰는 낱말은 표기가 읽기와 같다. 같은 것을 두 번 보일 필요는 없다.
             if aid.showsKanji, result.headword != result.reading {
-                Text(result.headword)
-                    .font(Theme.japanese(21))
-                    .foregroundStyle(Theme.grey1)
+                HStack(alignment: .firstTextBaseline, spacing: 9) {
+                    Text(result.headword)
+                        .font(Theme.japanese(21))
+                        .foregroundStyle(Theme.grey1)
+                    if let reading = hanja.reading(of: result.headword) {
+                        Text(reading)
+                            .font(Theme.korean(14))
+                            .foregroundStyle(Theme.grey3)
+                    }
+                }
             }
             if aid.showsHangul {
                 Text(segment.hangul)

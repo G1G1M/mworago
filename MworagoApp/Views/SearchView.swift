@@ -59,7 +59,7 @@ struct SearchView: View {
                     notice("찾지 못했습니다", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.")
                 } else {
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { _, segment in
-                        SegmentCard(segment: segment, aid: aid)
+                        SegmentCard(segment: segment, aid: aid, hanja: engine.hanja)
                         Divider().foregroundStyle(Theme.grey3)
                     }
                 }
