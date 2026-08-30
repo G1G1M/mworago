@@ -21,6 +21,8 @@ struct SegmentCard: View {
     /// 고른 카드는 왼쪽에 선 하나를 세워 표시한다. 문장 쪽 강조가 이미 반전이라
     /// 여기까지 반전하면 화면에 검은 덩어리가 둘이 되어 어느 쪽이 답인지 흐려진다.
     var isSelected: Bool = false
+    /// 담아 두는 곳. 없으면 갈피표를 그리지 않는다 — 미리보기와 테스트를 위해서다.
+    var collection: CollectionStore? = nil
 
     private var top: SearchResult? { segment.results.first }
     /// 1위와 같은 낱말은 걸러진 채로 온다 — 大丈夫 가 두 번 보이지 않도록.
@@ -68,6 +70,11 @@ struct SegmentCard: View {
                         .background(Theme.grey4, in: Capsule())
                         .foregroundStyle(Theme.grey1)
                 }
+
+                if let collection {
+                    Spacer(minLength: 8)
+                    bookmark(result, in: collection)
+                }
             }
 
             // 가나로만 쓰는 낱말은 표기가 읽기와 같다. 같은 것을 두 번 보일 필요는 없다.
@@ -89,6 +96,29 @@ struct SegmentCard: View {
                     .foregroundStyle(Theme.grey3)
             }
         }
+    }
+
+    /// 담기.
+    ///
+    /// **자동으로 모으지 않는다.** 찾아본 것을 다 쌓으면 오타와 헛짚은 것까지 교재가 된다.
+    /// 무엇이 내게 걸린 말이었는지는 사용자만 안다.
+    ///
+    /// 담긴 것은 채워진 갈피표다. 강조를 색으로 나누지 않으므로 채움과 비움으로만 가른다.
+    private func bookmark(_ result: SearchResult, in collection: CollectionStore) -> some View {
+        let word = CollectedWord(headword: result.headword,
+                                 reading: result.reading,
+                                 hangul: segment.hangul,
+                                 gloss: result.entry.displayGloss)
+        let held = collection.contains(word)
+        return Button {
+            collection.toggle(word)
+        } label: {
+            Image(systemName: held ? "bookmark.fill" : "bookmark")
+                .font(.system(size: 15))
+                .foregroundStyle(held ? Theme.ink : Theme.grey3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(held ? "\(result.headword) 빼기" : "\(result.headword) 담기")
     }
 
     // MARK: 나머지 후보

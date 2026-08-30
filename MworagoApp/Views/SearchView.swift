@@ -36,6 +36,9 @@ struct SearchView: View {
     /// 입력 바가 차지하는 높이. 그 위에 다른 것을 놓을 때 겹치지 않게 비워 둘 만큼이다.
     private static let inputBarHeight: CGFloat = 92
 
+    /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
+    var collection: CollectionStore? = nil
+
     @State private var engine = SearchEngine()
     /// 실행 인자로 검색어를 넣을 수 있다 (`--query=다이죠부`).
     /// 시뮬레이터에 한글을 타이핑하지 않고도 화면을 확인할 수 있어 스크린샷과 점검에 쓴다.
@@ -69,6 +72,18 @@ struct SearchView: View {
             inputBar
         }
         .onAppear {
+            // `--collect` 는 검색 결과를 전부 담는다. 담기와 모은 것 화면을
+            // 손으로 두드리지 않고 확인하기 위한 것이다.
+            if ProcessInfo.processInfo.arguments.contains("--collect"), let collection {
+                engine.search(input)
+                for segment in engine.segments {
+                    guard let top = segment.results.first else { continue }
+                    collection.toggle(CollectedWord(headword: top.headword,
+                                                    reading: top.reading,
+                                                    hangul: segment.hangul,
+                                                    gloss: top.entry.displayGloss))
+                }
+            }
             if input.isEmpty { inputFocused = true } else { engine.search(input) }
         }
         .sheet(isPresented: $showingGuide) {
@@ -122,7 +137,7 @@ struct SearchView: View {
 
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
                         SegmentCard(segment: segment, aid: aid, hanja: engine.hanja,
-                                    isSelected: selected == index)
+                                    isSelected: selected == index, collection: collection)
                             .id(index)
                         Divider().overlay(Theme.grey3)
                     }
