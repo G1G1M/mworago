@@ -4,7 +4,8 @@ import Foundation
 ///
 /// 이쪽은 답이 하나다. 한국어 화자가 일본어를 한글로 적는 데는 굳어진 관행이 있기 때문이다.
 /// - 청음은 격음으로(`か`→카), 탁음은 평음으로(`が`→가) 적어 둘을 가른다
-/// - `ぱ`행은 경음(`ぱ`→빠)
+/// - `ぱ`행은 촉음·발음 뒤에서만 경음(`せんぱい`→센빠이), 그 밖에는 격음(`ピアノ`→피아노).
+///   일본 고유어에서 `ぱ`행은 `っ`·`ん` 뒤에만 나타나므로, 다른 자리에 오면 대개 외래어다
 /// - 장음은 **버린다** (`だいじょうぶ`→다이죠부). 한국어에 장음 표기가 없다
 /// - 촉음 `っ`은 앞 음절 받침 ㅅ, 발음 `ん`은 받침 ㄴ
 ///
@@ -15,7 +16,7 @@ public enum KanaToHangul {
     // 한글 자모의 유니코드 배열 순서. 조합에 쓸 색인이다.
     private static let 초성_ㄱ = 0, 초성_ㄴ = 2, 초성_ㄷ = 3, 초성_ㄹ = 5, 초성_ㅁ = 6
     private static let 초성_ㅂ = 7, 초성_ㅃ = 8, 초성_ㅅ = 9, 초성_ㅇ = 11, 초성_ㅈ = 12
-    private static let 초성_ㅊ = 14, 초성_ㅋ = 15, 초성_ㅌ = 16, 초성_ㅎ = 18
+    private static let 초성_ㅊ = 14, 초성_ㅋ = 15, 초성_ㅌ = 16, 초성_ㅍ = 17, 초성_ㅎ = 18
 
     private static let 중성_ㅏ = 0, 중성_ㅑ = 2, 중성_ㅔ = 5, 중성_ㅗ = 8, 중성_ㅘ = 9
     private static let 중성_ㅛ = 12, 중성_ㅜ = 13, 중성_ㅠ = 17, 중성_ㅡ = 18, 중성_ㅣ = 20
@@ -51,8 +52,9 @@ public enum KanaToHangul {
         "へ": (초성_ㅎ, 중성_ㅔ), "ほ": (초성_ㅎ, 중성_ㅗ),
         "ば": (초성_ㅂ, 중성_ㅏ), "び": (초성_ㅂ, 중성_ㅣ), "ぶ": (초성_ㅂ, 중성_ㅜ),
         "べ": (초성_ㅂ, 중성_ㅔ), "ぼ": (초성_ㅂ, 중성_ㅗ),
-        "ぱ": (초성_ㅃ, 중성_ㅏ), "ぴ": (초성_ㅃ, 중성_ㅣ), "ぷ": (초성_ㅃ, 중성_ㅜ),
-        "ぺ": (초성_ㅃ, 중성_ㅔ), "ぽ": (초성_ㅃ, 중성_ㅗ),
+        // 기본은 격음. 촉음·발음 뒤에서만 경음으로 바꾼다 (아래 transliterate 참고)
+        "ぱ": (초성_ㅍ, 중성_ㅏ), "ぴ": (초성_ㅍ, 중성_ㅣ), "ぷ": (초성_ㅍ, 중성_ㅜ),
+        "ぺ": (초성_ㅍ, 중성_ㅔ), "ぽ": (초성_ㅍ, 중성_ㅗ),
 
         "ま": (초성_ㅁ, 중성_ㅏ), "み": (초성_ㅁ, 중성_ㅣ), "む": (초성_ㅁ, 중성_ㅜ),
         "め": (초성_ㅁ, 중성_ㅔ), "も": (초성_ㅁ, 중성_ㅗ),
@@ -77,15 +79,18 @@ public enum KanaToHangul {
         let normalized = KanaTable.toHiragana(kana)
         var result = ""
         var pending: (initial: Int, medial: Int)?   // 아직 받침이 붙을 수 있는 음절
+        var previousFinal: Int?                     // 직전 음절에 붙은 받침
 
         func flush() {
             if let p = pending { result.append(syllable(p.initial, p.medial, 종성_없음)) }
             pending = nil
+            previousFinal = nil
         }
         func flushWithFinal(_ final: Int) {
             if let p = pending {
                 result.append(syllable(p.initial, p.medial, final))
                 pending = nil
+                previousFinal = final
             }
         }
 
@@ -114,6 +119,12 @@ public enum KanaToHangul {
                 result.append(character)   // 가나가 아니면 그대로
                 index = next
                 continue
+            }
+
+            // ぱ행은 っ·ん 뒤에서만 경음이 된다. 센빠이·잇빠이는 그래서 경음이고,
+            // 피아노처럼 그 밖의 자리에 오는 것은 외래어라 격음으로 적는다.
+            if initial == 초성_ㅍ, previousFinal == 종성_ㅅ || previousFinal == 종성_ㄴ {
+                initial = 초성_ㅃ
             }
 
             // 뒤따르는 작은 가나가 있으면 요음으로 합친다 (しょ → 쇼)

@@ -31,7 +31,18 @@ struct KanaToHangulTests {
     func 청탁구분() {
         #expect(KanaToHangul.transliterate("かた") == "카타")
         #expect(KanaToHangul.transliterate("がだ") == "가다")
-        #expect(KanaToHangul.transliterate("ぱぴ") == "빠삐")   // ぱ행은 경음
+        #expect(KanaToHangul.transliterate("ぱぴ") == "파피")   // 어두 ぱ행은 격음
+    }
+
+    @Test("ぱ행은 촉음·발음 뒤에서만 경음이 된다")
+    func 경음조건() {
+        // 일본 고유어에서 ぱ행은 っ·ん 뒤에만 나타난다. 그 밖의 자리는 대개 외래어이고,
+        // 외래어는 격음으로 적는 것이 관행이다.
+        #expect(KanaToHangul.transliterate("せんぱい") == "센빠이")
+        #expect(KanaToHangul.transliterate("いっぱい") == "잇빠이")
+        #expect(KanaToHangul.transliterate("ピアノ") == "피아노")
+        #expect(KanaToHangul.transliterate("ピアニスト") == "피아니스토")
+        #expect(KanaToHangul.transliterate("パン") == "판")
     }
 
     @Test("가타카나도 같게 적는다")
