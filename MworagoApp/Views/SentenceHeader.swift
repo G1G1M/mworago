@@ -27,6 +27,10 @@ struct SentenceHeader: View {
     let segments: [Segment]
     /// 지금 고른 조각. 아무것도 안 골랐으면 nil 이고, 그때가 기본 상태다.
     @Binding var selected: Int?
+    /// 글자 크기 설정. **폭을 재는 데 쓰지는 않지만 여기 적어 둔다** —
+    /// `Theme.japaneseWidth` 가 그 설정을 읽으므로, 설정이 바뀌면 이 화면이 다시
+    /// 그려져야 폭도 다시 재어진다.
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

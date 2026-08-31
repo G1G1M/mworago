@@ -39,10 +39,14 @@ enum Theme {
     /// 되살린 문장이 원문과 다른 곳에서 끊겨 보이는 셈이다.
     ///
     /// 그래서 글자가 실제로 차지하는 폭을 재어 자리를 그만큼만 준다.
+    /// **사용자가 정한 글자 크기를 함께 따른다.** `Font.custom(_:size:)` 는 Dynamic Type
+    /// 을 따라 커지는데 폭만 고정 크기로 재면, 글자는 커지고 자리는 그대로라 조각이
+    /// 겹치거나 잘린다. 자간을 맞추려고 넣은 것이 글자를 키운 사람에게는 더 나쁜 화면이 된다.
     static func japaneseWidth(_ text: String, size: CGFloat, weight: Font.Weight = .regular) -> CGFloat {
         let name = weight == .regular ? "ZenMaruGothic-Regular" : "ZenMaruGothic-Medium"
-        let font = UIFont(name: name, size: size) ?? .systemFont(ofSize: size)
-        return (text as NSString).size(withAttributes: [.font: font]).width
+        let base = UIFont(name: name, size: size) ?? .systemFont(ofSize: size)
+        let scaled = UIFontMetrics.default.scaledFont(for: base)
+        return (text as NSString).size(withAttributes: [.font: scaled]).width
     }
 
     /// 한글은 고운돋움. 굵기가 하나뿐이라 위계는 크기와 색으로 만든다.
