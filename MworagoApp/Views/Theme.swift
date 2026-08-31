@@ -59,6 +59,16 @@ enum Theme {
         return (text as NSString).size(withAttributes: [.font: scaled]).width
     }
 
+    /// 이 한글이 차지하는 폭. `japaneseWidth` 와 같은 방식이다.
+    ///
+    /// 글자 수가 달라지는 버튼(`다음` / `시작하기`)에 자리를 미리 잡아 줄 때 쓴다.
+    /// 사용자가 정한 글자 크기를 함께 따르므로, 글자를 키워도 자리가 어긋나지 않는다.
+    static func koreanWidth(_ text: String, size: CGFloat) -> CGFloat {
+        let base = UIFont(name: "GowunDodum-Regular", size: size) ?? .systemFont(ofSize: size)
+        let scaled = UIFontMetrics.default.scaledFont(for: base)
+        return (text as NSString).size(withAttributes: [.font: scaled]).width
+    }
+
     /// 한글은 고운돋움. 굵기가 하나뿐이라 위계는 크기와 색으로 만든다.
     static func korean(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom("GowunDodum-Regular", size: size)

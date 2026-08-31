@@ -33,7 +33,11 @@ enum OnboardingSeen {
 }
 
 struct Onboarding: View {
-    @State private var page = 0
+    /// `--onboarding-page=2` 로 그 장을 펼친 채 띄운다. `--detail` · `--quiz` 와 같은
+    /// 취지다 — 시뮬레이터는 손으로 밀 수 없어 뒷장을 눈으로 볼 길이 없다.
+    @State private var page = ProcessInfo.processInfo.arguments
+        .first { $0.hasPrefix("--onboarding-page=") }
+        .flatMap { Int($0.dropFirst("--onboarding-page=".count)) } ?? 0
     var onDone: () -> Void = {}
 
     private struct Page {
@@ -137,6 +141,15 @@ struct Onboarding: View {
                     .accessibilityHidden(page == 0)
                     .padding(.trailing, 18)
 
+                    // **자리를 가장 긴 글자에 맞춰 잡아 두고 왼쪽에 붙인다.**
+                    //
+                    // 이 버튼은 `Spacer` 뒤에 있어 오른쪽 끝이 붙박이다. 그래서 글자가
+                    // 길어지면 왼쪽으로 자라, 마지막 장에서 `다음` 이 `시작하기` 로 바뀔 때
+                    // 글자가 시작하는 자리가 왼쪽으로 튀었다.
+                    //
+                    // 눈은 자리로 읽는다 — 카드에서 한자 줄이 없어도 자리를 비워 두고,
+                    // 첫 장에서 `이전` 을 감추되 자리는 남기는 것과 같은 규칙이다.
+                    // `이전` 의 자리도 이것이 고정되어야 함께 안정된다.
                     Button(page == pages.count - 1 ? "시작하기" : "다음") {
                         withAnimation(.snappy(duration: 0.18)) {
                             if page == pages.count - 1 { onDone() } else { page += 1 }
@@ -145,6 +158,7 @@ struct Onboarding: View {
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.ink)
                     .buttonStyle(.plain)
+                    .frame(width: Theme.koreanWidth("시작하기", size: 15), alignment: .leading)
                 }
                 .padding(.horizontal, Theme.gutter)
             }
