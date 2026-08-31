@@ -120,25 +120,22 @@ struct SegmentCard: View {
     // 1위가 정답인 비율은 93%지만 3위 안에 있을 비율은 98%다.
     // 그 5%를 사용자가 직접 고를 수 있게 곁에 둔다.
 
-    /// 대안 후보는 **가나와 뜻 한 줄**이다.
+    /// 대안 후보는 **뜻만** 늘어놓는다.
     ///
-    /// 한자를 빼면서 같은 소리의 다른 낱말들이 **같은 가나로 늘어선다** — `かみ` 를 찾으면
-    /// 종이 · 신 · 머리카락이 전부 `かみ` 다. 가르는 것은 이제 뜻뿐이므로, 뜻을 자르지 않고
-    /// 한 줄을 다 내준다.
+    /// 한때는 가나를 앞에 붙였는데, 한자를 뺀 뒤로 그 가나가 **첫 줄과 똑같아졌다** —
+    /// `やめる` 를 찾으면 `やめる 멈추다` · `やめる 퇴사하다` · `やめる sick` 이 되어
+    /// 같은 글자가 세 번 나온다. 대안끼리 가르는 것이 이제 뜻뿐이므로 가나는 정보가 0이다.
+    ///
+    /// **그리고 층을 깼다.** 카드의 규칙은 가나 · 한국어 발음 · 뜻 세 층인데,
+    /// 대안만 "가나 + 뜻" 한 줄이라 같은 카드 안에서 문법이 둘로 갈렸다.
+    /// 뜻만 남기면 위의 뜻 줄에 그대로 이어져 **한 층이 여러 줄인 것**으로 읽힌다.
     private var alternateList: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(alternates.enumerated()), id: \.offset) { _, result in
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(result.reading)
-                            .font(Theme.japanese(16))
-                            .foregroundStyle(Theme.grey1)
-                        Text(result.entry.koreanGloss ?? result.entry.glosses.first ?? "")
-                            .font(Theme.korean(12))
-                            .foregroundStyle(Theme.grey2)
-                            .lineLimit(1)
-                    }
-                }
+                Text(result.entry.koreanGloss ?? result.entry.glosses.first ?? "")
+                    .font(Theme.korean(12))
+                    .foregroundStyle(Theme.grey2)
+                    .lineLimit(1)
             }
         }
         .padding(.top, 2)
