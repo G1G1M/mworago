@@ -159,10 +159,11 @@ struct SegmentCard: View {
                             .foregroundStyle(Theme.grey2)
                             .lineLimit(1)
                     }
-                    // 첫 줄과 같은 규칙이다 — 가나로만 쓰는 낱말은 표기가 읽기와 같아서
-                    // 이 줄이 없다. 없는 층에 빈 자리를 남기지는 않는다.
-                    if aid.showsKanji, result.headword != result.reading {
-                        Text(result.headword)
+                    // 첫 줄과 같은 규칙이다. 가나로만 쓰는 낱말은 보일 것이 없지만
+                    // **자리는 남긴다** — 다이얼이 켠 층이 낱말에 따라 사라지면
+                    // 같은 버튼이 어떤 때는 듣고 어떤 때는 안 듣는 것이 된다.
+                    if aid.showsKanji {
+                        Text(result.headword != result.reading ? result.headword : " ")
                             .font(Theme.japanese(13))
                             .foregroundStyle(Theme.grey2)
                     }

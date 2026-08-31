@@ -40,9 +40,12 @@ struct SentenceHeader: View {
 
             pieces
 
-            // 가나로만 쓰는 문장은 한자가 읽기와 같다. 같은 것을 두 번 보일 필요는 없다.
-            if aid.showsKanji, segments.japanese != segments.kana {
-                Text(segments.japanese)
+            // **다이얼이 켜면 자리가 생긴다.** 가나로만 쓰는 문장은 한자가 읽기와 같아서
+            // 보일 것이 없지만, 그때 줄을 통째로 빼면 "한자까지"를 눌러도 화면이
+            // 그대로다 — 다이얼이 고장 난 것처럼 보인다. 층은 늘 세 칸이고,
+            // 다이얼은 그 칸을 켜고 끌 뿐이다.
+            if aid.showsKanji {
+                Text(segments.japanese != segments.kana ? segments.japanese : " ")
                     .font(Theme.japanese(24))
                     .foregroundStyle(Theme.grey1)
             }
