@@ -114,7 +114,28 @@ struct KanaQuiz: View {
         }
     }
 
+    /// 무슨 차례로 물을까.
+    ///
+    /// **랜덤만 있으면 훑었는지 알 수 없다.** 마흔여섯 자를 다 만났는지, 같은 것만
+    /// 세 번 나온 것인지 셀 방법이 없다. 순서대로는 표의 차례(あ か さ…)를 그대로
+    /// 따라가므로 어디까지 왔는지가 곧 얼마나 남았는지다.
+    enum Order: Int, CaseIterable, Identifiable {
+        case inOrder, random
+        var id: Int { rawValue }
+        var label: String {
+            switch self {
+            case .inOrder: "순서대로"
+            case .random: "랜덤"
+            }
+        }
+    }
+
     @State private var scope: Scope = .hiragana
+    @State private var order: Order = .random
+    /// 이번 판에 물을 차례. 범위와 순서가 바뀌면 다시 짠다 —
+    /// **범위 셋이 각자 제 차례를 갖는다.**
+    @State private var deck: [String] = KanaQuiz.pool.shuffled()
+    @State private var at = 0
     @State private var current: String = KanaQuiz.pool.randomElement() ?? "あ"
     @State private var asKatakana = false
     @State private var revealed = ProcessInfo.processInfo.arguments.contains("--revealed")
@@ -141,7 +162,30 @@ struct KanaQuiz: View {
     /// 축이 둘이 되어 어긋난 것이 더 크게 보인다.
     var body: some View {
         VStack(spacing: 0) {
-            scopeDial
+            // 범위 · 순서 · 초기화. 셋 다 "무엇을 물을까"를 정하는 것이라 한자리에 모은다.
+            VStack(spacing: 10) {
+                scopeDial
+                HStack(spacing: 10) {
+                    orderDial
+                    Button { reset() } label: {
+                        Text("초기화")
+                            .font(Theme.korean(12.5))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Theme.grey4, in: Capsule())
+                            .foregroundStyle(Theme.grey1)
+                    }
+                    .buttonStyle(.plain)
+                }
+                // 몇째까지 왔는가. **순서대로일 때만 뜻이 있다** — 섞인 차례에서
+                // "12/46"은 남은 것이 무엇인지 말해 주지 않는다.
+                if order == .inOrder {
+                    Text("\(at + 1) / \(deck.count)")
+                        .font(Theme.korean(11))
+                        .foregroundStyle(Theme.grey3)
+                        .monospacedDigit()
+                }
+            }
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, Theme.screenTop)
 
@@ -190,6 +234,27 @@ struct KanaQuiz: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// 순서 다이얼. 범위 다이얼과 같은 문법이다 — 평평하고, 고른 것 하나만 검게 채워진다.
+    private var orderDial: some View {
+        HStack(spacing: 5) {
+            ForEach(Order.allCases) { option in
+                let selected = option == order
+                Button {
+                    order = option
+                    reset()
+                } label: {
+                    Text(option.label)
+                        .font(Theme.korean(12.5, weight: selected ? .semibold : .regular))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(selected ? Theme.ink : .clear, in: Capsule())
+                        .foregroundStyle(selected ? Theme.paper : Theme.grey2)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     private var scopeDial: some View {
         HStack(spacing: 7) {
             ForEach(Scope.allCases) { option in
@@ -197,7 +262,7 @@ struct KanaQuiz: View {
                 Button {
                     withAnimation(.snappy(duration: 0.18)) {
                         scope = option
-                        next()
+                        reset()
                     }
                 } label: {
                     Text(option.label)
@@ -224,16 +289,27 @@ struct KanaQuiz: View {
         .buttonStyle(.plain)
     }
 
-    /// 다음 글자. 같은 글자가 잇달아 나오면 넘긴 것 같지 않다.
+    /// 다음 글자. **짠 차례를 따라간다** — 끝에 닿으면 처음으로 돌아간다.
+    ///
+    /// 한때는 매번 무작위로 뽑고 같은 글자만 피했다. 그러면 마흔여섯 자를 다 만났는지
+    /// 알 수 없고, 운이 나쁘면 몇 자를 영영 못 본다.
     private func next() {
-        var pick = current
-        var guard_ = 0
-        while pick == current, guard_ < 8 {
-            pick = Self.pool.randomElement() ?? "あ"
-            guard_ += 1
-        }
+        guard !deck.isEmpty else { return }
+        at = (at + 1) % deck.count
         withAnimation(.snappy(duration: 0.18)) {
-            current = pick
+            current = deck[at]
+            asKatakana = scope == .katakana || (scope == .both && Bool.random())
+            revealed = false
+        }
+    }
+
+    /// 처음으로. **랜덤이면 다시 섞는다** — 초기화가 같은 차례를 되풀이하면
+    /// 무작위라고 할 수 없다.
+    private func reset() {
+        deck = order == .random ? Self.pool.shuffled() : Self.pool
+        at = 0
+        withAnimation(.snappy(duration: 0.18)) {
+            current = deck.first ?? "あ"
             asKatakana = scope == .katakana || (scope == .both && Bool.random())
             revealed = false
         }
