@@ -32,6 +32,32 @@ enum Theme {
     /// 밝기에 따라 갈리는 색 하나.
     ///
     /// 색마다 두 값을 한 줄에 나란히 적어 둔다. 밝은 벌과 어두운 벌을 다른 곳에 두면
+    // MARK: 간격
+    //
+    // **숫자를 화면마다 직접 쓰지 않는다.** 눈대중으로 맞추면 그때는 비슷해 보여도
+    // 화면을 옮길 때 글 시작점이 미세하게 움직인다. 실제로 좌우 여백이 20·24·28·32 로,
+    // 최대 폭이 460·520·640 으로 갈려 있었다. 색과 서체가 그렇듯 간격도 한 자리에 두고
+    // 이름으로 꺼내 쓴다 — 이름이 있으면 무엇과 무엇이 같은 뜻인지도 드러난다.
+
+    /// 화면 좌우 여백. 어느 화면에서도 글은 여기서 시작한다.
+    static let gutter: CGFloat = 24
+    /// 섹션과 섹션 사이. **묶인 것은 붙고 다른 것은 떨어진다** — 그 대비를 만드는 값이라
+    /// 아래 둘보다 뚜렷하게 커야 한다.
+    static let sectionGap: CGFloat = 34
+    /// 한 섹션 안의 덩어리 사이.
+    static let blockGap: CGFloat = 18
+    /// 붙어 있는 줄 사이 — 제목과 부제처럼 한 덩어리로 읽히는 것.
+    static let lineGap: CGFloat = 7
+
+    /// 읽는 화면의 최대 폭. 한 줄이 너무 길면 다음 줄 첫머리를 눈이 놓친다.
+    static let readWidth: CGFloat = 560
+    /// 목록 화면의 최대 폭. 훑는 화면이라 한 번에 많이 들어오는 편이 낫다.
+    static let listWidth: CGFloat = 640
+
+    /// 화면 맨 위·맨 아래 여백.
+    static let screenTop: CGFloat = 18
+    static let screenBottom: CGFloat = 36
+
     /// 한쪽만 고치고 지나가기 쉽고, 그러면 어느 한쪽에서만 대비가 무너진다.
     private static func adaptive(light: UIColor, dark: UIColor) -> Color {
         Color(UIColor { $0.userInterfaceStyle == .dark ? dark : light })

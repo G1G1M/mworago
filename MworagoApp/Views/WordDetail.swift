@@ -46,10 +46,10 @@ struct WordDetail: View {
                     collectedAt
                     actions
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.top, 8)
-                .padding(.bottom, 32)
-                .frame(maxWidth: 520, alignment: .leading)
+                .padding(.bottom, Theme.screenBottom)
+                .frame(maxWidth: Theme.readWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.paper)

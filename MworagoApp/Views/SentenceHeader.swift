@@ -55,7 +55,7 @@ struct SentenceHeader: View {
                     .foregroundStyle(Theme.grey3)
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.top, 24)
         // 아래를 카드보다 훨씬 크게 벌린다. 카드끼리는 18 + 18 로 붙어 있고 이쪽은 32 + 18 이라,
         // 같은 굵기의 선을 사이에 두고도 "여기서 한 덩어리가 끝난다"가 읽힌다.

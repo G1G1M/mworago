@@ -43,7 +43,7 @@ struct SegmentCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.vertical, 18)
         .overlay(alignment: .leading) {
             Theme.ink

@@ -32,7 +32,7 @@ enum ReadingAid: Int, CaseIterable, Identifiable {
 
 struct SearchView: View {
     /// 한 줄이 지나치게 길어지면 눈이 되돌아올 곳을 잃는다. iPad 에서 특히 그렇다.
-    private static let contentWidth: CGFloat = 640
+    private static let contentWidth: CGFloat = Theme.listWidth
     /// 입력 바가 차지하는 높이. 그 위에 다른 것을 놓을 때 겹치지 않게 비워 둘 만큼이다.
     private static let inputBarHeight: CGFloat = 92
     /// 읽기 보조 다이얼까지 얹혔을 때의 높이. 결과가 있을 때만 다이얼이 나오므로
@@ -201,7 +201,7 @@ struct SearchView: View {
             }
             .padding(.top, 6)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 24)
     }
 
@@ -210,7 +210,7 @@ struct SearchView: View {
             Text(title).font(Theme.korean(19, weight: .medium)).foregroundStyle(Theme.ink)
             Text(detail).font(Theme.korean(14)).foregroundStyle(Theme.grey2)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 24)
     }
 
@@ -260,7 +260,9 @@ struct SearchView: View {
             )
         }
         .frame(maxWidth: Self.contentWidth)
-        .padding(.horizontal, 20)
+        // 떠 있는 바지만 가장자리는 글이 시작하는 자리에 맞춘다 — 혼자 4pt 밖으로
+        // 나가 있으면 아래로 스크롤할 때 바깥선이 본문과 어긋나 보인다.
+        .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 14)
     }
 

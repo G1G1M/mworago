@@ -48,7 +48,7 @@ struct LibraryView: View {
         ProcessInfo.processInfo.arguments.contains("--detail")
     }
 
-    private static let contentWidth: CGFloat = 640
+    private static let contentWidth: CGFloat = Theme.listWidth
 
     private var days: [CollectedWord.Day] { CollectedWord.byDay(collection.words) }
 
@@ -115,7 +115,7 @@ struct LibraryView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("교재")
+                Text("낱말")
                     .font(Theme.korean(24, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                 Text("\(collection.words.count)")
@@ -129,7 +129,7 @@ struct LibraryView: View {
                 currentFolderRow
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.top, 18)
         .padding(.bottom, 14)
     }
@@ -237,7 +237,7 @@ struct LibraryView: View {
                 }
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.vertical, 18)
     }
 
@@ -280,7 +280,7 @@ struct LibraryView: View {
                 }
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.vertical, 18)
     }
 
@@ -324,13 +324,13 @@ struct LibraryView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(word.headword) 빼기")
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.gutter)
         .padding(.vertical, 16)
     }
 
     private var empty: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("아직 교재가 없어요")
+            Text("아직 담은 낱말이 없어요")
                 .font(Theme.korean(22, weight: .semibold))
                 .foregroundStyle(Theme.ink)
             Text("찾기에서 낱말 옆의 갈피표를 누르면 여기 쌓입니다.")
@@ -349,8 +349,8 @@ struct LibraryView: View {
                 .foregroundStyle(Theme.grey3)
                 .padding(.top, 6)
         }
-        .frame(maxWidth: 460, alignment: .leading)
-        .padding(.horizontal, 28)
+        .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        .padding(.horizontal, Theme.gutter)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.top, 40)
     }

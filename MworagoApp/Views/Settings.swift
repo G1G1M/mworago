@@ -69,9 +69,9 @@ struct Settings: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 30) {
+                VStack(alignment: .leading, spacing: Theme.sectionGap) {
                     section("화면") {
-                        VStack(alignment: .leading, spacing: 9) {
+                        VStack(alignment: .leading, spacing: Theme.lineGap + 2) {
                             dial
                             Text("고르지 않으면 기기 설정을 따릅니다.")
                                 .font(Theme.korean(13))
@@ -103,10 +103,10 @@ struct Settings: View {
                         .foregroundStyle(Theme.grey2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 6)
-                .padding(.bottom, 36)
-                .frame(maxWidth: 520, alignment: .leading)
+                .padding(.horizontal, Theme.gutter)
+                .padding(.top, Theme.screenTop)
+                .padding(.bottom, Theme.screenBottom)
+                .frame(maxWidth: Theme.readWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.paper)
@@ -139,8 +139,8 @@ struct Settings: View {
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: Theme.blockGap) {
+            VStack(alignment: .leading, spacing: Theme.lineGap) {
                 Text(title)
                     .font(Theme.korean(12))
                     .tracking(0.6)

@@ -80,9 +80,9 @@ struct TypingGuide: View {
                     section("가려 적어야 하는 것", rules: Self.careful)
 
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
-                .frame(maxWidth: 520, alignment: .leading)
+                .padding(.horizontal, Theme.gutter)
+                .padding(.bottom, Theme.screenBottom)
+                .frame(maxWidth: Theme.readWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.paper)

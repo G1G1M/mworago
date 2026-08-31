@@ -91,7 +91,7 @@ struct Onboarding: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .frame(maxWidth: 460, alignment: .leading)
+                .frame(maxWidth: Theme.readWidth, alignment: .leading)
 
                 Spacer(minLength: 0)
 
@@ -111,9 +111,9 @@ struct Onboarding: View {
                     .foregroundStyle(Theme.ink)
                     .buttonStyle(.plain)
                 }
-                .frame(maxWidth: 460)
+                .frame(maxWidth: Theme.readWidth)
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, Theme.gutter)
             .padding(.bottom, 40)
             .frame(maxWidth: .infinity)
 
@@ -127,7 +127,7 @@ struct Onboarding: View {
                 }
                 Spacer()
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Theme.gutter)
             .padding(.top, 14)
         }
     }

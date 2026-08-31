@@ -115,9 +115,9 @@ struct Credits: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 32)
-            .frame(maxWidth: 520, alignment: .leading)
+            .padding(.horizontal, Theme.gutter)
+            .padding(.bottom, Theme.screenBottom)
+            .frame(maxWidth: Theme.readWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(Theme.paper)
