@@ -60,13 +60,19 @@ struct Onboarding: View {
                     .font(.system(size: 38))
                     .foregroundStyle(Theme.ink)),
                  title: "담으면 교재가 됩니다",
-                 detail: "한 화를 보며 찾은 것들은 같은 날 모이니,\n날짜가 곧 그 화가 돼요."),
+                 // 전에는 "한 화를 보며 찾은 것들은 같은 날 모이니 날짜가 곧 그 화"였다.
+                 // **두 번 낡은 말이다.** 날짜는 어느 화를 봤는지 앱이 몰라서 쓰던
+                 // 대용품인데 이제 담을 때 묶음을 직접 고르고, 애초에 영상을 안 보고
+                 // 온 사람에게 "한 화"는 없는 말이다.
+                 detail: "갈피표를 누르면 어디에 넣을지 물어봐요.\n묶음은 마음대로 만들고 옮길 수 있습니다."),
             Page(sample: AnyView(
                 Image(systemName: "waveform")
                     .font(.system(size: 38))
                     .foregroundStyle(Theme.ink)),
                  title: "다시 만나요",
-                 detail: "한글만 보고 떠올린 다음 뒤집어 확인합니다.\n채점하지 않아요."),
+                 // 앞면이 한글에서 **가나**로 바뀌었다 — 한글 음차는 찾을 때 쓰는
+                 // 열쇠지 익힐 것이 아니고, 자막에 뜨는 것은 `いたい` 이지 `이타이` 가 아니다.
+                 detail: "가나를 보고 뜻을 떠올린 다음 뒤집어 맞춰 봐요.\n채점하지 않아요."),
         ]
     }
 
@@ -75,25 +81,39 @@ struct Onboarding: View {
             Theme.paper.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
-                Spacer(minLength: 0)
+                // **넘기는 일은 시스템에 맡긴다.** 손가락으로 미는 것은 이 화면에서
+                // 가장 먼저 해 보는 몸짓인데, 직접 만들면 속도·되돌아옴·경계에서
+                // 멈추는 것까지 다시 만들어야 한다.
+                //
+                // 점은 우리 것을 쓴다(`indexDisplayMode: .never`). 시스템 점은 색을
+                // 맞추기 번거롭고, 아래 줄에 이미 자리를 잡고 있다.
+                TabView(selection: $page) {
+                    ForEach(pages.indices, id: \.self) { i in
+                        VStack(alignment: .leading, spacing: 0) {
+                            Spacer(minLength: 0)
+                            VStack(alignment: .leading, spacing: 26) {
+                                pages[i].sample
+                                    .frame(height: 96, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 26) {
-                    pages[page].sample
-                        .frame(height: 96, alignment: .leading)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(pages[page].title)
-                            .font(Theme.korean(26, weight: .semibold))
-                            .foregroundStyle(Theme.ink)
-                        Text(pages[page].detail)
-                            .font(Theme.korean(15))
-                            .foregroundStyle(Theme.grey2)
-                            .fixedSize(horizontal: false, vertical: true)
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text(pages[i].title)
+                                        .font(Theme.korean(26, weight: .semibold))
+                                        .foregroundStyle(Theme.ink)
+                                    Text(pages[i].detail)
+                                        .font(Theme.korean(15))
+                                        .foregroundStyle(Theme.grey2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .frame(maxWidth: Theme.readWidth, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, Theme.gutter)
+                        .tag(i)
                     }
                 }
-                .frame(maxWidth: Theme.readWidth, alignment: .leading)
-
-                Spacer(minLength: 0)
+                .tabViewStyle(.page(indexDisplayMode: .never))
 
                 HStack(spacing: 8) {
                     ForEach(pages.indices, id: \.self) { i in
@@ -102,6 +122,20 @@ struct Onboarding: View {
                             .frame(width: 6, height: 6)
                     }
                     Spacer()
+
+                    // **첫 장에서도 자리는 남긴다.** 통째로 빼면 `다음` 이 좌우로
+                    // 움직여, 같은 곳을 누르려는 손이 장마다 다시 겨눈다.
+                    Button("이전") {
+                        withAnimation(.snappy(duration: 0.18)) { page -= 1 }
+                    }
+                    .font(Theme.korean(15))
+                    .foregroundStyle(Theme.grey2)
+                    .buttonStyle(.plain)
+                    .opacity(page == 0 ? 0 : 1)
+                    .disabled(page == 0)
+                    .accessibilityHidden(page == 0)
+                    .padding(.trailing, 18)
+
                     Button(page == pages.count - 1 ? "시작하기" : "다음") {
                         withAnimation(.snappy(duration: 0.18)) {
                             if page == pages.count - 1 { onDone() } else { page += 1 }
@@ -112,8 +146,9 @@ struct Onboarding: View {
                     .buttonStyle(.plain)
                 }
                 .frame(maxWidth: Theme.readWidth)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, Theme.gutter)
             }
-            .padding(.horizontal, Theme.gutter)
             .padding(.bottom, 40)
             .frame(maxWidth: .infinity)
 
