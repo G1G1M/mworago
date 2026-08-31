@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 이 앱은 사람에 대한 것을 하나도 모으지 않는다. 사전을 통째로 싣고
+         네트워크를 쓰지 않으며, 모은 낱말은 기기 안 파일에만 있다. -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+    <!-- 사유를 밝혀야 하는 API(UserDefaults·파일 타임스탬프·디스크 용량 등)를
+         쓰지 않는다. 쓰게 되면 여기에 사유를 적어야 한다. -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array/>
+</dict>
+</plist>

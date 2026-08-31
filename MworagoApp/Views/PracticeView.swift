@@ -11,11 +11,19 @@ import MworagoCore
 /// 여기서 하려는 일은 **다시 마주치게 하는 것**뿐이다.
 struct PracticeView: View {
     let collection: CollectionStore
+    /// 교재에서 하루치만 들고 건너왔을 때 그 낱말들. 비어 있으면 모은 것 전체를 훑는다.
+    ///
+    /// **늘 전체를 훑으면 오늘 본 것을 다시 만나기까지 한참이 걸린다.** 스무 날치가
+    /// 쌓인 뒤에는 더 그렇다. 어느 화를 복습할지는 사용자가 교재에서 고른다.
+    var subset: [CollectedWord]? = nil
+    var subsetLabel: String? = nil
+    /// 하루치에서 빠져나와 전체로 돌아간다.
+    var onClearSubset: () -> Void = {}
 
     @State private var index = 0
     @State private var revealed = false
 
-    private var words: [CollectedWord] { collection.words }
+    private var words: [CollectedWord] { subset ?? collection.words }
     private var current: CollectedWord? {
         words.indices.contains(index) ? words[index] : words.first
     }
@@ -24,6 +32,40 @@ struct PracticeView: View {
         ZStack {
             Theme.paper.ignoresSafeArea()
             if let word = current { card(word) } else { empty }
+            if let subsetLabel { subsetBanner(subsetLabel) }
+        }
+        // 하루치를 새로 골라 오면 처음 낱말부터 시작한다.
+        .onChange(of: subsetLabel) { _, _ in
+            index = 0
+            revealed = false
+        }
+    }
+
+    /// 지금 무엇을 연습하고 있는지. 전체가 아니라면 그 사실이 화면에 있어야 한다 —
+    /// 몇 장 넘기다 보면 어디서 온 묶음인지 잊는다.
+    private func subsetBanner(_ label: String) -> some View {
+        VStack {
+            HStack(spacing: 10) {
+                Text(label)
+                    .font(Theme.korean(13, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                Text("\(words.count)개")
+                    .font(Theme.korean(13))
+                    .foregroundStyle(Theme.grey2)
+                Button(action: onClearSubset) {
+                    Text("전체")
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey2)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("모은 낱말 전체를 연습합니다")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5))
+            .padding(.top, 14)
+            Spacer()
         }
     }
 

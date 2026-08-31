@@ -90,6 +90,30 @@ struct Credits: View {
                     .font(Theme.korean(13))
                     .foregroundStyle(Theme.grey2)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Divider().overlay(Theme.grey3)
+
+                // 개인정보 처리방침. 모으는 것이 없으면 방침도 짧아야 한다 —
+                // 아무것도 안 한다는 말을 길게 쓰면 오히려 무언가 하는 것처럼 읽힌다.
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("개인정보")
+                        .font(Theme.korean(16))
+                        .foregroundStyle(Theme.ink)
+                    Text("""
+                        이 앱은 아무것도 모으지 않습니다. 계정도, 위치도, 사용 기록도 \
+                        받지 않고 어디로도 보내지 않습니다.
+                        """)
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey1)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("""
+                        사전은 앱 안에 통째로 들어 있어 찾을 때 인터넷을 쓰지 않습니다. \
+                        모은 낱말은 기기 안 파일에만 있고, 앱을 지우면 함께 사라집니다.
+                        """)
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)

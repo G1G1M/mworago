@@ -1,10 +1,14 @@
 import SwiftUI
+import MworagoCore
 
-/// 탭 넷.
+/// 탭 셋.
 ///
-/// 앱의 이야기가 이 차례다 — 걸린 대사를 **찾고**, 찾은 것이 **모이고**,
-/// 모인 것이 그 화의 **교재**가 되고, 마지막에 **따라 말한다**.
-/// 그래서 탭 순서가 곧 사용자가 겪는 순서다.
+/// 앱의 이야기가 이 차례다 — 걸린 대사를 **찾고**, 찾은 것이 그 화의 **교재**가 되고,
+/// 마지막에 **따라 말한다**. 그래서 탭 순서가 곧 사용자가 겪는 순서다.
+///
+/// 넷이던 것을 셋으로 줄였다. "모은 것"과 "도감"은 같은 낱말을 평평하게 보느냐
+/// 날짜로 묶어 보느냐의 차이뿐이라 탭 두 칸을 쓸 일이 아니었고, 담기 전에는
+/// **빈 화면이 셋**이라 처음 온 사람에게 같은 말을 세 번 했다.
 ///
 /// 탭바는 표준 컨트롤을 그대로 쓰고 색만 맞춘다. 직접 그리면 시스템이 주는 것
 /// (아이패드의 자리, 손대기 좋은 크기, 손쉬운 사용)을 전부 다시 만들어야 한다.
@@ -15,6 +19,9 @@ struct RootView: View {
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
     /// 다른 탭에서 찾기로 넘기는 검색어.
     @State private var pendingQuery: String?
+    /// 교재에서 하루치를 들고 연습으로 넘길 때 그 낱말들.
+    @State private var practiceSubset: [CollectedWord]?
+    @State private var practiceLabel: String?
     @State private var tab: RootTab = RootTab(argument: ProcessInfo.processInfo.arguments)
 
     /// 낱말을 들고 찾기로 건너간다.
@@ -23,15 +30,23 @@ struct RootView: View {
         tab = .find
     }
 
+    /// 하루치를 들고 연습으로 건너간다. 날짜는 그 화의 이름이므로 함께 넘긴다.
+    private func goPractice(_ words: [CollectedWord]) {
+        guard let first = words.first else { return }
+        practiceSubset = words
+        practiceLabel = first.collectedAt.formatted(.dateTime.month(.wide).day())
+        tab = .practice
+    }
+
     enum RootTab: Hashable {
-        case find, collection, book, practice
+        case find, library, practice
 
         init(argument arguments: [String]) {
             let name = arguments.first { $0.hasPrefix("--tab=") }
                 .map { String($0.dropFirst("--tab=".count)) }
             switch name {
-            case "collection": self = .collection
-            case "book": self = .book
+            // 탭을 합치기 전 이름으로 띄우던 스크립트가 있어 옛 이름도 받는다.
+            case "library", "collection", "book": self = .library
             case "practice": self = .practice
             default: self = .find
             }
@@ -48,20 +63,20 @@ struct RootView: View {
                 Image(systemName: "magnifyingglass")
                     .accessibilityLabel("찾기")
             }
-            Tab(value: RootTab.collection) {
-                CollectionView(collection: collection, onPick: goFind)
-            } label: {
-                Image(systemName: "bookmark")
-                    .accessibilityLabel("모은 것")
-            }
-            Tab(value: RootTab.book) {
-                BookView(collection: collection, onPick: goFind)
+            Tab(value: RootTab.library) {
+                LibraryView(collection: collection, onPick: goFind, onPractice: goPractice)
             } label: {
                 Image(systemName: "books.vertical")
-                    .accessibilityLabel("도감")
+                    .accessibilityLabel("교재")
             }
             Tab(value: RootTab.practice) {
-                PracticeView(collection: collection)
+                PracticeView(collection: collection,
+                             subset: practiceSubset,
+                             subsetLabel: practiceLabel,
+                             onClearSubset: {
+                                 practiceSubset = nil
+                                 practiceLabel = nil
+                             })
             } label: {
                 Image(systemName: "waveform")
                     .accessibilityLabel("연습")
