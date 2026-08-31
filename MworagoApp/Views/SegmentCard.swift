@@ -25,6 +25,16 @@ struct SegmentCard: View {
     /// 화면에 하나여야 하는데, 카드마다 시트를 달면 조각 수만큼 생긴다.
     var onCollect: (CollectedWord) -> Void = { _ in }
 
+    /// 다른 뜻을 펼쳐 놓았는가.
+    ///
+    /// **카드는 세 층이다** — 가나 · 한국어 발음 · 뜻. 대안 후보를 그 아래 늘어놓으면
+    /// 카드마다 층이 넷도 되고 다섯도 되어, 훑는 눈이 매번 어디까지가 이 낱말인지 센다.
+    ///
+    /// 그렇다고 버릴 수도 없다. 1위가 정답일 확률은 93.8%지만 3위 안에 있을 확률은
+    /// 97.8%다 — 그 4%가 사전이 헛짚었을 때 사용자가 스스로 찾아낼 유일한 길이다.
+    /// **접어 두고 누르면 편다.** 기본은 세 층이고, 더 볼 사람만 한 번 더 누른다.
+    @State private var expanded = false
+
     private var top: SearchResult? { segment.results.first }
     /// 1위와 같은 낱말은 걸러진 채로 온다 — 大丈夫 가 두 번 보이지 않도록.
     private var alternates: [SearchResult] { segment.alternates() }
@@ -38,7 +48,13 @@ struct SegmentCard: View {
                         .font(Theme.korean(14))
                         .foregroundStyle(Theme.grey1)
                 }
-                if !alternates.isEmpty { alternateList }
+                if !alternates.isEmpty {
+                    if expanded {
+                        alternateList
+                    } else {
+                        moreButton
+                    }
+                }
             } else {
                 notFound
             }
@@ -129,6 +145,26 @@ struct SegmentCard: View {
     /// **그리고 층을 깼다.** 카드의 규칙은 가나 · 한국어 발음 · 뜻 세 층인데,
     /// 대안만 "가나 + 뜻" 한 줄이라 같은 카드 안에서 문법이 둘로 갈렸다.
     /// 뜻만 남기면 위의 뜻 줄에 그대로 이어져 **한 층이 여러 줄인 것**으로 읽힌다.
+    /// 접혀 있을 때의 한 줄. **개수를 적는다** — 몇 개가 더 있는지 알아야 누를지 정한다.
+    ///
+    /// 글자를 회색으로만 두고 꼬리표나 테두리를 붙이지 않는다. 이 카드에서 눌러야 하는
+    /// 것은 갈피표와 소리이고, 이것은 "더 있다"는 표시일 뿐이라 그 둘과 무게를 겨루면 안 된다.
+    private var moreButton: some View {
+        Button {
+            withAnimation(.snappy(duration: 0.18)) { expanded = true }
+        } label: {
+            HStack(spacing: 5) {
+                Text("다른 뜻 \(alternates.count)")
+                    .font(Theme.korean(12))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .medium))
+            }
+            .foregroundStyle(Theme.grey3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     private var alternateList: some View {
         VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(alternates.enumerated()), id: \.offset) { _, result in
@@ -137,6 +173,16 @@ struct SegmentCard: View {
                     .foregroundStyle(Theme.grey2)
                     .lineLimit(1)
             }
+            Button {
+                withAnimation(.snappy(duration: 0.18)) { expanded = false }
+            } label: {
+                Text("접기")
+                    .font(Theme.korean(12))
+                    .foregroundStyle(Theme.grey3)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
         }
         .padding(.top, 2)
     }
