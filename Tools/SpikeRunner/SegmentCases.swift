@@ -138,11 +138,14 @@ enum SegmentEval {
     }
 
     static func evaluate(_ cases: [SegmentCase], index: some DictionaryLookup,
-                         frequency: FrequencyList?, segmentCost: Double,
+                         frequency: FrequencyList?,
+                         weights: Ranker.Weights = Ranker.Weights(),
+                         segmentCost: Double,
                          unknownScore: Double = Segmenter.defaultUnknownScore) -> Score {
         var score = Score()
         for testCase in cases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
+                                             weights: weights,
                                              segmentCost: segmentCost, unknownScore: unknownScore)
             let mine = segments.map(\.hangul)
             score.total += 1

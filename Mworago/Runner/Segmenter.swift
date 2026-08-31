@@ -85,12 +85,31 @@ public enum Segmenter {
     /// 활용형이 든 문장을 표본에서 빼고 쟀을 때는 120이 최적이었다. 활용형을 넣자
     /// 135로 옮겨 갔고 완전일치도 64%에서 43%로 떨어졌다. 쉬운 문장만 골라 재면
     /// 성적도 최적값도 함께 왜곡된다.
-    public static let defaultSegmentCost = 135.0
+    ///
+    /// **135 는 배포판이 쓰지 않는 빈도 목록(JPDB)으로 고른 값이었다.** 배포판이 싣는
+    /// JESC 로 다시 훑으니 140 이었다. 자료가 다르면 최적값도 달라진다.
+    public static let defaultSegmentCost = 140.0
+
+    /// 분절이 쓰는 가중치. 낱말 검색과 한 가지가 다르다 — **활용을 되돌린 것에 무는 벌점**.
+    ///
+    /// 낱말 검색에서 이 벌점(25)은 타당하다. 사용자가 낱말 하나를 쳤다면 등재형일
+    /// 공산이 크기 때문이다. 그런데 **문장 안에서는 활용형이 정상**이다. 그 벌점 때문에
+    /// `카케타`(かけた)가 `카케`+`타` 로 갈렸다 — `た` 는 조동사로 어느 말뭉치에서나
+    /// 최상위 빈도라 두 조각의 합이 활용형 하나를 이겨 버린다.
+    /// 틀린 문장을 뽑아 보니 **실패의 76%가 이렇게 잘게 쪼갠 것**이었다.
+    ///
+    /// 5 가 가장 나았다(완전일치 27.7% → 34.0%, 조각 비용 140 과 함께). 0 이 아닌 것은
+    /// 등재형이 있으면 그쪽을 먼저 보는 편이 여전히 낫기 때문이다(0 에서 33.0%).
+    public static let defaultWeights: Ranker.Weights = {
+        var weights = Ranker.Weights()
+        weights.deinflectionPenalty = 5
+        return weights
+    }()
 
     public static func segment(_ input: String,
                                in index: some DictionaryLookup,
                                frequency: FrequencyList? = nil,
-                               weights: Ranker.Weights = Ranker.Weights(),
+                               weights: Ranker.Weights = defaultWeights,
                                segmentCost: Double = defaultSegmentCost,
                                unknownScore: Double = defaultUnknownScore) -> [Segment] {
         var segments: [Segment] = []

@@ -74,6 +74,15 @@ let doSegmentSweep = args.contains("--segment-sweep")
 // 틀린 케이스만 찍는다. 성적표는 얼마나 틀렸는지는 알려 주지만
 // **무엇이** 틀렸는지는 안 알려 준다. 원인을 나누려면 실물을 봐야 한다.
 let doSegmentFails = args.contains("--segment-fails")
+// 활용을 되돌린 결과에 무는 벌점. 낱말 검색에서 정한 값이 분절에도 맞는지는
+// 따로 재야 안다 — 분절에서는 이 벌점이 활용형을 조각내는 쪽을 편들 수 있다.
+let deinflectionPenalty = flagValues("--deinf-penalty").first.flatMap(Double.init)
+// 분절은 앱과 같은 기본값에서 출발한다 — 도구가 다른 값을 쓰면 여기 숫자가 앱 숫자가 아니다.
+var tunedWeights = Segmenter.defaultWeights
+if let deinflectionPenalty { tunedWeights.deinflectionPenalty = deinflectionPenalty }
+// 낱말 검색은 등재형 쪽에 무게를 두는 본래 값을 쓴다(활용 벌점 25).
+var wordWeights = Ranker.Weights()
+if let deinflectionPenalty { wordWeights.deinflectionPenalty = deinflectionPenalty }
 let buildFrequencyLimit = flagValues("--build-frequency").first.flatMap(Int.init)
 let buildIndexPath = flagValues("--build-index").first
 let useIndexPath = flagValues("--index").first
@@ -84,7 +93,7 @@ let positional: [String] = {
     while i < args.count {
         if args[i].hasPrefix("--") {
             let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
-                || args[i] == "--build-index" || args[i] == "--index"
+                || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -302,9 +311,12 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
     if doSegmentFails {
         print("# 틀린 분절 — 입력\t정답\t내가 나눈 것\t정답표기")
         var wrong = 0
+        let weights = tunedWeights
+        let cost = flagValues("--cost").first.flatMap(Double.init) ?? Segmenter.defaultSegmentCost
+        log("조각 비용 \(cost) · 활용 벌점 \(weights.deinflectionPenalty)")
         for testCase in segmentCases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
-                                             segmentCost: Segmenter.defaultSegmentCost)
+                                             weights: weights, segmentCost: cost)
             let mine = segments.map(\.hangul)
             guard mine != testCase.pieces else { continue }
             wrong += 1
@@ -323,17 +335,24 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         exit(0)
     }
 
-    print("조각비용   미지점수   완전일치   경계F1   정밀도   재현율")
+    print("조각비용   활용벌점   완전일치   경계F1")
     print(String(repeating: "─", count: 60))
     var best: (cost: Double, unknown: Double, f1: Double, exact: Double)?
     var rows: [(Double, Double, Double, Double)] = []
-    for cost in stride(from: 105.0, through: 145.0, by: 5.0) {
-        for unknown in [-200.0, -350.0, -500.0, -800.0] {
+    // 미지 점수는 축에서 뺐다. 네 값(-200·-350·-500·-800)이 완전일치도 F1 도 똑같아서
+    // 이 표본에서는 아무것도 가르지 못한다 — 대신 활용 벌점을 훑는다.
+    // 범위는 실패의 76%가 과분할이라는 것을 보고 위로 넓혔다(옛 범위의 끝 145 가 최적이었다).
+    for cost in stride(from: 135.0, through: 205.0, by: 5.0) {
+        for penalty in [0.0, 5.0, 10.0, 25.0] {
+            let unknown = Segmenter.defaultUnknownScore
+            var sweepWeights = Segmenter.defaultWeights
+            sweepWeights.deinflectionPenalty = penalty
             let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
+                                             weights: sweepWeights,
                                              segmentCost: cost, unknownScore: unknown)
-            rows.append((cost, unknown, score.exactRate, score.f1))
+            rows.append((cost, penalty, score.exactRate, score.f1))
             if best == nil || score.exactRate > best!.exact || (score.exactRate == best!.exact && score.f1 > best!.f1) {
-                best = (cost, unknown, score.f1, score.exactRate)
+                best = (cost, penalty, score.f1, score.exactRate)
             }
         }
     }
@@ -341,7 +360,7 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         print(String(format: "%7.0f   %8.0f   %7.1f%%   %6.3f", cost, unknown, exact * 100, f1))
     }
     if let best {
-        print(String(format: "\n최고: 조각 비용 %.0f · 미지 점수 %.0f · 완전일치 %.1f%% · 경계 F1 %.3f",
+        print(String(format: "\n최고: 조각 비용 %.0f · 활용 벌점 %.0f · 완전일치 %.1f%% · 경계 F1 %.3f",
                      best.cost, best.unknown, best.exact * 100, best.f1))
     }
     exit(0)
@@ -512,7 +531,7 @@ for testCase in cases {
     if candidates.contains(testCase.reading) { recall += 1 }
 
     let start = Date()
-    let results = Ranker.search(testCase.hangul, in: index, frequency: frequency)
+    let results = Ranker.search(testCase.hangul, in: index, frequency: frequency, weights: wordWeights)
     queryTime += -start.timeIntervalSinceNow
 
     let matches = makeMatcher(testCase)
