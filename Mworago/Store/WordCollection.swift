@@ -24,6 +24,30 @@ public struct CollectedWord: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+public extension CollectedWord {
+
+    /// 하루치 묶음.
+    struct Day: Sendable, Identifiable {
+        public let date: Date       // 그날 0시
+        public let words: [CollectedWord]
+        public var id: Date { date }
+    }
+
+    /// 날짜로 묶는다. 최근 날이 먼저 온다.
+    ///
+    /// 기획의 "화별 교재"가 여기서 시작한다. 앱은 사용자가 어느 화를 보다 걸렸는지 모르지만,
+    /// **애니 한 화를 보면서 찾은 것들은 같은 날 모인다.** 지어내지 않고 가진 재료로 묶는다.
+    ///
+    /// 자정을 넘기면 다른 날이 된다. "새벽 4시까지는 어제"처럼 지어낸 규칙을 두면
+    /// 사용자가 자기 기록을 예측할 수 없다.
+    static func byDay(_ words: [CollectedWord], calendar: Calendar = .current) -> [Day] {
+        let grouped = Dictionary(grouping: words) { calendar.startOfDay(for: $0.collectedAt) }
+        return grouped.keys.sorted(by: >).map { day in
+            Day(date: day, words: grouped[day]!.sorted { $0.collectedAt > $1.collectedAt })
+        }
+    }
+}
+
 /// 모은 낱말을 파일 하나에 담아 둔다.
 ///
 /// 앱의 이야기가 여기서 이어진다 — 걸린 대사를 찾고, **그것이 모여 그 화의 교재가 되고**,

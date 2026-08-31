@@ -104,7 +104,10 @@ struct SentenceHeader: View {
 ///
 /// **벌리는 것은 줄 사이뿐이다.** 조각과 조각 사이는 언제나 0 이라 아예 값을 받지 않는다 —
 /// 일본어는 띄어 쓰지 않으므로 되살린 문장도 원문처럼 붙어 있어야 한다.
-private struct FlowRow: Layout {
+/// 넘치면 줄을 바꾸는 가로 배치.
+///
+/// 문장 헤더와 도감이 함께 쓴다 — `HStack` 은 넘치면 줄을 바꾸는 대신 글자를 줄여 버린다.
+struct FlowRow: Layout {
     var lineSpacing: CGFloat = 0
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

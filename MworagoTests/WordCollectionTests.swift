@@ -125,3 +125,49 @@ struct WordCollectionTests {
         #expect(abs(담긴때.timeIntervalSince(다시)) < 1)
     }
 }
+
+/// 모은 낱말을 날짜로 묶는다.
+///
+/// 기획의 "화별 교재"가 여기서 시작한다. 앱은 사용자가 어느 화를 보다 걸렸는지 모르지만,
+/// **애니 한 화를 보면서 찾은 것들은 같은 날 모인다.** 지어내지 않고 가진 재료로 묶는다.
+@Suite("날짜로 묶기")
+struct CollectionDayTests {
+
+    static func 낱말(_ 표기: String, _ 날짜: String) -> CollectedWord {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        f.timeZone = TimeZone.current
+        return CollectedWord(headword: 표기, reading: "よみ", hangul: "요미", gloss: "뜻",
+                             collectedAt: f.date(from: 날짜)!)
+    }
+
+    @Test("같은 날 모은 것끼리 묶인다")
+    func 묶기() {
+        let words = [Self.낱말("三", "2026-08-31 09:00"),
+                     Self.낱말("二", "2026-08-30 22:10"),
+                     Self.낱말("一", "2026-08-30 21:00")]
+        let days = CollectedWord.byDay(words)
+        #expect(days.count == 2)
+        #expect(days.first?.words.map(\.headword) == ["三"])
+        #expect(days.last?.words.map(\.headword) == ["二", "一"])
+    }
+
+    @Test("최근 날이 먼저 온다")
+    func 최신순() {
+        let days = CollectedWord.byDay([Self.낱말("옛", "2026-08-01 10:00"),
+                                        Self.낱말("새", "2026-08-31 10:00")])
+        #expect(days.first?.words.first?.headword == "새")
+    }
+
+    @Test("자정을 넘겨도 날은 갈린다")
+    func 자정() {
+        // 밤늦게 보다가 자정을 넘기면 다른 날이 된다. 아쉽지만 날짜는 날짜다 —
+        // 지어낸 규칙(새벽 4시까지는 어제)을 두면 사용자가 예측할 수 없다.
+        let days = CollectedWord.byDay([Self.낱말("늦", "2026-08-30 23:58"),
+                                        Self.낱말("넘", "2026-08-31 00:03")])
+        #expect(days.count == 2)
+    }
+
+    @Test("빈 것은 빈 채로")
+    func 빈것() { #expect(CollectedWord.byDay([]).isEmpty) }
+}

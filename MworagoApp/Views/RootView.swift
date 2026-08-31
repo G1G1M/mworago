@@ -47,21 +47,13 @@ struct RootView: View {
                     .accessibilityLabel("모은 것")
             }
             Tab(value: RootTab.book) {
-                NotYetView(
-                    title: "도감",
-                    line: "모은 낱말이 화별로 묶여 교재가 되는 자리입니다.",
-                    detail: "지금은 낱말을 모으는 데까지 왔어요. 한 화 분량이 모이면 여기서 그 화를 통째로 복습하게 됩니다."
-                )
+                BookView(collection: collection)
             } label: {
                 Image(systemName: "books.vertical")
                     .accessibilityLabel("도감")
             }
             Tab(value: RootTab.practice) {
-                NotYetView(
-                    title: "연습",
-                    line: "따라 말하는 자리입니다.",
-                    detail: "도감이 만들어지면, 그 대사를 소리 내어 따라 하고 얼마나 닮았는지 봅니다. 자막 없이 알아듣는 것이 목적지예요."
-                )
+                PracticeView(collection: collection)
             } label: {
                 Image(systemName: "waveform")
                     .accessibilityLabel("연습")
@@ -75,6 +67,9 @@ struct RootView: View {
         // (애플 사진 앱의 보관함·모음도 그렇다) 무엇을 하는 자리인지 아이콘으로 알 수 없다.
         // 가로 사이즈 클래스를 compact 로 주면 아이폰과 같은 하단 아이콘 탭바가 된다.
         .environment(\.horizontalSizeClass, .compact)
+        // **글은 전부 한국어다.** 기기 언어가 영어면 날짜만 "August 31"로 나와
+        // 화면에서 그 한 줄만 남의 말이 된다. 이 앱이 쓰는 말로 고정한다.
+        .environment(\.locale, Locale(identifier: "ko_KR"))
         .tint(Theme.ink)
     }
 }
