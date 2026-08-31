@@ -30,7 +30,10 @@ public enum Ranker {
         public var deinflectionPenalty: Double
         /// 도메인(애니) 빈도에 실어 줄 무게. 0이면 그 층을 쓰지 않는다
         public var domainWeight: Double
-        /// JMdict 빈도 태그에 실어 줄 무게. 이쪽은 신문 말뭉치 기준이다
+        /// JMdict 빈도 태그에 실어 줄 무게. 이쪽은 신문 말뭉치 기준이라 애니에서는 잡음이다.
+        /// **도메인 빈도가 아무 말도 하지 않을 때만** 쓰이므로 0 이 아니다 —
+        /// 스윕에서 1 일 때 분절 완전일치가 30.3%에서 32.3%로 올랐고, 3 이면 20.7%,
+        /// 8 이면 10.0% 로 무너진다. 거들기만 해야지 도메인을 덮으면 안 된다.
         public var jmdictWeight: Double
 
         /// 기본값은 손으로 정한 것이 아니라 케이스 50개를 훑어 고른 값이다
@@ -53,7 +56,7 @@ public enum Ranker {
                     longVowelPenalty: Double = 6,
                     deinflectionPenalty: Double = 25,
                     domainWeight: Double = 1,
-                    jmdictWeight: Double = 0) {
+                    jmdictWeight: Double = 1) {
             self.rankPenalty = rankPenalty
             self.longVowelPenalty = longVowelPenalty
             self.deinflectionPenalty = deinflectionPenalty
@@ -107,9 +110,22 @@ public enum Ranker {
         for candidate in Transliterator.candidates(for: hangul) {
             for deinflection in Deinflector.candidates(for: candidate.kana) {
                 for hit in index.lookup(deinflection.form) {
-                    var score = jmdictWeight * Double(hit.priority)
-                    if let frequency, weights.domainWeight != 0 {
-                        score += weights.domainWeight * domainScore(hit.entry, reading: hit.reading, in: frequency)
+                    // **도메인 빈도가 아무 말도 하지 않을 때만 JMdict 를 듣는다.**
+                    //
+                    // 신문 빈도는 애니에서 잡음이라 스윕이 늘 jmdictWeight 0 을 골랐다.
+                    // 그런데 그 0 이 도메인 목록에 **없는** 낱말까지 0점으로 만들었다 —
+                    // 사전이 아는 낱말인데도. 배포판이 쓸 JESC 는 Tanaka 정답 낱말의
+                    // 75.1% 만 담고 있어서(JPDB 는 86.6%), 나머지 넷 중 하나가 통째로
+                    // 말이 없어진다. 분절은 문장의 모든 낱말을 찾아야 하므로 여기서 진다.
+                    //
+                    // 도메인 점수가 있으면 그것만 쓰고, 없을 때만 JMdict 로 메운다.
+                    // "신문 빈도가 잡음"이라는 판단은 도메인 빈도가 말을 할 때의 이야기다.
+                    var score = 0.0
+                    let domain = frequency.map { domainScore(hit.entry, reading: hit.reading, in: $0) } ?? 0
+                    if domain > 0, weights.domainWeight != 0 {
+                        score += weights.domainWeight * domain
+                    } else {
+                        score += jmdictWeight * Double(hit.priority)
                     }
                     score -= weights.rankPenalty * Double(candidate.rank)
                     score -= weights.longVowelPenalty * Double(candidate.longVowelsAdded)
