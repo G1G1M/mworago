@@ -44,8 +44,6 @@ struct LibraryView: View {
     /// 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 시트를 눈으로 볼 길이 없다.
     @State private var detail: CollectedWord?
     /// 설정. `--settings` 로 펼친 채 띄운다.
-    @State private var showingSettings = ProcessInfo.processInfo.arguments.contains("--settings")
-    @Binding var appearance: Appearance
     private var opensFirstDetail: Bool {
         ProcessInfo.processInfo.arguments.contains("--detail")
     }
@@ -71,7 +69,6 @@ struct LibraryView: View {
         .onAppear {
             if opensFirstDetail, detail == nil { detail = collection.words.first }
         }
-        .sheet(isPresented: $showingSettings) { Settings(appearance: $appearance) }
         .sheet(item: $detail) { word in
             WordDetail(word: word,
                        onFind: onPick,
@@ -125,17 +122,6 @@ struct LibraryView: View {
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.grey2)
 
-                Spacer(minLength: 12)
-
-                // 설정은 앱의 이야기 밖이라 탭을 늘리지 않고 여기 둔다.
-                // 탭바에 글자가 없으므로 화면 이름이 화면 안에 있어야 하고, 그 줄이 이 자리다.
-                Button { showingSettings = true } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 17))
-                        .foregroundStyle(Theme.grey1)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("설정")
             }
             // 담긴 것이 없으면 무엇으로 묶어 볼지도, 어디에 담을지도 없다.
             if !collection.words.isEmpty {

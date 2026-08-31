@@ -58,7 +58,6 @@ enum Appearance: String, CaseIterable, Identifiable {
 /// 탭을 늘리지는 않았다. 탭 셋은 앱의 이야기(찾고·담기고·다시 만난다)이고
 /// 설정은 그 밖의 것이라, 나란히 세우면 흐름이 어그러진다.
 struct Settings: View {
-    @Environment(\.dismiss) private var dismiss
     @Binding var appearance: Appearance
 
     private var version: String {
@@ -113,13 +112,6 @@ struct Settings: View {
             .background(Theme.paper)
             .navigationTitle("설정")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("닫기") { dismiss() }
-                        .font(Theme.korean(16))
-                        .foregroundStyle(Theme.ink)
-                }
-            }
         }
     }
 

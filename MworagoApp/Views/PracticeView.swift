@@ -41,8 +41,10 @@ struct PracticeView: View {
         ZStack {
             Theme.paper.ignoresSafeArea()
             if let word = current { card(word) } else { empty }
+            kanaButton
             if let subsetLabel { subsetBanner(subsetLabel) }
         }
+        .sheet(isPresented: $showingKana) { KanaSheet() }
         // 하루치를 새로 골라 오면 처음 낱말부터 시작한다.
         .onChange(of: subsetLabel) { _, _ in
             index = 0
@@ -161,6 +163,30 @@ struct PracticeView: View {
             revealed = false
             index = words.isEmpty ? 0 : (index + 1) % words.count
         }
+    }
+
+    /// 가나 표로 가는 길. 아래 구석에 조용히 둔다 — 늘 쓰는 것이 아니라
+    /// 막혔을 때만 여는 것이라, 연습 자체를 가리면 안 된다.
+    private var kanaButton: some View {
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                Button { showingKana = true } label: {
+                    Text("가나 표")
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey1)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("히라가나와 가타카나를 봅니다")
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 18)
     }
 
     private var empty: some View {

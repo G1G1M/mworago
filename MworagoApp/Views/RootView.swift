@@ -45,7 +45,7 @@ struct RootView: View {
     }
 
     enum RootTab: Hashable {
-        case find, library, practice
+        case find, library, practice, settings
 
         init(argument arguments: [String]) {
             let name = arguments.first { $0.hasPrefix("--tab=") }
@@ -54,6 +54,7 @@ struct RootView: View {
             // 탭을 합치기 전 이름으로 띄우던 스크립트가 있어 옛 이름도 받는다.
             case "library", "collection", "book": self = .library
             case "practice": self = .practice
+            case "settings": self = .settings
             default: self = .find
             }
         }
@@ -71,7 +72,7 @@ struct RootView: View {
             }
             Tab(value: RootTab.library) {
                 LibraryView(collection: collection, onPick: goFind,
-                            onPractice: goPractice, appearance: $appearance)
+                            onPractice: goPractice)
             } label: {
                 Image(systemName: "books.vertical")
                     .accessibilityLabel("교재")
@@ -87,6 +88,14 @@ struct RootView: View {
             } label: {
                 Image(systemName: "waveform")
                     .accessibilityLabel("연습")
+            }
+            // 설정은 앱의 이야기(찾고·담기고·다시 만난다) 밖이지만 **어느 화면에서나
+            // 닿아야 한다.** 교재 헤더에 두었더니 왜 거기에만 있는지 말할 수 없었다.
+            Tab(value: RootTab.settings) {
+                Settings(appearance: $appearance)
+            } label: {
+                Image(systemName: "gearshape")
+                    .accessibilityLabel("설정")
             }
         }
         // 탭바에는 **아이콘만** 둔다. 넷뿐이고 뜻이 분명한 기호라 이름이 없어도 읽히고,
