@@ -16,18 +16,29 @@ public struct CollectedWord: Codable, Sendable, Equatable, Identifiable {
     /// Swift 의 자동 Decodable 은 없는 칸에 기본값을 넣어 주지 않는다 — 옵셔널만이
     /// 없을 때 nil 이 된다.
     public var folder: String?
+    /// 담을 때 이 낱말이 무엇이었는가 — `동사` · `명사` · `관용구`.
+    ///
+    /// **뜻과 같은 까닭으로 붙들어 둔다.** 책장은 사전을 뒤지지 않는다(사전을 열려면
+    /// 39MB 색인을 들고 있어야 한다). 담을 때 화면에 있던 것을 그대로 가져오면
+    /// 책장에서도 같은 꼬리표가 보인다.
+    ///
+    /// **옵셔널이어야 한다.** 이 칸이 없던 시절에 담은 파일이 그대로 읽혀야 하는데,
+    /// Swift 의 자동 Decodable 은 없는 칸에 기본값을 넣어 주지 않는다.
+    public var partOfSpeech: String?
 
     /// 표기와 읽기가 함께여야 한 낱말이다 — 机(つくえ)와 机(つき)는 다른 낱말이다.
     public var id: String { "\(headword)\u{1F}\(reading)" }
 
     public init(headword: String, reading: String, hangul: String, gloss: String,
-                collectedAt: Date = Date(), folder: String? = nil) {
+                collectedAt: Date = Date(), folder: String? = nil,
+                partOfSpeech: String? = nil) {
         self.headword = headword
         self.reading = reading
         self.hangul = hangul
         self.gloss = gloss
         self.collectedAt = collectedAt
         self.folder = folder
+        self.partOfSpeech = partOfSpeech
     }
 
     /// 묶음만 바꾼 사본. 낱말 자체는 그대로다 — 어디에 넣든 같은 낱말이다.

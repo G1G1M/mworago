@@ -413,3 +413,36 @@ struct WordCollectionFolderEditTests {
         #expect(collection.folderNames == ["3화"])
     }
 }
+
+/// 담을 때 품사도 함께 붙든다.
+///
+/// 책장은 사전을 뒤지지 않는다 — 사전을 열려면 39MB 색인을 들고 있어야 한다.
+/// 담을 때 화면에 있던 것을 그대로 가져오면 책장에서도 같은 꼬리표가 보인다.
+@Suite("담은 낱말의 품사")
+struct CollectedWordPartOfSpeechTests {
+
+    @Test("담을 때 품사가 따라온다")
+    func 품사담기() {
+        let path = NSTemporaryDirectory() + "mworago-pos-\(UUID().uuidString).json"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        var collection = WordCollection(path: path)
+        collection.add(CollectedWord(headword: "止める", reading: "やめる", hangul: "야메루",
+                                     gloss: "멈추다", partOfSpeech: "동사"), to: nil)
+        #expect(collection.words.first?.partOfSpeech == "동사")
+        #expect(WordCollection(path: path).words.first?.partOfSpeech == "동사")
+    }
+
+    @Test("품사 칸이 없던 파일도 그대로 읽힌다")
+    func 옛파일() throws {
+        // 이 칸이 생기기 전에 담은 것이 통째로 안 읽히면 모은 것을 다 잃는다.
+        let path = NSTemporaryDirectory() + "mworago-pos-\(UUID().uuidString).json"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let old = #"[{"headword":"約束","reading":"やくそく","hangul":"야쿠소쿠","gloss":"약속","collectedAt":"2026-08-31T11:00:00Z"}]"#
+        try old.write(toFile: path, atomically: true, encoding: .utf8)
+
+        let collection = WordCollection(path: path)
+        #expect(collection.words.count == 1)
+        #expect(collection.words.first?.partOfSpeech == nil)
+    }
+}

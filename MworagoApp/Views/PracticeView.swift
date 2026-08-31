@@ -102,6 +102,9 @@ struct PracticeView: View {
                 Text(word.reading)
                     .font(Theme.japanese(38, weight: .medium))
                     .foregroundStyle(Theme.ink)
+                // **품사는 앞면에 둔다.** 답이 아니라 문제의 일부다 —
+                // 동사인지 명사인지를 알고 뜻을 떠올리는 것이 실제로 하는 일이다.
+                if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                 SpeakButton(text: word.reading, size: 18)
             }
 

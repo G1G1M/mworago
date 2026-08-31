@@ -263,9 +263,12 @@ struct LibraryView: View {
         HStack(alignment: .firstTextBaseline, spacing: 14) {
             Button { detail = word } label: {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(word.reading)
-                        .font(Theme.japanese(24, weight: .medium))
-                        .foregroundStyle(Theme.ink)
+                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                        Text(word.reading)
+                            .font(Theme.japanese(24, weight: .medium))
+                            .foregroundStyle(Theme.ink)
+                        if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
+                    }
                     Text(word.hangul)
                         .font(Theme.korean(13))
                         .foregroundStyle(Theme.grey3)

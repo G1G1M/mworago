@@ -77,7 +77,8 @@ struct SearchView: View {
                     collection.add(CollectedWord(headword: top.headword,
                                                  reading: top.reading,
                                                  hangul: segment.hangul,
-                                                 gloss: top.entry.displayGloss),
+                                                 gloss: top.entry.displayGloss,
+                                           partOfSpeech: top.entry.wordClass.displayName),
                                    to: nil)
                 }
             }

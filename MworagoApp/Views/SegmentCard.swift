@@ -84,13 +84,8 @@ struct SegmentCard: View {
                 // 되돌렸을 때만 떠서 카드마다 있다 없다 했고, 무엇보다 **낱말에 대해
                 // 말해 주는 것이 없었다** — 이 낱말이 동사인지 명사인지가 사전에서
                 // 먼저 알고 싶은 것이다. 내가 친 원문은 위 문장 머리에 그대로 있다.
-                if let 품사 = partOfSpeech(result) {
-                    Text(품사)
-                        .font(Theme.korean(11))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Theme.grey4, in: Capsule())
-                        .foregroundStyle(Theme.grey1)
+                if let 품사 = result.entry.wordClass.displayName {
+                    PartOfSpeechTag(name: 품사)
                 }
 
                 Spacer(minLength: 8)
@@ -138,24 +133,6 @@ struct SegmentCard: View {
         }
     }
 
-    /// 이 낱말의 갈래.
-    ///
-    /// 코어의 `koreanName` 은 모델에게 줄 프롬프트용이라 기능어·관용구를 `nil` 로 둔다.
-    /// 화면은 그 자리를 비워 두면 카드마다 꼬리표가 있다 없다 하므로, 사전이 하듯
-    /// 이름을 붙여 준다. 갈래를 정말 모르는 것(`other`)만 비운다 — 지어내지 않는다.
-    private func partOfSpeech(_ result: SearchResult) -> String? {
-        switch result.entry.wordClass {
-        case .verb: "동사"
-        case .adjective: "형용사"
-        case .noun: "명사"
-        case .adverb: "부사"
-        case .expression: "관용구"
-        case .affix: "접사"
-        case .function: "조사·어미"
-        case .other: nil
-        }
-    }
-
     /// 담기.
     ///
     /// **자동으로 모으지 않는다.** 찾아본 것을 다 쌓으면 오타와 헛짚은 것까지 교재가 된다.
@@ -169,7 +146,8 @@ struct SegmentCard: View {
         let word = CollectedWord(headword: result.headword,
                                  reading: result.reading,
                                  hangul: segment.hangul,
-                                 gloss: result.entry.displayGloss)
+                                 gloss: result.entry.displayGloss,
+                                 partOfSpeech: result.entry.wordClass.displayName)
         let held = collection.contains(word)
         return Button {
             if held { collection.remove(word) } else { onCollect(word) }

@@ -63,6 +63,7 @@ struct WordDetail: View {
                 Text(word.reading)
                     .font(Theme.japanese(34, weight: .medium))
                     .foregroundStyle(Theme.ink)
+                if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                 SpeakButton(text: word.reading, size: 18)
             }
 

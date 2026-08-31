@@ -161,9 +161,12 @@ struct FolderDetail: View {
         Button { detail = word } label: {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(word.reading)
-                        .font(Theme.japanese(21, weight: .medium))
-                        .foregroundStyle(Theme.ink)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(word.reading)
+                            .font(Theme.japanese(21, weight: .medium))
+                            .foregroundStyle(Theme.ink)
+                        if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
+                    }
                 }
                 if !word.gloss.isEmpty {
                     Spacer(minLength: 12)
