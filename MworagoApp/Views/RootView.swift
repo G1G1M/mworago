@@ -32,6 +32,11 @@ struct RootView: View {
     /// 앱을 여는 한 장. `--no-splash` 로 건너뛴다 — 다른 화면을 찍을 때마다
     /// 1초를 기다릴 이유가 없다. `--query=` · `--tab=` 과 같은 취지다.
     @State private var showSplash = !ProcessInfo.processInfo.arguments.contains("--no-splash")
+    /// 진짜 입력 바가 놓인 자리. 스플래시가 마지막에 여기로 와서 앉는다.
+    ///
+    /// 스플래시는 탭 화면 **위에** 얹혀 있으므로, 그 아래에서 찾기 화면이 이미 자리를
+    /// 잡아 두었다. 그 자리를 그대로 받아 쓰면 기기와 방향이 달라져도 어긋나지 않는다.
+    @State private var inputBarFrame: CGRect?
 
     /// 낱말을 들고 찾기로 건너간다.
     private func goFind(_ hangul: String) {
@@ -136,11 +141,14 @@ struct RootView: View {
         // 먼저 뜨고 그 위로 스플래시가 덮인다 — 순서가 뒤집힌다.
         .overlay {
             if showSplash {
-                Splash(onDone: {
+                Splash(target: inputBarFrame, onDone: {
                     withAnimation(.easeOut(duration: 0.22)) { showSplash = false }
                 })
                 .transition(.opacity)
             }
+        }
+        .onPreferenceChange(InputBarFrame.self) { frame in
+            if let frame { inputBarFrame = frame }
         }
         .tint(Theme.ink)
         // 설정에서 고른 밝기. `nil` 이면 기기를 따른다.

@@ -15,6 +15,15 @@ import SwiftUI
 /// **1초 안에 끝나고 아무 데나 누르면 건너뛴다.** 매번 앱을 열 때마다 보는 것이라,
 /// 처음엔 예뻐도 열 번째부터는 기다림이다. 모션을 줄이기로 한 기기에서는 아예 안 뛴다.
 struct Splash: View {
+    /// 진짜 입력 바가 놓인 자리(화면 좌표). 마지막 알약이 여기로 와서 앉는다.
+    ///
+    /// **재지 않고 묻는다.** 전에는 높이 52 · 아래 여백 70 을 들고 있었는데, 둘 다
+    /// 시뮬레이터 하나에서 눈으로 잰 값이었다. 폰트가 조금 다르게 그려지거나 탭바
+    /// 높이가 다른 기기·방향으로 가면 마지막 한 프레임에서 툭 튄다 —
+    /// 이 장면의 전부가 "이것이 저것이 되었다"인데 그 한 프레임이 말을 무너뜨린다.
+    ///
+    /// 아직 못 받았으면 아래 어림값으로 그린다(첫 프레임에 잠깐 그렇다).
+    var target: CGRect? = nil
     var onDone: () -> Void = {}
 
     // MARK: 아이콘에서 가져온 비율
@@ -25,22 +34,25 @@ struct Splash: View {
 
     private static let ratios: [CGFloat] = [22, 46, 30]
     private static let iconUnit: CGFloat = 22
-    /// 입력 바 높이(글자 19 + 위아래 여백 14씩)에 맞춘 값이다.
-    private static let barHeight: CGFloat = 52
-    private static let scale = barHeight / iconUnit
-    private static let gap: CGFloat = 9 * scale
-    private static var widths: [CGFloat] { ratios.map { $0 * scale } }
+    /// 자리를 아직 못 받았을 때, 첫 한 프레임만 쓰는 어림값.
+    ///
+    /// **52 가 아니라 56 이다.** 글자 19 + 위아래 여백 14씩이면 52 여야 할 것 같지만,
+    /// 실제로 재어 보니 56~57.5 로 그려진다(고운돋움이 그만큼 크게 앉는다).
+    /// 이 4pt 가 마지막 한 프레임에서 눈에 띄던 어긋남이었다.
+    private static let fallbackHeight: CGFloat = 56
+
+    /// 알약 높이는 **입력 바 높이 그대로**다. 그래야 마지막에 세로로 늘어나거나 줄지 않는다.
+    private var barHeight: CGFloat { target?.height ?? Self.fallbackHeight }
+    private var scale: CGFloat { barHeight / Self.iconUnit }
+    private var gap: CGFloat { 9 * scale }
+    private var widths: [CGFloat] { Self.ratios.map { $0 * scale } }
     /// 가운데 알약. 가장 길고, 이것이 입력 바가 된다.
     private static let hero = 1
 
-    /// 입력 바가 실제로 놓이는 자리 — 탭바 위에 14 를 띄운 곳.
-    ///
-    /// **눈대중이 아니라 실측이다.** 63 으로 두었더니 실제 입력 바보다 6.5pt 아래에
-    /// 앉았다(시뮬레이터 스크린샷에서 바 중심 2183 대 2170). 이 장면의 전부가
-    /// "이것이 저것이 되었다"인데 마지막 자리가 어긋나면 그 말이 무너진다.
-    private static let barBottomInset: CGFloat = 70
+    /// 자리를 못 받았을 때 쓸 어림값. 탭바 위에 14 를 띄운 곳쯤이다.
+    private static let fallbackBottomInset: CGFloat = 70
     private static let barCorner: CGFloat = 18
-    private static let pillCorner = barHeight / 2
+    private var pillCorner: CGFloat { barHeight / 2 }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -67,8 +79,8 @@ struct Splash: View {
             ZStack {
                 Theme.paper.ignoresSafeArea()
 
-                ForEach(Array(Self.widths.enumerated()), id: \.offset) { index, width in
-                    pill(index: index, width: width, in: geo.size)
+                ForEach(Array(widths.enumerated()), id: \.offset) { index, width in
+                    pill(index: index, width: width, in: geo)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -81,15 +93,17 @@ struct Splash: View {
     // MARK: 알약 하나
 
     @ViewBuilder
-    private func pill(index: Int, width: CGFloat, in size: CGSize) -> some View {
+    private func pill(index: Int, width: CGFloat, in geo: GeometryProxy) -> some View {
+        let size = geo.size
         let isHero = index == Self.hero
         let moved = isHero && travelled
         let grown = isHero && stretched
         let steppedAside = !isHero && asideGone
-        // 입력 바는 글이 시작하는 자리에 맞춰 좌우 24 를 두고, 목록 폭을 넘지 않는다.
-        let barWidth = min(Theme.listWidth, size.width - Theme.gutter * 2)
+        // 폭도 진짜 입력 바에서 가져온다. 못 받았을 때만 어림한다 —
+        // 입력 바는 글이 시작하는 자리에 맞춰 좌우 24 를 두고 목록 폭을 넘지 않는다.
+        let barWidth = target?.width ?? min(Theme.listWidth, size.width - Theme.gutter * 2)
         let nowWidth = grown ? barWidth : width
-        let corner = grown ? Self.barCorner : Self.pillCorner
+        let corner = grown ? Self.barCorner : pillCorner
 
         ZStack {
             // **완성된 입력 바를 검정 아래에 미리 깔아 둔다.**
@@ -117,12 +131,12 @@ struct Splash: View {
                 .fill(tintedFill)
                 .opacity(uncovered ? 0 : 1)
         }
-        .frame(width: nowWidth, height: Self.barHeight)
+        .frame(width: nowWidth, height: barHeight)
         .scaleEffect(steppedAside ? 0.55 : (arrived[index] ? 1 : 0.72))
         .opacity(opacity(index: index))
-        .offset(x: moved ? 0 : centerX(index: index),
+        .offset(x: moved ? heroX(in: geo) : centerX(index: index),
                 y: yOffset(index: index, moved: moved,
-                          steppedAside: steppedAside, in: size))
+                          steppedAside: steppedAside, in: geo))
     }
 
     /// 덮개의 색. 검정에서 입력 바의 톤으로 옮겨 간다.
@@ -168,19 +182,34 @@ struct Splash: View {
 
     /// 셋을 가운데 모아 놓았을 때 이 알약의 중심.
     private func centerX(index: Int) -> CGFloat {
-        let widths = Self.widths
-        let total = widths.reduce(0, +) + Self.gap * CGFloat(widths.count - 1)
+        let widths = self.widths
+        let total = widths.reduce(0, +) + gap * CGFloat(widths.count - 1)
         var x = -total / 2
-        for i in 0..<index { x += widths[i] + Self.gap }
+        for i in 0..<index { x += widths[i] + gap }
         return x + widths[index] / 2
+    }
+
+    /// 도착한 뒤의 가로 자리. 입력 바가 화면 한가운데가 아닐 수도 있으므로
+    /// (아이패드에서 폭이 목록 폭에 걸리면 가운데 정렬된다) 그것도 받아서 쓴다.
+    private func heroX(in geo: GeometryProxy) -> CGFloat {
+        guard let target else { return 0 }
+        let mine = geo.frame(in: .global)
+        return target.midX - mine.midX
     }
 
     /// 통통 튀어 들어올 때는 위에서 떨어지고, 마지막에 주인공만 입력 바 자리로 내려간다.
     /// 곁의 둘은 비킬 때 살짝 가라앉는다 — 제자리에서 그냥 꺼지면 사라진 것이 아니라
     /// 깜빡인 것으로 보인다.
     private func yOffset(index: Int, moved: Bool, steppedAside: Bool,
-                         in size: CGSize) -> CGFloat {
-        if moved { return size.height / 2 - Self.barHeight / 2 - Self.barBottomInset }
+                         in geo: GeometryProxy) -> CGFloat {
+        if moved {
+            // 진짜 입력 바의 중심으로 간다. 못 받았으면 어림한 자리로.
+            guard let target else {
+                return geo.size.height / 2 - barHeight / 2 - Self.fallbackBottomInset
+            }
+            let mine = geo.frame(in: .global)
+            return target.midY - mine.midY
+        }
         if steppedAside { return 18 }
         return arrived[index] ? 0 : -64
     }

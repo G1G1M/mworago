@@ -1,6 +1,21 @@
 import SwiftUI
 import MworagoCore
 
+/// 입력 바가 실제로 놓인 자리.
+///
+/// **스플래시가 이것을 받아 마지막 알약을 앉힌다.** 전에는 스플래시가 제 숫자를 들고
+/// 있었다 — 높이 52, 아래 여백 70. 둘 다 시뮬레이터 하나에서 눈으로 잰 값이라,
+/// 폰트가 조금 다르게 그려지거나 탭바 높이가 다른 기기·방향으로 가면 마지막 한 프레임에서
+/// 툭 튄다. 그 한 프레임이 "이것이 저것이 되었다"는 말을 통째로 무너뜨린다.
+///
+/// 재는 대신 **묻는다.** 진짜 입력 바만이 제 자리를 안다.
+struct InputBarFrame: PreferenceKey {
+    static let defaultValue: CGRect? = nil
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
+    }
+}
+
 struct SearchView: View {
     /// 한 줄이 지나치게 길어지면 눈이 되돌아올 곳을 잃는다. iPad 에서 특히 그렇다.
     private static let contentWidth: CGFloat = Theme.listWidth
@@ -249,6 +264,14 @@ struct SearchView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5)
             )
+            // 스플래시가 마지막에 여기로 와서 앉는다. 화면 좌표로 올려야
+            // 스플래시가 제 좌표계로 옮겨 쓸 수 있다.
+            .background {
+                GeometryReader { bar in
+                    Color.clear.preference(key: InputBarFrame.self,
+                                           value: bar.frame(in: .global))
+                }
+            }
         }
         .frame(maxWidth: Self.contentWidth)
         // 떠 있는 바지만 가장자리는 글이 시작하는 자리에 맞춘다 — 혼자 4pt 밖으로
