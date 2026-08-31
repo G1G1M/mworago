@@ -54,6 +54,19 @@ struct LibraryView: View {
     /// `--detail` 로 첫 낱말을 펼친 채 띄울 수 있다. `--query=` · `--guide` 와 같은
     /// 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 시트를 눈으로 볼 길이 없다.
     @State private var detail: CollectedWord?
+    /// 실행 인자로 열라던 것을 이미 열었는가.
+    ///
+    /// **`.onAppear` 는 탭을 다시 열 때마다 돈다.** 다른 탭에 갔다 책장으로 돌아오면
+    /// 또 실행되는데, 시트를 닫으면 `detail` 이 다시 `nil` 이고 뒤로 나오면 `path` 가
+    /// 다시 비어서 가드가 통과한다 — **책장에 올 때마다 상세가 다시 떴다.**
+    ///
+    /// 이 인자들은 **앱을 띄울 때 한 번** 보여 주려는 것이지 탭을 열 때마다가 아니다.
+    ///
+    /// `@State` 로 두지 않는다. 탭을 옮길 때 SwiftUI 가 이 뷰를 헐고 다시 만들면
+    /// 빗장까지 함께 풀려, 고치려던 그 자리에서 다시 열린다. 앱 실행당 한 번이므로
+    /// 뷰보다 오래 사는 곳에 둔다.
+    private static var openedFromArguments = false
+
     /// 설정. `--settings` 로 펼친 채 띄운다.
     private var opensFirstDetail: Bool {
         ProcessInfo.processInfo.arguments.contains("--detail")
@@ -126,8 +139,10 @@ struct LibraryView: View {
             }
         }
         .onAppear {
-            if opensFirstDetail, detail == nil { detail = collection.words.first }
-            if let name = opensFolder, path.isEmpty { path = [.folder(name)] }
+            guard !Self.openedFromArguments else { return }
+            Self.openedFromArguments = true
+            if opensFirstDetail { detail = collection.words.first }
+            if let name = opensFolder { path = [.folder(name)] }
         }
         .sheet(item: $detail) { word in
             WordDetail(word: word,
