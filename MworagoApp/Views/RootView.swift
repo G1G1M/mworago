@@ -45,7 +45,7 @@ struct RootView: View {
     }
 
     enum RootTab: Hashable {
-        case find, library, practice, settings
+        case find, library, practice, kana, settings
 
         init(argument arguments: [String]) {
             let name = arguments.first { $0.hasPrefix("--tab=") }
@@ -54,6 +54,7 @@ struct RootView: View {
             // 탭을 합치기 전 이름으로 띄우던 스크립트가 있어 옛 이름도 받는다.
             case "library", "collection", "book": self = .library
             case "practice": self = .practice
+            case "kana": self = .kana
             case "settings": self = .settings
             default: self = .find
             }
@@ -75,7 +76,7 @@ struct RootView: View {
                             onPractice: goPractice)
             } label: {
                 Image(systemName: "books.vertical")
-                    .accessibilityLabel("교재")
+                    .accessibilityLabel("낱말")
             }
             Tab(value: RootTab.practice) {
                 PracticeView(collection: collection,
@@ -88,6 +89,15 @@ struct RootView: View {
             } label: {
                 Image(systemName: "waveform")
                     .accessibilityLabel("연습")
+            }
+            // 글자는 낱말과 짝이다 — 글자는 마흔여섯 자로 끝나지만 낱말은 끝이 없다.
+            // 연습 안의 쪽지였던 것을 여기로 올렸다. 가나를 못 읽어 멈추는 순간은
+            // 찾을 때도 생기는데 쪽지로는 연습 화면에서만 닿았다.
+            Tab(value: RootTab.kana) {
+                KanaView()
+            } label: {
+                Image(systemName: "character.book.closed")
+                    .accessibilityLabel("글자")
             }
             // 설정은 앱의 이야기(찾고·담기고·다시 만난다) 밖이지만 **어느 화면에서나
             // 닿아야 한다.** 교재 헤더에 두었더니 왜 거기에만 있는지 말할 수 없었다.

@@ -31,12 +31,10 @@ struct PracticeView: View {
     /// `--revealed` 로 뒤집힌 채 띄운다. `--query=` · `--detail` 과 같은 취지 —
     /// 시뮬레이터는 손으로 두드릴 수 없어 뒷면을 눈으로 볼 길이 없다.
     @State private var revealed = ProcessInfo.processInfo.arguments.contains("--revealed")
-    /// 가나 표를 펼쳤는가.
     ///
     /// **막히는 자리에 두어야 닿는다.** 가나를 못 읽어서 멈추는 순간은 여기서 생긴다 —
     /// 앞면이 소리뿐이라 읽을 수 없으면 뒤집기 말고는 할 것이 없다. 설정에 넣으면
     /// 그 순간에 떠올릴 수 없는 자리가 된다. `--kana` 로 펼친 채 띄운다.
-    @State private var showingKana = ProcessInfo.processInfo.arguments.contains("--kana")
 
     private var words: [CollectedWord] { subset ?? collection.words }
     private var current: CollectedWord? {
@@ -47,10 +45,8 @@ struct PracticeView: View {
         ZStack {
             Theme.paper.ignoresSafeArea()
             if let word = current { card(word) } else { empty }
-            kanaButton
             if let subsetLabel { subsetBanner(subsetLabel) }
         }
-        .sheet(isPresented: $showingKana) { KanaSheet() }
         // 하루치를 새로 골라 오면 처음 낱말부터 시작한다.
         .onChange(of: subsetLabel) { _, _ in
             index = 0
@@ -147,8 +143,8 @@ struct PracticeView: View {
             }
             .padding(.top, 26)
         }
-        .frame(maxWidth: 460, alignment: .leading)
-        .padding(.horizontal, 28)
+        .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        .padding(.horizontal, Theme.gutter)
     }
 
     /// 강조는 반전 하나로만 — 지금 눌러야 하는 것이 채워진다.
@@ -171,30 +167,6 @@ struct PracticeView: View {
         }
     }
 
-    /// 가나 표로 가는 길. 아래 구석에 조용히 둔다 — 늘 쓰는 것이 아니라
-    /// 막혔을 때만 여는 것이라, 연습 자체를 가리면 안 된다.
-    private var kanaButton: some View {
-        VStack {
-            Spacer()
-            HStack {
-                Spacer()
-                Button { showingKana = true } label: {
-                    Text("가나 표")
-                        .font(Theme.korean(13))
-                        .foregroundStyle(Theme.grey1)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(Capsule().strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5))
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("히라가나와 가타카나를 봅니다")
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 18)
-    }
-
     private var empty: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("연습할 것이 없어요")
@@ -207,7 +179,7 @@ struct PracticeView: View {
                 .font(Theme.korean(13))
                 .foregroundStyle(Theme.grey3)
         }
-        .frame(maxWidth: 460, alignment: .leading)
-        .padding(.horizontal, 28)
+        .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        .padding(.horizontal, Theme.gutter)
     }
 }
