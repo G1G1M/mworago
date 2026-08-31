@@ -7,7 +7,7 @@ import MworagoCore
 /// 원문을 사용자가 머릿속으로 이어 붙이고 있었다.
 ///
 /// **가나가 맨 위다.** 낱말 카드와 같은 순서다 — 소리를 듣고 찾아온 사람에게 가장 가까운 것이
-/// 가나이기 때문이다. 어디까지 볼지도 카드와 같은 다이얼이 정한다.
+/// 가나이기 때문이다. 아래에 한글 발음이 따라붙는 것도 카드와 같다.
 ///
 /// **되살린 문장은 들어 볼 수 있다.** 들린 대로 쳐서 찾아온 사람에게 돌려줄 것은
 /// 결국 소리다 — 내가 들은 것이 이것이 맞는지는 다시 들어 봐야 안다.
@@ -25,7 +25,6 @@ import MworagoCore
 /// 카드를 함께 내렸다(둘 다 30 언저리면 몇 포인트 차이는 눈에 띄지 않는다).
 struct SentenceHeader: View {
     let segments: [Segment]
-    let aid: ReadingAid
     /// 지금 고른 조각. 아무것도 안 골랐으면 nil 이고, 그때가 기본 상태다.
     @Binding var selected: Int?
 
@@ -40,16 +39,14 @@ struct SentenceHeader: View {
                 Text("문장")
                     .font(Theme.korean(12))
                     .foregroundStyle(Theme.grey3)
-                SpeakButton(text: segments.kana, size: 13)
+                SpeakButton(text: segments.kana, size: 13, pace: .sentence)
             }
 
             pieces
 
-            if aid.showsHangul {
-                Text(segments.map(\.hangul).joined())
-                    .font(Theme.korean(16))
-                    .foregroundStyle(Theme.grey3)
-            }
+            Text(segments.map(\.hangul).joined())
+                .font(Theme.korean(16))
+                .foregroundStyle(Theme.grey3)
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, 24)

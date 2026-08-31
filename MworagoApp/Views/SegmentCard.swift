@@ -3,8 +3,9 @@ import MworagoCore
 
 /// 낱말 한 조각의 결과.
 ///
-/// 두 층으로 보인다 — **가나 · 한글**. 어디까지 보여줄지는 사용자가 정한다.
-/// 가나가 맨 위인 것은 소리를 듣고 찾아온 사람에게 가장 가까운 것이 가나이기 때문이다.
+/// 세 줄이다 — **가나 · 한글 발음 · 한국어 뜻**. 가나가 맨 위인 것은 소리를 듣고
+/// 찾아온 사람에게 가장 가까운 것이 가나이기 때문이고, 한글 발음이 그 아래인 것은
+/// 그것이 여기까지 온 열쇠이기 때문이다.
 /// 활용형이면 무엇을 되돌렸는지도 말해 준다. 낱말만 던져 주는 것과
 /// "止める의 명령형"이라고 알려 주는 것은 교재로서 값이 다르다.
 ///
@@ -13,7 +14,6 @@ import MworagoCore
 /// 아래 층들도 함께 따라 내려 카드 안의 차례는 그대로 뒀다.
 struct SegmentCard: View {
     let segment: Segment
-    let aid: ReadingAid
     /// 문장에서 이 조각을 골랐는가.
     ///
     /// 고른 카드는 왼쪽에 선 하나를 세워 표시한다. 문장 쪽 강조가 이미 반전이라
@@ -79,11 +79,13 @@ struct SegmentCard: View {
                 }
             }
 
-            if aid.showsHangul {
-                Text(segment.hangul)
-                    .font(Theme.korean(14))
-                    .foregroundStyle(Theme.grey3)
-            }
+            // **한글 발음은 늘 보인다.** 한때는 다이얼로 껐다 켰는데, 층이 가나와 한글
+            // 둘뿐이 되면서 끌 것이 하나밖에 남지 않았다 — 두 칸짜리 다이얼은
+            // 고르는 일이 아니라 켜고 끄는 스위치이고, 그것이 끄는 것은 이 사람이
+            // 낱말을 찾아온 바로 그 열쇠다.
+            Text(segment.hangul)
+                .font(Theme.korean(14))
+                .foregroundStyle(Theme.grey3)
         }
     }
 

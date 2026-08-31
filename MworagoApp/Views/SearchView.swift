@@ -1,44 +1,11 @@
 import SwiftUI
 import MworagoCore
 
-/// 무엇까지 보여줄지. 듀오링고가 발음 표시를 끄고 켜게 하듯,
-/// 익숙해질수록 아래 층을 끄는 다이얼이다.
-///
-/// **가나가 맨 위다.** 소리를 듣고 찾아온 사람에게 가장 가까운 것이 가나이기 때문이다.
-///
-/// 한때는 층이 셋이었다 — 가나 · 한자 · 한글. **한자를 뺐다.** 이 앱이 데려다주려는 곳은
-/// 자막에 뜨는 가나이고, 한자는 그 길에 있지 않다. 뜻은 한국어가 말해 주므로 한자가
-/// 뜻을 거들 자리도 없었다. 층이 둘이 되면서 다이얼도 두 칸이 됐다.
-enum ReadingAid: Int, CaseIterable, Identifiable {
-    case hangul, kana
-
-    var id: Int { rawValue }
-    var label: String {
-        switch self {
-        case .hangul: "한글까지"
-        case .kana: "가나만"
-        }
-    }
-    var showsHangul: Bool { self == .hangul }
-
-    init?(name: String) {
-        switch name {
-        case "hangul": self = .hangul
-        // 한자 층이 있던 시절의 이름. 그때 "한자까지"는 한글을 안 보이는 상태였다.
-        case "kana", "kanji": self = .kana
-        default: return nil
-        }
-    }
-}
-
 struct SearchView: View {
     /// 한 줄이 지나치게 길어지면 눈이 되돌아올 곳을 잃는다. iPad 에서 특히 그렇다.
     private static let contentWidth: CGFloat = Theme.listWidth
     /// 입력 바가 차지하는 높이. 그 위에 다른 것을 놓을 때 겹치지 않게 비워 둘 만큼이다.
     private static let inputBarHeight: CGFloat = 92
-    /// 읽기 보조 다이얼까지 얹혔을 때의 높이. 결과가 있을 때만 다이얼이 나오므로
-    /// 목록의 아래 여백은 이쪽을 쓴다 — 120 으로 두었다가 다이얼이 카드를 덮었다.
-    private static let inputBarWithDialHeight: CGFloat = 152
 
     /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
     var collection: CollectionStore? = nil
@@ -52,11 +19,6 @@ struct SearchView: View {
     @State private var input = ProcessInfo.processInfo.arguments
         .first { $0.hasPrefix("--query=") }
         .map { String($0.dropFirst("--query=".count)) } ?? ""
-    /// 읽기 보조 다이얼도 실행 인자로 고를 수 있다 (`--aid=kana`).
-    /// `--query=` 와 같은 까닭이다 — 시뮬레이터를 손으로 누르지 않고 세 상태를 다 확인하려고.
-    @State private var aid: ReadingAid = ProcessInfo.processInfo.arguments
-        .first { $0.hasPrefix("--aid=") }
-        .flatMap { ReadingAid(name: String($0.dropFirst("--aid=".count))) } ?? .hangul
     /// 문장에서 고른 조각. 아무것도 안 골랐을 때가 기본이고, 그때는 카드가 전부 보인다.
     ///
     /// `--select=1` 로 고른 상태를 띄울 수 있다. `--query=` 와 같은 뜻으로, 시뮬레이터를
@@ -173,12 +135,12 @@ struct SearchView: View {
                     // 바로 아래 카드와 같은 말을 두 번 하게 된다 (아타마가이타이 → 頭が痛い 는
                     // 사전에 통째로 실려 있어 한 조각으로 나온다).
                     if engine.segments.count > 1 {
-                        SentenceHeader(segments: engine.segments, aid: aid, selected: $selected)
+                        SentenceHeader(segments: engine.segments, selected: $selected)
                         Divider().overlay(Theme.grey3)
                     }
 
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
-                        SegmentCard(segment: segment, aid: aid,
+                        SegmentCard(segment: segment,
                                     isSelected: selected == index, collection: collection,
                                     onCollect: { collecting = $0 })
                             .id(index)
@@ -186,7 +148,7 @@ struct SearchView: View {
                     }
                 }
                 .padding(.top, 12)
-                .padding(.bottom, Self.inputBarWithDialHeight)   // 입력 바와 다이얼에 가리지 않도록
+                .padding(.bottom, Self.inputBarHeight)   // 입력 바에 가리지 않도록
                 .frame(maxWidth: Self.contentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
@@ -248,7 +210,6 @@ struct SearchView: View {
 
     private var inputBar: some View {
         VStack(spacing: 10) {
-            if !input.isEmpty { aidDial }
 
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
@@ -294,33 +255,5 @@ struct SearchView: View {
         // 나가 있으면 아래로 스크롤할 때 바깥선이 본문과 어긋나 보인다.
         .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 14)
-    }
-
-    /// 강조는 반전 하나로만 — 고른 것이 검게 채워진다.
-    private var aidDial: some View {
-        HStack(spacing: 6) {
-            ForEach(ReadingAid.allCases) { option in
-                let selected = option == aid
-                Button {
-                    withAnimation(.snappy(duration: 0.18)) { aid = option }
-                } label: {
-                    Text(option.label)
-                        .font(Theme.korean(13, weight: selected ? .semibold : .regular))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(selected ? Theme.ink : .clear, in: Capsule())
-                        .foregroundStyle(selected ? Theme.paper : Theme.grey2)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        // **다이얼도 떠 있는 컨트롤이다.** 입력 바만 유리를 두르고 이쪽은 맨몸이라,
-        // 뒤로 지나가는 카드 글자가 그대로 비쳐 읽기 어려웠다.
-        // 내용만큼만 차지하게 두고 같은 유리를 씌운다.
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5))
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
