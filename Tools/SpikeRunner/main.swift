@@ -71,6 +71,9 @@ let buildCount = flagValues("--build-cases").first.flatMap(Int.init)
 let segmentInputs = flagValues("--segment")
 let segmentCaseCount = flagValues("--segment-cases").first.flatMap(Int.init)
 let doSegmentSweep = args.contains("--segment-sweep")
+// 틀린 케이스만 찍는다. 성적표는 얼마나 틀렸는지는 알려 주지만
+// **무엇이** 틀렸는지는 안 알려 준다. 원인을 나누려면 실물을 봐야 한다.
+let doSegmentFails = args.contains("--segment-fails")
 let buildFrequencyLimit = flagValues("--build-frequency").first.flatMap(Int.init)
 let buildIndexPath = flagValues("--build-index").first
 let useIndexPath = flagValues("--index").first
@@ -284,7 +287,7 @@ if let buildFrequencyLimit {
 //
 // 분절 정답은 Tanaka Corpus 에서 온다. 사람이 손으로 나눈 낱말 경계라 내가 정할 게 없다.
 
-if segmentCaseCount != nil || doSegmentSweep {
+if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
     let corpusPath = "Tools/data/examples.utf"
     let count = segmentCaseCount ?? 300
     log("Tanaka Corpus 읽는 중… \(corpusPath)")
@@ -294,6 +297,21 @@ if segmentCaseCount != nil || doSegmentSweep {
     guard !segmentCases.isEmpty else {
         FileHandle.standardError.write(Data("케이스를 못 만들었다. Tools/fetch-tanaka.sh 를 먼저 실행\n".utf8))
         exit(1)
+    }
+
+    if doSegmentFails {
+        print("# 틀린 분절 — 입력\t정답\t내가 나눈 것\t정답표기")
+        var wrong = 0
+        for testCase in segmentCases {
+            let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
+                                             segmentCost: Segmenter.defaultSegmentCost)
+            let mine = segments.map(\.hangul)
+            guard mine != testCase.pieces else { continue }
+            wrong += 1
+            print("\(testCase.hangul)\t\(testCase.pieces.joined(separator: " "))\t\(mine.joined(separator: " "))\t\(testCase.words.joined(separator: " "))")
+        }
+        log("틀린 것 \(wrong)/\(segmentCases.count)")
+        exit(0)
     }
 
     if !doSegmentSweep {
