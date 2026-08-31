@@ -138,6 +138,22 @@ if let useIndexPath, buildIndexPath == nil {
             log("한국어 뜻 없음 — 영어 뜻만 싣는다 (swift run Translator 로 만든다)")
         }
 
+        // 모델이 옮기기를 거부한 낱말도 손으로 적은 표에서 온다.
+        // 죽음·폭력·신체를 다루는 말이 가드레일에 걸리는데(594개), 애니 자막에는
+        // 그것이 흔하다 — 死ぬ·殺す·狙う·馬鹿 는 빈도 최상위권이다.
+        // 프롬프트로 우회하면 절반이 틀리게 오고, 짧고 틀린 것은 다듬어서 걸러낼 수 없다.
+        let guardrailPath = "Tools/data/guardrail-gloss.tsv"
+        if let text = try? String(contentsOfFile: guardrailPath, encoding: .utf8) {
+            var 더한것 = 0
+            for line in text.split(separator: "\n") where !line.hasPrefix("#") {
+                let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
+                guard columns.count >= 3, !columns[2].isEmpty else { continue }
+                koreanGlosses["\(columns[0])\t\(columns[1])"] = String(columns[2])
+                더한것 += 1
+            }
+            log("모델이 거부한 낱말 \(더한것)개 (\(guardrailPath))")
+        }
+
         // 기능어는 손으로 적은 표에서 온다. 조사·조동사는 번역 대상이 아니어서
         // 뜻 자리에 영어 설명문이 남는데, 화면에서는 "아직 안 된 것"과 구별되지 않는다.
         // **다듬지 않고 그대로 싣는다** — 사람이 적은 것이라 모델을 겨냥한 문을 지날 이유가 없고,
