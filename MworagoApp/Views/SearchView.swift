@@ -41,6 +41,9 @@ struct SearchView: View {
 
     /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
     var collection: CollectionStore? = nil
+    /// 다른 탭에서 넘어온 검색어. 모은 것이나 도감에서 낱말을 누르면 여기로 들어온다.
+    /// 받아서 처리한 뒤 비운다 — 남겨 두면 이 탭으로 돌아올 때마다 다시 검색된다.
+    var incoming: Binding<String?>? = nil
 
     @State private var engine = SearchEngine()
     /// 실행 인자로 검색어를 넣을 수 있다 (`--query=다이죠부`).
@@ -73,6 +76,13 @@ struct SearchView: View {
 
             content
             inputBar
+        }
+        .onChange(of: incoming?.wrappedValue) { _, new in
+            guard let new, !new.isEmpty else { return }
+            input = new
+            engine.search(new)
+            selected = nil
+            incoming?.wrappedValue = nil
         }
         .onAppear {
             // `--collect` 는 검색 결과를 전부 담는다. 담기와 모은 것 화면을

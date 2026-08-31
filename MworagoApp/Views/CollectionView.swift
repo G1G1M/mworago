@@ -8,6 +8,9 @@ import MworagoCore
 /// 무엇을 보고 담았는지가 그 사람의 기억과 맞다.
 struct CollectionView: View {
     let collection: CollectionStore
+    /// 낱말을 누르면 찾기로 데려간다. 모아 둔 것을 다시 만나는 길이 없으면
+    /// 이 화면은 쌓아만 두는 서랍이 된다.
+    var onPick: (String) -> Void = { _ in }
 
     private static let contentWidth: CGFloat = 640
 
@@ -60,6 +63,7 @@ struct CollectionView: View {
 
     private func row(_ word: CollectedWord) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Button { onPick(word.hangul) } label: {
             VStack(alignment: .leading, spacing: 5) {
                 Text(word.reading)
                     .font(Theme.japanese(24, weight: .medium))
@@ -79,7 +83,12 @@ struct CollectionView: View {
                         .padding(.top, 2)
                 }
             }
-            Spacer(minLength: 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("찾기에서 다시 봅니다")
+
             Button {
                 collection.remove(word)
             } label: {

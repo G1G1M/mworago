@@ -8,6 +8,8 @@ import MworagoCore
 /// **모르는 것을 지어내는 대신 아는 것으로 묶는다.**
 struct BookView: View {
     let collection: CollectionStore
+    /// 낱말을 누르면 찾기로 데려간다.
+    var onPick: (String) -> Void = { _ in }
 
     private static let contentWidth: CGFloat = 640
 
@@ -64,13 +66,16 @@ struct BookView: View {
             }
             FlowRow(lineSpacing: 8) {
                 ForEach(day.words) { word in
-                    Text(word.reading)
-                        .font(Theme.japanese(19))
-                        .foregroundStyle(Theme.grey1)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(Theme.grey4, in: Capsule())
-                        .padding(.trailing, 8)
+                    Button { onPick(word.hangul) } label: {
+                        Text(word.reading)
+                            .font(Theme.japanese(19))
+                            .foregroundStyle(Theme.grey1)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Theme.grey4, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 8)
                 }
             }
         }

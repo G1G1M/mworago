@@ -13,7 +13,15 @@ struct RootView: View {
     /// 어느 탭을 열지 실행 인자로 고를 수 있다 (`--tab=collection`).
     /// `--query=` · `--select=` · `--aid=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
+    /// 다른 탭에서 찾기로 넘기는 검색어.
+    @State private var pendingQuery: String?
     @State private var tab: RootTab = RootTab(argument: ProcessInfo.processInfo.arguments)
+
+    /// 낱말을 들고 찾기로 건너간다.
+    private func goFind(_ hangul: String) {
+        pendingQuery = hangul
+        tab = .find
+    }
 
     enum RootTab: Hashable {
         case find, collection, book, practice
@@ -35,19 +43,19 @@ struct RootView: View {
         // 아이패드에서 탭바가 위아래로 **두 번** 그려졌다.
         TabView(selection: $tab) {
             Tab(value: RootTab.find) {
-                SearchView(collection: collection)
+                SearchView(collection: collection, incoming: $pendingQuery)
             } label: {
                 Image(systemName: "magnifyingglass")
                     .accessibilityLabel("찾기")
             }
             Tab(value: RootTab.collection) {
-                CollectionView(collection: collection)
+                CollectionView(collection: collection, onPick: goFind)
             } label: {
                 Image(systemName: "bookmark")
                     .accessibilityLabel("모은 것")
             }
             Tab(value: RootTab.book) {
-                BookView(collection: collection)
+                BookView(collection: collection, onPick: goFind)
             } label: {
                 Image(systemName: "books.vertical")
                     .accessibilityLabel("도감")
