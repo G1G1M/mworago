@@ -115,7 +115,7 @@ struct LibraryView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("낱말")
+                Text("책장")
                     .font(Theme.korean(24, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                 Text("\(collection.words.count)")
@@ -330,7 +330,7 @@ struct LibraryView: View {
 
     private var empty: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("아직 담은 낱말이 없어요")
+            Text("아직 책장이 비어 있어요")
                 .font(Theme.korean(22, weight: .semibold))
                 .foregroundStyle(Theme.ink)
             Text("찾기에서 낱말 옆의 갈피표를 누르면 여기 쌓입니다.")

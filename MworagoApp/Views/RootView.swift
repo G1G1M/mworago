@@ -76,7 +76,7 @@ struct RootView: View {
                             onPractice: goPractice)
             } label: {
                 Image(systemName: "books.vertical")
-                    .accessibilityLabel("낱말")
+                    .accessibilityLabel("책장")
             }
             Tab(value: RootTab.practice) {
                 PracticeView(collection: collection,
