@@ -20,27 +20,6 @@ enum TanakaCorpus {
         var display: String { surface ?? headword }
     }
 
-    /// 활용형의 읽기를 만든다.
-    ///
-    /// B 라인은 표제어의 읽기만 적어 준다(`読む(よむ){読んだ}`). 실제 발음은 `よんだ`인데
-    /// 그 읽기는 어디에도 없다. 한자 어간은 활용해도 읽기가 변하지 않으므로,
-    /// 표제어에서 어간의 읽기를 떼어 내 표면형의 어미에 붙이면 된다.
-    ///
-    ///     読む(よむ) + 読んだ  →  어간 読 = よ, 어미 む → んだ  ⇒  よんだ
-    static func surfaceReading(headword: String, reading: String, surface: String) -> String? {
-        // 표면형이 전부 가나면 그 자체가 읽기다 (する{してる})
-        if surface.allSatisfy(\.isKana) { return surface }
-
-        let stem = headword.prefix { !$0.isKana }
-        guard !stem.isEmpty, surface.hasPrefix(stem) else { return nil }
-
-        let headwordTail = headword.dropFirst(stem.count)
-        let surfaceTail = surface.dropFirst(stem.count)
-        guard reading.hasSuffix(headwordTail), surfaceTail.allSatisfy(\.isKana) else { return nil }
-
-        return String(reading.dropLast(headwordTail.count)) + String(surfaceTail)
-    }
-
     /// `표제어(읽기)[센스]{표면형}~` 하나를 뜯는다.
     static func parseToken(_ token: String) -> Token? {
         var rest = Substring(token)
@@ -70,7 +49,7 @@ enum TanakaCorpus {
         guard let surface else {
             return Token(headword: headword, reading: baseReading, surface: nil)
         }
-        guard let actual = surfaceReading(headword: headword, reading: baseReading, surface: surface) else {
+        guard let actual = InflectedReading.make(headword: headword, reading: baseReading, surface: surface) else {
             return nil   // 읽기를 만들 수 없으면 이 문장은 쓸 수 없다
         }
         return Token(headword: headword, reading: actual, surface: surface)
@@ -124,13 +103,6 @@ enum SegmentCaseBuilder {
             if cases.count >= limit { break }
         }
         return cases
-    }
-}
-
-extension Character {
-    /// 히라가나·가타카나·장음 부호
-    var isKana: Bool {
-        unicodeScalars.allSatisfy { (0x3041...0x30FF).contains($0.value) }
     }
 }
 
