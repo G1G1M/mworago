@@ -19,6 +19,16 @@ enum Theme {
     static let grey3 = adaptive(light: .init(white: 0.70), dark: .init(white: 0.40))  // 구분선·비활성
     static let grey4 = adaptive(light: .init(white: 0.92), dark: .init(white: 0.18))  // 면
 
+    /// 이 앱이 쓰는 말.
+    ///
+    /// **날짜가 기기 언어를 따라가고 있었다.** 영어로 맞춰 둔 기기에서는
+    /// `September 1` 이 떴다 — 화면의 다른 글자는 다 한국어인데 날짜만 영어였다.
+    ///
+    /// 아직 여러 말로 옮기지 않았으므로 한국어로 못 박는다. 여러 말을 받게 되면
+    /// 이 한 줄을 걷어내면 된다 — 그때는 기기 언어를 따르는 것이 맞다.
+    /// 일본어는 자료 자체가 일본어라 이것과 무관하다.
+    static let locale = Locale(identifier: "ko_KR")
+
     /// 입력 바의 자리표시 글자.
     ///
     /// **시스템이 정하는 색이다.** `TextField` 의 자리표시는 `foregroundStyle` 을 따르지

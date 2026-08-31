@@ -48,7 +48,7 @@ struct RootView: View {
     private func goPractice(_ words: [CollectedWord]) {
         guard let first = words.first else { return }
         practiceSubset = words
-        practiceLabel = first.collectedAt.formatted(.dateTime.month(.wide).day())
+        practiceLabel = first.collectedAt.formatted(.dateTime.month(.wide).day().locale(Theme.locale))
         tab = .practice
     }
 
@@ -151,6 +151,9 @@ struct RootView: View {
             if let frame { inputBarFrame = frame }
         }
         .tint(Theme.ink)
+        // **아직 여러 말로 옮기지 않았다.** 기기를 영어로 써도 화면은 한국어이므로
+        // 날짜만 영어로 뜨면 안 된다. 여러 말을 받게 되면 이 줄을 걷어낸다.
+        .environment(\.locale, Theme.locale)
         // 설정에서 고른 밝기. `nil` 이면 기기를 따른다.
         .preferredColorScheme(appearance.scheme)
     }

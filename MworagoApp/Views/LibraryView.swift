@@ -114,7 +114,7 @@ struct LibraryView: View {
                          onMoveWord: { collection.move($0, to: $1) },
                          folderNames: collection.folderNames)
         case .day(let date):
-            FolderDetail(title: date.formatted(.dateTime.month(.wide).day()),
+            FolderDetail(title: date.formatted(.dateTime.month(.wide).day().locale(Theme.locale)),
                          words: days.first { $0.date == date }?.words ?? [],
                          onPractice: onPractice,
                          onFind: onPick,
@@ -170,7 +170,7 @@ struct LibraryView: View {
                     }
                 case .days:
                     ForEach(days) { day in
-                        groupRow(name: day.date.formatted(.dateTime.month(.wide).day()),
+                        groupRow(name: day.date.formatted(.dateTime.month(.wide).day().locale(Theme.locale)),
                                  dim: false,
                                  words: day.words,
                                  route: .day(day.date))
@@ -330,7 +330,9 @@ struct LibraryView: View {
             }
             .foregroundStyle(Theme.grey3)
             .padding(.top, 2)
-            Text("애니 한 화를 보며 찾은 것들은 같은 날 모이니, 날짜가 곧 그 화가 됩니다.")
+            // 온보딩 2장과 같은 이유로 낡았던 말이다. 날짜는 어느 화를 봤는지 앱이
+            // 몰라서 쓰던 대용품인데, 이제 담을 때 어느 묶음에 넣을지 직접 고른다.
+            Text("묶음은 마음대로 만들고, 담은 뒤에도 옮길 수 있어요.")
                 .font(Theme.korean(13))
                 .foregroundStyle(Theme.grey3)
                 .padding(.top, 6)

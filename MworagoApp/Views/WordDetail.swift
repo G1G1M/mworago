@@ -107,7 +107,7 @@ struct WordDetail: View {
             Text("담은 날")
                 .font(Theme.korean(12))
                 .foregroundStyle(Theme.grey3)
-            Text(word.collectedAt, format: .dateTime.year().month(.wide).day())
+            Text(word.collectedAt, format: .dateTime.year().month(.wide).day().locale(Theme.locale))
                 .font(Theme.korean(15))
                 .foregroundStyle(Theme.grey1)
         }
