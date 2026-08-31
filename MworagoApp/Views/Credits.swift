@@ -45,7 +45,7 @@ struct Credits: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 19) {
-                Text("이 앱은 여러 사람이 만들어 공개한 자료 위에 서 있습니다.")
+                Text("이 앱은 여러 사람이 공개해 둔 자료로 만들어졌습니다.")
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.grey1)
                     .padding(.top, 4)
