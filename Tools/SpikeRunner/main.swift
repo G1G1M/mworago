@@ -166,6 +166,22 @@ if let useIndexPath, buildIndexPath == nil {
             log("손으로 적은 낱말 \(더한것)개 (\(guardrailPath))")
         }
 
+        // 모델이 틀리게 옮긴 것도 손으로 고쳐 둔 표에서 온다.
+        // 빈도 상위부터 훑어 보니 **넷 중 하나가 틀리거나 부정확했다** — 그것도 가장 흔한
+        // 낱말부터 그랬다(痛い → "뜨겁다" · 肩 → "팔꿈치" · 窓 → "문" · 全然 → "거짓말").
+        // 딴 낱말을 대거나 품사가 어긋난 것은 짧고 한국어라 tidy 가 걸러낼 수 없다.
+        let correctedPath = "Tools/data/corrected-gloss.tsv"
+        if let text = try? String(contentsOfFile: correctedPath, encoding: .utf8) {
+            var 고친것 = 0
+            for line in text.split(separator: "\n") where !line.hasPrefix("#") {
+                let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
+                guard columns.count >= 3, !columns[2].isEmpty else { continue }
+                koreanGlosses["\(columns[0])\t\(columns[1])"] = String(columns[2])
+                고친것 += 1
+            }
+            log("사람이 고친 뜻 \(고친것)개 (\(correctedPath))")
+        }
+
         // 기능어는 손으로 적은 표에서 온다. 조사·조동사는 번역 대상이 아니어서
         // 뜻 자리에 영어 설명문이 남는데, 화면에서는 "아직 안 된 것"과 구별되지 않는다.
         // **다듬지 않고 그대로 싣는다** — 사람이 적은 것이라 모델을 겨냥한 문을 지날 이유가 없고,
