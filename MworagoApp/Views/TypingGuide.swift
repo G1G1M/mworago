@@ -11,6 +11,10 @@ import SwiftUI
 struct TypingGuide: View {
     @Environment(\.dismiss) private var dismiss
 
+    /// `--credits` 로 출처 화면을 펼친 채 띄울 수 있다.
+    /// `--guide` 와 같은 뜻이다 — 시뮬레이터를 손으로 두드리지 않고 화면을 확인하려고.
+    @State private var showingCredits = ProcessInfo.processInfo.arguments.contains("--credits")
+
     /// 한 줄. 왼쪽이 무엇에 대한 이야기인지, 오른쪽이 실제로 쳐 본 것이다.
     private struct Rule: Identifiable {
         let id = UUID()
@@ -74,6 +78,21 @@ struct TypingGuide: View {
 
                     section("신경 쓰지 않아도 되는 것", rules: Self.forgiving)
                     section("가려 적어야 하는 것", rules: Self.careful)
+
+                    // 출처 표시는 자료의 라이선스가 요구하는 것이라 어디엔가 반드시 있어야 한다.
+                    // 탭을 하나 더 늘리기보다, 이미 늘 닿는 이 쪽지 안에 둔다.
+                    NavigationLink(value: "credits") {
+                        HStack {
+                            Text("이 앱이 쓰는 자료")
+                                .font(Theme.korean(15))
+                                .foregroundStyle(Theme.grey1)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.grey3)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
@@ -81,6 +100,8 @@ struct TypingGuide: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.paper)
+            .navigationDestination(for: String.self) { _ in Credits() }
+            .navigationDestination(isPresented: $showingCredits) { Credits() }
             .navigationTitle("한글로 어떻게 치나")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
