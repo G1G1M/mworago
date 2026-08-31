@@ -29,6 +29,9 @@ struct RootView: View {
     /// 화면을 밝게 볼지 어둡게 볼지. 기본은 기기를 따르는 것이다.
     @State private var appearance = Appearance.saved
     @State private var showOnboarding = OnboardingSeen.forced || !OnboardingSeen.already
+    /// 앱을 여는 한 장. `--no-splash` 로 건너뛴다 — 다른 화면을 찍을 때마다
+    /// 1초를 기다릴 이유가 없다. `--query=` · `--tab=` 과 같은 취지다.
+    @State private var showSplash = !ProcessInfo.processInfo.arguments.contains("--no-splash")
 
     /// 낱말을 들고 찾기로 건너간다.
     private func goFind(_ hangul: String) {
@@ -125,6 +128,16 @@ struct RootView: View {
                 Onboarding(onDone: {
                     OnboardingSeen.mark()
                     withAnimation(.snappy(duration: 0.2)) { showOnboarding = false }
+                })
+                .transition(.opacity)
+            }
+        }
+        // **스플래시가 맨 위다.** 온보딩보다 뒤에 두면 처음 여는 사람에게 온보딩이
+        // 먼저 뜨고 그 위로 스플래시가 덮인다 — 순서가 뒤집힌다.
+        .overlay {
+            if showSplash {
+                Splash(onDone: {
+                    withAnimation(.easeOut(duration: 0.22)) { showSplash = false }
                 })
                 .transition(.opacity)
             }

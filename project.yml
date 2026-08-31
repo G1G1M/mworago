@@ -29,7 +29,10 @@ targets:
       path: MworagoApp/Info.plist
       properties:
         CFBundleDisplayName: 뭐라고
-        UILaunchScreen: {}
+        # 런치 화면과 스플래시가 같은 바닥색을 쓴다. 다르면 앱이 열리는 순간
+        # 흰 판이 한 번 깜빡이고, 그 깜빡임이 애니메이션의 첫 프레임을 먹는다.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         # 사전을 통째로 싣고 네트워크를 쓰지 않는다. 암호화를 직접 쓰는 곳이 없으므로
         # 수출 규정 신고 대상이 아니다. 적어 두지 않으면 심사에 낼 때마다 묻는다.
         ITSAppUsesNonExemptEncryption: false
