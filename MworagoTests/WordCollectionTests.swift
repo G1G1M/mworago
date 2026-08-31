@@ -23,8 +23,8 @@ struct WordCollectionTests {
         defer { try? FileManager.default.removeItem(atPath: path) }
 
         var collection = WordCollection(path: path)
-        collection.add(Self.낱말("大丈夫", "だいじょうぶ", "다이죠부"))
-        collection.add(Self.낱말("約束", "やくそく", "야쿠소쿠"))
+        collection.add(Self.낱말("大丈夫", "だいじょうぶ", "다이죠부"), to: nil)
+        collection.add(Self.낱말("約束", "やくそく", "야쿠소쿠"), to: nil)
 
         let 다시 = WordCollection(path: path)
         #expect(다시.words.map(\.headword) == ["約束", "大丈夫"])
@@ -36,9 +36,9 @@ struct WordCollectionTests {
         defer { try? FileManager.default.removeItem(atPath: path) }
 
         var collection = WordCollection(path: path)
-        collection.add(Self.낱말("一"))
-        collection.add(Self.낱말("二"))
-        collection.add(Self.낱말("三"))
+        collection.add(Self.낱말("一"), to: nil)
+        collection.add(Self.낱말("二"), to: nil)
+        collection.add(Self.낱말("三"), to: nil)
         // 방금 찾은 것이 눈앞에 있어야 한다. 스크롤해서 찾게 만들 이유가 없다.
         #expect(collection.words.map(\.headword) == ["三", "二", "一"])
     }
@@ -49,13 +49,13 @@ struct WordCollectionTests {
         defer { try? FileManager.default.removeItem(atPath: path) }
 
         var collection = WordCollection(path: path)
-        collection.add(Self.낱말("大丈夫", "だいじょうぶ"))
-        collection.add(Self.낱말("大丈夫", "だいじょうぶ"))
+        collection.add(Self.낱말("大丈夫", "だいじょうぶ"), to: nil)
+        collection.add(Self.낱말("大丈夫", "だいじょうぶ"), to: nil)
         #expect(collection.words.count == 1)
 
         // 표기가 같아도 읽기가 다르면 다른 낱말이다 — 机(つくえ)와 机(つき).
-        collection.add(Self.낱말("机", "つくえ"))
-        collection.add(Self.낱말("机", "つき"))
+        collection.add(Self.낱말("机", "つくえ"), to: nil)
+        collection.add(Self.낱말("机", "つき"), to: nil)
         #expect(collection.words.count == 3)
     }
 
@@ -67,7 +67,7 @@ struct WordCollectionTests {
         var collection = WordCollection(path: path)
         let 낱말 = Self.낱말("約束", "やくそく")
         #expect(!collection.contains(낱말))
-        collection.add(낱말)
+        collection.add(낱말, to: nil)
         #expect(collection.contains(낱말))
     }
 
@@ -78,7 +78,7 @@ struct WordCollectionTests {
 
         var collection = WordCollection(path: path)
         let 낱말 = Self.낱말("約束", "やくそく")
-        collection.add(낱말)
+        collection.add(낱말, to: nil)
         collection.remove(낱말)
         #expect(collection.words.isEmpty)
         #expect(WordCollection(path: path).words.isEmpty)
@@ -119,7 +119,7 @@ struct WordCollectionTests {
         defer { try? FileManager.default.removeItem(atPath: path) }
 
         var collection = WordCollection(path: path)
-        collection.add(Self.낱말("約束"))
+        collection.add(Self.낱말("約束"), to: nil)
         let 담긴때 = try #require(collection.words.first?.collectedAt)
         let 다시 = try #require(WordCollection(path: path).words.first?.collectedAt)
         #expect(abs(담긴때.timeIntervalSince(다시)) < 1)
@@ -176,7 +176,10 @@ struct CollectionDayTests {
 ///
 /// 날짜만으로는 부족하다 — 하루에 두 편을 보면 한 덩어리로 뭉치고, 한 편을 이틀에
 /// 걸쳐 보면 갈라진다. "날짜가 곧 그 화"라는 전제가 실제 시청 습관과 어긋나는 자리다.
-/// 그래서 사용자가 묶음을 정할 수 있게 하되, **담는 순간에는 묻지 않는다.**
+///
+/// 그래서 **담는 순간에 어디에 넣을지 묻는다.** 한때는 미리 정해 두고 담을 때는 묻지
+/// 않았는데, 앱은 사용자가 어느 화를 보는지 알 길이 없다 — 아는 사람에게 묻는 것이
+/// 지어낸 대용품보다 정확하다. 대신 **지난번에 넣은 곳을 기억해** 미리 골라 둔다.
 @Suite("모은 낱말 묶음")
 struct WordCollectionFolderTests {
 
@@ -188,30 +191,83 @@ struct WordCollectionFolderTests {
         CollectedWord(headword: 표기, reading: 읽기, hangul: "요미", gloss: "뜻")
     }
 
-    @Test("담을 때 어디에 넣을지 묻지 않는다 — 지금 담는 곳으로 간다")
-    func 지금담는곳() {
+    @Test("담을 때 어디에 넣을지 받는다")
+    func 담을때고르기() {
         var collection = WordCollection(path: Self.임시경로())
-        collection.setCurrentFolder("리코리스 3화")
-        collection.add(Self.낱말("犬", "いぬ"))
+        collection.add(Self.낱말("犬", "いぬ"), to: "리코리스 3화")
         #expect(collection.words.first?.folder == "리코리스 3화")
 
-        var 빈곳 = WordCollection(path: Self.임시경로())
-        빈곳.add(Self.낱말("猫", "ねこ"))
-        #expect(빈곳.words.first?.folder == nil)
+        // 안 넣고 담을 수도 있다. 묶음은 거들 뿐이지 담기의 조건이 아니다.
+        collection.add(Self.낱말("猫", "ねこ"), to: nil)
+        #expect(collection.words.first?.folder == nil)
     }
 
-    @Test("지금 담는 곳은 앱을 다시 열어도 남는다")
-    func 담는곳저장() {
+    @Test("지난번에 넣은 곳을 기억한다 — 모달이 그것을 미리 골라 준다")
+    func 지난번묶음() {
         let path = Self.임시경로()
         var collection = WordCollection(path: path)
-        collection.setCurrentFolder("2화")
-        #expect(WordCollection(path: path).currentFolder == "2화")
+        #expect(collection.lastFolder == nil)   // 처음에는 지난번이 없다
 
-        collection.setCurrentFolder(nil)
-        #expect(WordCollection(path: path).currentFolder == nil)
-        // 공백만 적은 것은 이름이 아니다.
-        collection.setCurrentFolder("   ")
-        #expect(WordCollection(path: path).currentFolder == nil)
+        collection.add(Self.낱말("犬", "いぬ"), to: "1화")
+        #expect(collection.lastFolder == "1화")
+
+        // 한 화를 몰아 담는 사이에 앱이 죽어도 그 자리를 잃지 않는다.
+        #expect(WordCollection(path: path).lastFolder == "1화")
+
+        collection.add(Self.낱말("猫", "ねこ"), to: "2화")
+        #expect(collection.lastFolder == "2화")
+    }
+
+    @Test("안 넣고 담으면 다음번 기본도 안 넣기다")
+    func 안넣기도기억() {
+        // 기억하는 것은 "마지막에 고른 것"이지 "마지막에 고른 묶음"이 아니다.
+        // 안 넣기를 골랐는데 다음에 또 묶음이 골라져 있으면 고른 적 없는 곳으로 간다.
+        let path = Self.임시경로()
+        var collection = WordCollection(path: path)
+        collection.add(Self.낱말("犬", "いぬ"), to: "1화")
+        collection.add(Self.낱말("猫", "ねこ"), to: nil)
+        #expect(collection.lastFolder == nil)
+        #expect(WordCollection(path: path).lastFolder == nil)
+    }
+
+    @Test("공백만 적은 이름은 묶음이 아니다")
+    func 빈이름() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "いぬ"), to: "   ")
+        #expect(collection.words.first?.folder == nil)
+        #expect(collection.lastFolder == nil)
+    }
+
+    @Test("전에 '지금 담는 곳'을 정해 둔 사람은 그 자리가 지난번 묶음이 된다")
+    func 옛담는곳() throws {
+        // 담는 방식을 바꾸기 전에 쓰던 파일이다. 그 사람이 마지막으로 정해 둔 곳이
+        // 곧 마지막으로 담던 곳이라, 버리지 않고 이어받는다.
+        let path = Self.임시경로()
+        defer { try? FileManager.default.removeItem(atPath: path + ".folder") }
+        try "리코리스 3화".write(toFile: path + ".folder", atomically: true, encoding: .utf8)
+        #expect(WordCollection(path: path).lastFolder == "리코리스 3화")
+    }
+
+    @Test("낱말을 다 빼도 지난번 묶음은 고를 목록에 남는다")
+    func 빈묶음도목록에() {
+        var collection = WordCollection(path: Self.임시경로())
+        let word = Self.낱말("犬", "いぬ")
+        collection.add(word, to: "1화")
+        collection.remove(word)
+        // 묶음 이름은 낱말에서 거두는데, 방금 담은 곳이 목록에서 사라지면
+        // 다음에 담을 때 같은 이름을 다시 쳐야 한다.
+        #expect(collection.folderNames == ["1화"])
+    }
+
+    @Test("이미 담은 낱말을 또 담아도 지난번 묶음이 흔들리지 않는다")
+    func 중복은무시() {
+        var collection = WordCollection(path: Self.임시경로())
+        let word = Self.낱말("犬", "いぬ")
+        collection.add(word, to: "1화")
+        collection.add(word, to: "2화")   // 아무 일도 일어나지 않는다
+        #expect(collection.words.count == 1)
+        #expect(collection.words.first?.folder == "1화")
+        #expect(collection.lastFolder == "1화")
     }
 
     @Test("담은 뒤에도 묶음을 옮길 수 있다")
@@ -219,13 +275,24 @@ struct WordCollectionFolderTests {
         let path = Self.임시경로()
         var collection = WordCollection(path: path)
         let word = Self.낱말("犬", "いぬ")
-        collection.add(word)
+        collection.add(word, to: nil)
         collection.move(word, to: "1화")
         #expect(collection.words.first?.folder == "1화")
         #expect(WordCollection(path: path).words.first?.folder == "1화")
 
         collection.move(word, to: nil)
         #expect(collection.words.first?.folder == nil)
+    }
+
+    @Test("옮기는 것은 지난번 묶음을 바꾸지 않는다")
+    func 옮겨도기억은그대로() {
+        // 옮기기는 정리하는 일이고, 지난번 묶음은 "지금 무엇을 보고 있는가"의 흔적이다.
+        // 어제 것을 정리했다고 오늘 담을 곳이 어제로 끌려가면 안 된다.
+        var collection = WordCollection(path: Self.임시경로())
+        let word = Self.낱말("犬", "いぬ")
+        collection.add(word, to: "오늘 본 화")
+        collection.move(word, to: "지난주에 본 화")
+        #expect(collection.lastFolder == "오늘 본 화")
     }
 
     @Test("묶음으로 나눈다 — 아직 안 넣은 것이 마지막")

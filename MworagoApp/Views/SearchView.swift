@@ -69,6 +69,11 @@ struct SearchView: View {
     /// `--guide` 로 열린 채 띄울 수 있다. `--query=` · `--select=` 와 같은 뜻으로,
     /// 시뮬레이터를 손으로 두드리지 않고 화면을 확인하기 위한 것이다.
     @State private var showingGuide = ProcessInfo.processInfo.arguments.contains("--guide")
+    /// 지금 담으려는 낱말. 있으면 담기 모달이 떠 있다.
+    ///
+    /// **화면에 하나뿐이어야 한다.** 카드마다 시트를 달면 조각 수만큼 생기고,
+    /// 그중 어느 것이 떠 있는지 화면이 스스로 알 수 없게 된다.
+    @State private var collecting: CollectedWord?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -91,17 +96,40 @@ struct SearchView: View {
                 engine.search(input)
                 for segment in engine.segments {
                     guard let top = segment.results.first else { continue }
-                    collection.toggle(CollectedWord(headword: top.headword,
-                                                    reading: top.reading,
-                                                    hangul: segment.hangul,
-                                                    gloss: top.entry.displayGloss))
+                    collection.add(CollectedWord(headword: top.headword,
+                                                 reading: top.reading,
+                                                 hangul: segment.hangul,
+                                                 gloss: top.entry.displayGloss),
+                                   to: nil)
                 }
             }
             if input.isEmpty { inputFocused = true } else { engine.search(input) }
+
+            // `--collecting` 은 첫 조각의 담기 모달을 펼친 채 띄운다. `--detail` · `--guide` 와
+            // 같은 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 시트를 눈으로 볼 길이 없다.
+            if ProcessInfo.processInfo.arguments.contains("--collecting"),
+               let top = engine.segments.first?.results.first,
+               let hangul = engine.segments.first?.hangul {
+                collecting = CollectedWord(headword: top.headword,
+                                           reading: top.reading,
+                                           hangul: hangul,
+                                           gloss: top.entry.displayGloss)
+            }
         }
         .sheet(isPresented: $showingGuide) {
             // 아이패드에서 medium 은 화면의 작은 조각이라 여섯 줄 중 둘만 보인다.
             TypingGuide()
+        }
+        // 담기 모달. **화면에 하나만 둔다** — 갈피표는 카드마다 있지만
+        // 묻는 자리는 하나여야 한다.
+        .sheet(item: $collecting) { word in
+            if let collection {
+                FolderPicker(word: word,
+                             folderNames: collection.folderNames,
+                             lastFolder: collection.lastFolder) { folder in
+                    collection.add(word, to: folder)
+                }
+            }
         }
     }
 
@@ -150,7 +178,8 @@ struct SearchView: View {
 
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
                         SegmentCard(segment: segment, aid: aid, hanja: engine.hanja,
-                                    isSelected: selected == index, collection: collection)
+                                    isSelected: selected == index, collection: collection,
+                                    onCollect: { collecting = $0 })
                             .id(index)
                         Divider().overlay(Theme.grey3)
                     }

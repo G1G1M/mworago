@@ -35,9 +35,6 @@ struct LibraryView: View {
     }
 
     @State private var grouping: Grouping = .folders
-    /// 새 묶음 이름을 받는 자리.
-    @State private var namingFolder = false
-    @State private var newFolderName = ""
     /// 펼쳐 보고 있는 낱말. 누르면 여기 담기고 상세가 열린다.
     ///
     /// `--detail` 로 첫 낱말을 펼친 채 띄울 수 있다. `--query=` · `--guide` 와 같은
@@ -123,11 +120,12 @@ struct LibraryView: View {
                     .foregroundStyle(Theme.grey2)
 
             }
-            // 담긴 것이 없으면 무엇으로 묶어 볼지도, 어디에 담을지도 없다.
-            if !collection.words.isEmpty {
-                dial
-                currentFolderRow
-            }
+            // 담긴 것이 없으면 무엇으로 묶어 볼지도 없다.
+            //
+            // **"지금 담는 곳"은 여기 있었다.** 담을 때 묻지 않으려고 미리 정해 두는
+            // 자리였는데, 이제 갈피표를 누르면 담기 모달이 묻는다 — 같은 것을 정하는
+            // 자리가 둘이면 어느 쪽이 이기는지 사용자가 알 수 없다.
+            if !collection.words.isEmpty { dial }
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, 18)
@@ -152,52 +150,6 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.plain)
             }
-        }
-    }
-
-    /// 지금 담는 곳.
-    ///
-    /// **담는 순간에 묻지 않기 위한 자리다.** 애니를 보다 낱말 하나가 걸린 그때
-    /// "어느 폴더에 넣지?"를 물으면 흐름이 끊긴다. 보기 시작할 때 여기서 한 번 정해 두면
-    /// 그 뒤로는 갈피표 한 번으로 끝난다 — 지금 무엇을 보고 있는지는 사용자만 안다.
-    private var currentFolderRow: some View {
-        HStack(spacing: 8) {
-            Text("지금 담는 곳")
-                .font(Theme.korean(12))
-                .foregroundStyle(Theme.grey2)
-            Menu {
-                Button("새 묶음…") {
-                    newFolderName = ""
-                    namingFolder = true
-                }
-                if !collection.folderNames.isEmpty {
-                    Divider()
-                    ForEach(collection.folderNames, id: \.self) { name in
-                        Button(name) { collection.setCurrentFolder(name) }
-                    }
-                }
-                if collection.currentFolder != nil {
-                    Divider()
-                    Button("안 넣기") { collection.setCurrentFolder(nil) }
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Text(collection.currentFolder ?? "아직 없음")
-                        .font(Theme.korean(13, weight: collection.currentFolder == nil ? .regular : .semibold))
-                        .foregroundStyle(collection.currentFolder == nil ? Theme.grey3 : Theme.ink)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9))
-                        .foregroundStyle(Theme.grey3)
-                }
-            }
-            .buttonStyle(.plain)
-        }
-        .alert("새 묶음", isPresented: $namingFolder) {
-            TextField("리코리스 리코일 3화", text: $newFolderName)
-            Button("만들기") { collection.setCurrentFolder(newFolderName) }
-            Button("그만두기", role: .cancel) { }
-        } message: {
-            Text("지금부터 담는 낱말이 이 묶음으로 갑니다.")
         }
     }
 
@@ -333,7 +285,7 @@ struct LibraryView: View {
             Text("아직 책장이 비어 있어요")
                 .font(Theme.korean(22, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-            Text("찾기에서 낱말 옆의 갈피표를 누르면 여기 쌓입니다.")
+            Text("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓입니다.")
                 .font(Theme.korean(15))
                 .foregroundStyle(Theme.grey2)
             HStack(spacing: 7) {

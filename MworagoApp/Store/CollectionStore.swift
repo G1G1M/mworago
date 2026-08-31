@@ -19,18 +19,16 @@ final class CollectionStore {
         collection = WordCollection(path: path)
     }
 
-    func toggle(_ word: CollectedWord) {
-        if collection.contains(word) { collection.remove(word) } else { collection.add(word) }
-    }
+    /// 담는다. 어디에 넣을지 함께 받는다 — 담기 모달이 물어서 가져온다.
+    func add(_ word: CollectedWord, to folder: String?) { collection.add(word, to: folder) }
 
     func contains(_ word: CollectedWord) -> Bool { collection.contains(word) }
 
     func remove(_ word: CollectedWord) { collection.remove(word) }
 
-    /// 지금 담으면 들어갈 묶음. 담는 순간에 묻지 않으려고 미리 정해 둔다.
-    var currentFolder: String? { collection.currentFolder }
+    /// 지난번에 넣은 곳. 담기 모달이 이것을 미리 골라 둔다.
+    var lastFolder: String? { collection.lastFolder }
     var folderNames: [String] { collection.folderNames }
-    func setCurrentFolder(_ name: String?) { collection.setCurrentFolder(name) }
     func move(_ word: CollectedWord, to folder: String?) { collection.move(word, to: folder) }
 
     /// Application Support 아래. Documents 가 아닌 것은 사용자가 파일 앱에서 볼 것이 아니어서다.

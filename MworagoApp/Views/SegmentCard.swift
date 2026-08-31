@@ -23,6 +23,9 @@ struct SegmentCard: View {
     var isSelected: Bool = false
     /// 담아 두는 곳. 없으면 갈피표를 그리지 않는다 — 미리보기와 테스트를 위해서다.
     var collection: CollectionStore? = nil
+    /// 담아 달라고 위로 알린다. **카드가 직접 담지 않는다** — 어디에 넣을지 묻는 모달은
+    /// 화면에 하나여야 하는데, 카드마다 시트를 달면 조각 수만큼 생긴다.
+    var onCollect: (CollectedWord) -> Void = { _ in }
 
     private var top: SearchResult? { segment.results.first }
     /// 1위와 같은 낱말은 걸러진 채로 온다 — 大丈夫 가 두 번 보이지 않도록.
@@ -114,6 +117,9 @@ struct SegmentCard: View {
     /// 무엇이 내게 걸린 말이었는지는 사용자만 안다.
     ///
     /// 담긴 것은 채워진 갈피표다. 강조를 색으로 나누지 않으므로 채움과 비움으로만 가른다.
+    ///
+    /// **담을 때는 어디에 넣을지 묻고, 뺄 때는 묻지 않는다.** 무르는 일에까지 확인을
+    /// 붙이면 잘못 누른 것을 되돌리는 데 두 번이 든다.
     private func bookmark(_ result: SearchResult, in collection: CollectionStore) -> some View {
         let word = CollectedWord(headword: result.headword,
                                  reading: result.reading,
@@ -121,7 +127,7 @@ struct SegmentCard: View {
                                  gloss: result.entry.displayGloss)
         let held = collection.contains(word)
         return Button {
-            collection.toggle(word)
+            if held { collection.remove(word) } else { onCollect(word) }
         } label: {
             Image(systemName: held ? "bookmark.fill" : "bookmark")
                 .font(.system(size: 15))
