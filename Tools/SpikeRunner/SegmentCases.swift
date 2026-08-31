@@ -112,12 +112,21 @@ enum SegmentCaseBuilder {
 enum SegmentEval {
     struct Score {
         var exact = 0            // 조각이 정답과 완전히 같은 문장 수
+        var senseHit = 0         // 그 조각의 1위 표제어가 정답 낱말과 같은 횟수
+        var senseTotal = 0       // 견줄 수 있었던 조각 수(경계가 맞은 것만)
+        var senseTop3 = 0        // 정답이 3위 안에 있는 횟수
+        var senseAnywhere = 0    // 정답이 후보 어딘가에는 있는 횟수
         var boundaryHit = 0      // 맞힌 경계 수
         var boundaryFound = 0    // 내가 그은 경계 수
         var boundaryTruth = 0    // 정답 경계 수
         var total = 0
 
         var exactRate: Double { total == 0 ? 0 : Double(exact) / Double(total) }
+        /// 경계를 맞힌 조각에서 **뜻까지 맞혔는가.** 문맥 판별(3층)이 벌 수 있는 몫의
+        /// 상한이 여기서 나온다 — 이미 1위가 정답이면 모델이 고쳐 줄 것이 없다.
+        var senseRate: Double { senseTotal == 0 ? 0 : Double(senseHit) / Double(senseTotal) }
+        var senseTop3Rate: Double { senseTotal == 0 ? 0 : Double(senseTop3) / Double(senseTotal) }
+        var senseAnywhereRate: Double { senseTotal == 0 ? 0 : Double(senseAnywhere) / Double(senseTotal) }
         var precision: Double { boundaryFound == 0 ? 0 : Double(boundaryHit) / Double(boundaryFound) }
         var recall: Double { boundaryTruth == 0 ? 0 : Double(boundaryHit) / Double(boundaryTruth) }
         var f1: Double {
@@ -150,6 +159,24 @@ enum SegmentEval {
             let mine = segments.map(\.hangul)
             score.total += 1
             if mine == testCase.pieces { score.exact += 1 }
+
+            // 경계가 맞은 문장에서만 뜻을 견준다. 경계가 어긋나면 무엇과 견줄지가 없다.
+            //
+            // **읽기로 견준다.** Tanaka 의 정답은 문장에 나타난 그대로라 활용형이고
+            // 표기도 제각각인데(`かけた` · `した` · `うわさ`), 우리 결과는 사전형이다
+            // (`掛ける` · `する` · `噂`). 표제어를 문자열로 견주면 맞은 것이 통째로
+            // 틀린 것이 된다 — 처음에 그렇게 재어 21.9%를 "후보에 없다"고 잘못 셌다.
+            if mine == testCase.pieces {
+                for (i, segment) in segments.enumerated() where i < testCase.readings.count {
+                    guard segment.results.first != nil else { continue }
+                    let forms = Set(Deinflector.candidates(for: testCase.readings[i]).map(\.form))
+                    func matches(_ result: SearchResult) -> Bool { forms.contains(result.reading) }
+                    score.senseTotal += 1
+                    if matches(segment.results[0]) { score.senseHit += 1 }
+                    if segment.results.prefix(3).contains(where: matches) { score.senseTop3 += 1 }
+                    if segment.results.contains(where: matches) { score.senseAnywhere += 1 }
+                }
+            }
 
             let truth = boundaries(testCase.pieces)
             let found = boundaries(mine)

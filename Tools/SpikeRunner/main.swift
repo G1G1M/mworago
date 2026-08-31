@@ -338,7 +338,26 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
             wrong += 1
             print("\(testCase.hangul)\t\(testCase.pieces.joined(separator: " "))\t\(mine.joined(separator: " "))\t\(testCase.words.joined(separator: " "))")
         }
+        // 정답이 후보에 아예 없는 조각을 따로 찍는다. 모델은 후보 중에서 고를 뿐이라,
+        // 여기 있는 것은 문맥 판별로도 구제되지 않는다.
+        for testCase in segmentCases {
+            let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
+                                             weights: weights, segmentCost: cost)
+            guard segments.map(\.hangul) == testCase.pieces else { continue }
+            for (i, segment) in segments.enumerated() where i < testCase.words.count {
+                let word = testCase.words[i]
+                let forms = Set(Deinflector.candidates(for: testCase.readings[i]).map(\.form))
+                guard !segment.results.contains(where: { forms.contains($0.reading) }) else { continue }
+                let top = segment.results.prefix(2).map(\.headword).joined(separator: " · ")
+                FileHandle.standardError.write(Data("  없음 \(segment.hangul)  정답 \(word)(\(testCase.readings[i]))  나온 것 \(top.isEmpty ? "—" : top)\n".utf8))
+            }
+        }
+        let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
+                                         weights: weights, segmentCost: cost)
         log("틀린 것 \(wrong)/\(segmentCases.count)")
+        log(String(format: "경계를 맞힌 조각 %d개 · 1위 %.1f%% · 3위 안 %.1f%% · 후보 안 %.1f%%",
+                   score.senseTotal, score.senseRate * 100,
+                   score.senseTop3Rate * 100, score.senseAnywhereRate * 100))
         exit(0)
     }
 
