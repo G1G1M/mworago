@@ -29,6 +29,27 @@ public enum Deinflector {
     /// 정중형 어미. 어미마다 뒤가 다를 뿐 어간을 되돌리는 방법은 같다.
     private static let politeSuffixes = ["ます", "ました", "ません", "ましょう"]
 
+    /// 5단 동사의 未然形은 어간이 あ단으로 바뀐다. 되돌리려면 う단으로 옮긴다.
+    ///
+    /// `う`로 끝나는 동사만 예외로 `わ`가 된다(かう → かわない). 역사적으로 は행이던
+    /// 자리라 그렇다 — 표에 `わ → う`를 넣어 두면 나머지와 똑같이 다룰 수 있다.
+    private static let aToU: [Character: Character] = [
+        "わ": "う", "か": "く", "が": "ぐ", "さ": "す", "ざ": "ず",
+        "た": "つ", "だ": "づ", "な": "ぬ", "は": "ふ", "ば": "ぶ",
+        "ぱ": "ぷ", "ま": "む", "ら": "る",
+    ]
+
+    /// 未然形 어미. 부정·수동·사역은 어미가 다를 뿐 어간을 되돌리는 방법이 같다.
+    /// 긴 것을 먼저 두어야 `られる`가 `れる`로 잘려 나가지 않는다.
+    private static let irrealisSuffixes = [
+        ("させられる", "사역수동"), ("させられた", "사역수동"),
+        ("られる", "수동형"), ("られた", "수동형"),
+        ("させる", "사역형"), ("させた", "사역형"),
+        ("なかった", "부정형"), ("ない", "부정형"),
+        ("れる", "수동형"), ("れた", "수동형"),
+        ("せる", "사역형"), ("せた", "사역형"),
+    ]
+
     /// 5단 동사 명령형은 어미가 え단으로 바뀐다. 되돌리려면 う단으로 옮긴다.
     private static let eToU: [Character: Character] = [
         "え": "う", "け": "く", "げ": "ぐ", "せ": "す", "ぜ": "ず",
@@ -94,7 +115,6 @@ public enum Deinflector {
 
         // 그 밖
         ("ろ",    ["る"],            "명령형"),   // 1단: やめろ → やめる
-        ("ない",  ["る"],            "부정형"),
         ("で",    [""],              "조사 で"),  // まじで → まじ
 
         // 불규칙 — 来る·する 둘뿐이고, 둘 다 최빈출이다.
@@ -145,6 +165,16 @@ public enum Deinflector {
             }
             for replacement in rule.replacements {
                 add(stem + replacement, rule.name)
+            }
+        }
+
+        // 未然形: 어미를 떼고 1단(+る)과 5단(あ단 → う단)을 둘 다 낸다
+        for (suffix, name) in irrealisSuffixes where kana.hasSuffix(suffix) {
+            let stem = String(kana.dropLast(suffix.count))
+            guard !stem.isEmpty else { continue }
+            add(stem + "る", name)
+            if let last = stem.last, let restored = aToU[last] {
+                add(String(stem.dropLast()) + String(restored), name)
             }
         }
 
