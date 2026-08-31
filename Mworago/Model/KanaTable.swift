@@ -63,6 +63,48 @@ public enum KanaTable {
         }))
     }
 
+    /// 가타카나로. `toHiragana` 의 짝이다.
+    ///
+    /// 두 표는 유니코드에서 같은 순서로 배열돼 있어 오프셋만 더하면 된다.
+    /// 사전 조회에는 쓰지 않는다 — 조회는 히라가나로 모은다. 이것은 **화면에 보이려고**
+    /// 있다(가나 표를 가타카나로 넘겨 볼 때).
+    public static func toKatakana(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.map { scalar in
+            (0x3041...0x3096).contains(scalar.value)
+                ? Unicode.Scalar(scalar.value + 0x60)! : scalar
+        }))
+    }
+
+    /// 오십음도를 화면에 그릴 수 있게 내어 준다.
+    ///
+    /// 규칙 표(`table`)는 로마자에서 가나를 찾는 사전이라 **차례가 없다.** 배우는 사람에게
+    /// 필요한 것은 그 차례다 — あ か さ た な 로 내려가고 あいうえお 로 건너가는 격자.
+    /// 그래서 같은 자료를 보는 결을 따로 낸다.
+    ///
+    /// 청음·탁음·요음을 가른 것은 셋이 배우는 차례이기 때문이다. 한 표에 몰아 넣으면
+    /// 오십음도가 아니라 백 몇 자짜리 낱글자 더미가 된다.
+    public struct Chart: Sendable {
+        public let title: String
+        public let rows: [[String?]]
+    }
+
+    public static let charts: [Chart] = {
+        func kana(of consonants: [String]) -> [[String?]] {
+            consonants.compactMap { c in rows.first { $0.consonant == c }?.kana }
+        }
+        // 요음은 い단 가나에 작은 ゃゅょ 를 붙인 것이라 세 칸뿐이다.
+        let yoonConsonants = ["k", "g", "s", "z", "t", "d", "n", "h", "b", "p", "m", "r"]
+        let yoon: [[String?]] = yoonConsonants.map { c in
+            ["a", "u", "o"].map { table[c + "y" + $0] }
+        }
+        return [
+            Chart(title: "청음", rows: kana(of: ["", "k", "s", "t", "n", "h", "m", "y", "r", "w"])
+                                        + [["ん", nil, nil, nil, nil]]),
+            Chart(title: "탁음 · 반탁음", rows: kana(of: ["g", "z", "d", "b", "p"])),
+            Chart(title: "요음", rows: yoon),
+        ]
+    }()
+
     /// 로마자 모라 하나를 가나로. 일본어에 없는 소리면 nil.
     public static func kana(for mora: String) -> String? {
         table[mora]
