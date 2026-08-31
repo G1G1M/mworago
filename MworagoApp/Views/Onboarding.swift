@@ -105,7 +105,8 @@ struct Onboarding: View {
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
-                            .frame(maxWidth: Theme.readWidth, alignment: .leading)
+                            // 폭은 여기서 재지 않는다. 바깥 기둥이 이미 정해 준다 —
+                            // 페이지 안에서 다시 가운데를 잡으면 아래 점·버튼 줄과 어긋난다.
                             .frame(maxWidth: .infinity, alignment: .leading)
                             Spacer(minLength: 0)
                         }
@@ -145,11 +146,18 @@ struct Onboarding: View {
                     .foregroundStyle(Theme.ink)
                     .buttonStyle(.plain)
                 }
-                .frame(maxWidth: Theme.readWidth)
-                .frame(maxWidth: .infinity)
                 .padding(.horizontal, Theme.gutter)
             }
             .padding(.bottom, 40)
+            // **캐러셀과 점·버튼 줄을 한 기둥에 넣고 한 번만 가운데로 세운다.**
+            //
+            // 전에는 둘이 각자 폭을 재고 각자 가운데를 잡았는데, `TabView` 는 아이패드에서
+            // 페이지에 화면보다 좁은 폭을 준다. 그래서 페이지 안에서 잡은 가운데가 바깥과
+            // 어긋났다 — 실측으로 점은 137pt, 글은 169pt 였다.
+            //
+            // 기둥 폭은 글 폭에 좌우 여백을 더한 것이다. 안에서는 둘 다 `Theme.gutter`
+            // 하나만 쓰므로, 무엇이 어디서 시작하는지가 한자리에서 정해진다.
+            .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
             .frame(maxWidth: .infinity)
 
             VStack {
