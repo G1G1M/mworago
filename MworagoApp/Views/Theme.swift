@@ -19,6 +19,13 @@ enum Theme {
     static let grey3 = adaptive(light: .init(white: 0.70), dark: .init(white: 0.40))  // 구분선·비활성
     static let grey4 = adaptive(light: .init(white: 0.92), dark: .init(white: 0.18))  // 면
 
+    /// 입력 바의 자리표시 글자.
+    ///
+    /// **시스템이 정하는 색이다.** `TextField` 의 자리표시는 `foregroundStyle` 을 따르지
+    /// 않고 이 색으로 그려진다 — 회색 넷 중 아무거나 골라 흉내 내면 반드시 어긋난다.
+    /// 스플래시의 마지막 한 프레임이 진짜 입력 바와 같아야 하므로, 같은 자리에서 가져온다.
+    static let placeholder = Color(uiColor: .placeholderText)
+
     /// 일본어는 Zen Maru Gothic. 둥근 고딕이라 딱딱하지 않고, 가나가 화면의 얼굴인 이 앱에 맞는다.
     static func japanese(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom(weight == .regular ? "ZenMaruGothic-Regular" : "ZenMaruGothic-Medium", size: size)

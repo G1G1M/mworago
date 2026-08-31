@@ -167,7 +167,9 @@ struct Splash: View {
                         .foregroundStyle(Theme.grey2)
                     Text("다이죠부")
                         .font(Theme.korean(19))
-                        .foregroundStyle(Theme.grey3)
+                        // 진짜 자리표시와 같은 색이다. 회색 넷 중 하나를 고르면
+                        // 마지막 프레임에서 글자 색만 달라 보인다.
+                        .foregroundStyle(Theme.placeholder)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 18)
