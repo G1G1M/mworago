@@ -27,6 +27,9 @@ targets:
       properties:
         CFBundleDisplayName: 뭐라고
         UILaunchScreen: {}
+        # 사전을 통째로 싣고 네트워크를 쓰지 않는다. 암호화를 직접 쓰는 곳이 없으므로
+        # 수출 규정 신고 대상이 아니다. 적어 두지 않으면 심사에 낼 때마다 묻는다.
+        ITSAppUsesNonExemptEncryption: false
         UIAppFonts:
           - ZenMaruGothic-Regular.ttf
           - ZenMaruGothic-Medium.ttf
