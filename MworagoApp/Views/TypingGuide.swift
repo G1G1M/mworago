@@ -70,7 +70,7 @@ struct TypingGuide: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 30) {
                     Text("들린 대로 치면 됩니다. 정확히 옮길 필요는 없어요.")
                         .font(Theme.korean(16))
                         .foregroundStyle(Theme.grey1)
@@ -114,38 +114,58 @@ struct TypingGuide: View {
         }
     }
 
+    /// 한 갈래.
+    ///
+    /// 섹션 이름은 **작은 라벨**로 물러나고 그 아래 얇은 선이 갈래를 가른다.
+    /// 이름을 본문만큼 키우면 규칙 이름과 섞여서, 무엇이 묶음이고 무엇이 항목인지
+    /// 눈이 매번 다시 판단해야 한다.
     private func section(_ title: String, rules: [Rule]) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title)
-                .font(Theme.korean(13))
-                .foregroundStyle(Theme.grey2)
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(title)
+                    .font(Theme.korean(12))
+                    .tracking(0.6)
+                    .foregroundStyle(Theme.grey2)
+                Rectangle()
+                    .fill(Theme.grey3)
+                    .frame(height: 0.5)
+            }
 
-            VStack(alignment: .leading, spacing: 15) {
-                ForEach(rules) { rule in
-                    VStack(alignment: .leading, spacing: 7) {
+            // **섹션 하나를 통째로 격자에 세운다.** 규칙마다 격자를 따로 만들면 그 안에서만
+            // 열이 맞아서, 화살표가 규칙을 건널 때마다 다른 자리에 놓인다. 같은 것을
+            // 견주려는 눈이 매번 다시 찾는 것이 그 때문이다.
+            // 규칙 이름과 덧말은 세 칸을 다 차지해 격자를 가로지른다.
+            Grid(alignment: .leadingFirstTextBaseline,
+                 horizontalSpacing: 12, verticalSpacing: 7) {
+                ForEach(Array(rules.enumerated()), id: \.element.id) { index, rule in
+                    GridRow {
                         Text(rule.name)
                             .font(Theme.korean(15))
                             .foregroundStyle(Theme.ink)
-
-                        ForEach(rule.examples) { example in
-                            HStack(spacing: 10) {
-                                Text(example.typed.joined(separator: " · "))
-                                    .font(Theme.korean(15))
-                                    .foregroundStyle(Theme.grey1)
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(Theme.grey3)
-                                Text(example.result)
-                                    .font(Theme.japanese(16))
-                                    .foregroundStyle(Theme.ink)
-                            }
+                            .padding(.top, index == 0 ? 0 : 11)
+                            .gridCellColumns(3)
+                    }
+                    ForEach(rule.examples) { example in
+                        GridRow {
+                            Text(example.typed.joined(separator: " · "))
+                                .font(Theme.korean(15))
+                                .foregroundStyle(Theme.grey1)
+                                .gridColumnAlignment(.trailing)
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 10))
+                                .foregroundStyle(Theme.grey3)
+                            Text(example.result)
+                                .font(Theme.japanese(16))
+                                .foregroundStyle(Theme.ink)
+                                .gridColumnAlignment(.leading)
                         }
-
-                        if let note = rule.note {
+                    }
+                    if let note = rule.note {
+                        GridRow {
                             Text(note)
                                 .font(Theme.korean(13))
                                 .foregroundStyle(Theme.grey2)
-                                .padding(.top, 1)
+                                .gridCellColumns(3)
                         }
                     }
                 }
