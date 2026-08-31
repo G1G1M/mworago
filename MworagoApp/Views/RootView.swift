@@ -26,6 +26,8 @@ struct RootView: View {
     /// 온보딩 시안 — 실행 인자로만 뜬다.
     /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
     /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
+    /// 화면을 밝게 볼지 어둡게 볼지. 기본은 기기를 따르는 것이다.
+    @State private var appearance = Appearance.saved
     @State private var showOnboarding = OnboardingSeen.forced || !OnboardingSeen.already
 
     /// 낱말을 들고 찾기로 건너간다.
@@ -68,7 +70,8 @@ struct RootView: View {
                     .accessibilityLabel("찾기")
             }
             Tab(value: RootTab.library) {
-                LibraryView(collection: collection, onPick: goFind, onPractice: goPractice)
+                LibraryView(collection: collection, onPick: goFind,
+                            onPractice: goPractice, appearance: $appearance)
             } label: {
                 Image(systemName: "books.vertical")
                     .accessibilityLabel("교재")
@@ -108,5 +111,7 @@ struct RootView: View {
             }
         }
         .tint(Theme.ink)
+        // 설정에서 고른 밝기. `nil` 이면 기기를 따른다.
+        .preferredColorScheme(appearance.scheme)
     }
 }

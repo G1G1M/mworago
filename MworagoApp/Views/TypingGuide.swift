@@ -79,20 +79,6 @@ struct TypingGuide: View {
                     section("신경 쓰지 않아도 되는 것", rules: Self.forgiving)
                     section("가려 적어야 하는 것", rules: Self.careful)
 
-                    // 출처 표시는 자료의 라이선스가 요구하는 것이라 어디엔가 반드시 있어야 한다.
-                    // 탭을 하나 더 늘리기보다, 이미 늘 닿는 이 쪽지 안에 둔다.
-                    NavigationLink(value: "credits") {
-                        HStack {
-                            Text("이 앱이 쓰는 자료")
-                                .font(Theme.korean(15))
-                                .foregroundStyle(Theme.grey1)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Theme.grey3)
-                        }
-                    }
-                    .padding(.top, 4)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
@@ -100,7 +86,6 @@ struct TypingGuide: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.paper)
-            .navigationDestination(for: String.self) { _ in Credits() }
             .navigationDestination(isPresented: $showingCredits) { Credits() }
             .navigationTitle("한글로 어떻게 치나")
             .navigationBarTitleDisplayMode(.inline)

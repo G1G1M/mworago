@@ -43,6 +43,9 @@ struct LibraryView: View {
     /// `--detail` 로 첫 낱말을 펼친 채 띄울 수 있다. `--query=` · `--guide` 와 같은
     /// 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 시트를 눈으로 볼 길이 없다.
     @State private var detail: CollectedWord?
+    /// 설정. `--settings` 로 펼친 채 띄운다.
+    @State private var showingSettings = ProcessInfo.processInfo.arguments.contains("--settings")
+    @Binding var appearance: Appearance
     private var opensFirstDetail: Bool {
         ProcessInfo.processInfo.arguments.contains("--detail")
     }
@@ -54,11 +57,21 @@ struct LibraryView: View {
     var body: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
-            if collection.words.isEmpty { empty } else { content }
+            // **헤더는 늘 그린다.** 담긴 것이 없어도 화면 이름과 설정으로 가는 길은
+            // 있어야 한다 — 처음 온 사람이야말로 이 앱이 무엇을 쓰는지 궁금할 수 있다.
+            VStack(alignment: .leading, spacing: 0) {
+                // 헤더도 목록과 같은 폭 안에 선다. 목록만 가운데 모이고 헤더가
+                // 화면 끝에 붙으면 같은 화면의 것이 두 자리에서 시작한다.
+                header
+                    .frame(maxWidth: Self.contentWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                if collection.words.isEmpty { empty } else { content }
+            }
         }
         .onAppear {
             if opensFirstDetail, detail == nil { detail = collection.words.first }
         }
+        .sheet(isPresented: $showingSettings) { Settings(appearance: $appearance) }
         .sheet(item: $detail) { word in
             WordDetail(word: word,
                        onFind: onPick,
@@ -74,7 +87,6 @@ struct LibraryView: View {
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                header
                 switch grouping {
                 case .folders:
                     ForEach(CollectedWord.byFolder(collection.words)) { folder in
@@ -112,9 +124,24 @@ struct LibraryView: View {
                 Text("\(collection.words.count)")
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.grey2)
+
+                Spacer(minLength: 12)
+
+                // 설정은 앱의 이야기 밖이라 탭을 늘리지 않고 여기 둔다.
+                // 탭바에 글자가 없으므로 화면 이름이 화면 안에 있어야 하고, 그 줄이 이 자리다.
+                Button { showingSettings = true } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Theme.grey1)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("설정")
             }
-            dial
-            currentFolderRow
+            // 담긴 것이 없으면 무엇으로 묶어 볼지도, 어디에 담을지도 없다.
+            if !collection.words.isEmpty {
+                dial
+                currentFolderRow
+            }
         }
         .padding(.horizontal, 24)
         .padding(.top, 18)
@@ -338,5 +365,7 @@ struct LibraryView: View {
         }
         .frame(maxWidth: 460, alignment: .leading)
         .padding(.horizontal, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.top, 40)
     }
 }
