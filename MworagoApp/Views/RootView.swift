@@ -23,6 +23,10 @@ struct RootView: View {
     @State private var practiceSubset: [CollectedWord]?
     @State private var practiceLabel: String?
     @State private var tab: RootTab = RootTab(argument: ProcessInfo.processInfo.arguments)
+    /// 온보딩 시안 — 실행 인자로만 뜬다.
+    /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
+    /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
+    @State private var showOnboarding = OnboardingSeen.forced || !OnboardingSeen.already
 
     /// 낱말을 들고 찾기로 건너간다.
     private func goFind(_ hangul: String) {
@@ -93,6 +97,16 @@ struct RootView: View {
         // **글은 전부 한국어다.** 기기 언어가 영어면 날짜만 "August 31"로 나와
         // 화면에서 그 한 줄만 남의 말이 된다. 이 앱이 쓰는 말로 고정한다.
         .environment(\.locale, Locale(identifier: "ko_KR"))
+        // 처음 열었을 때 세 장. 봤으면 다시 나오지 않는다.
+        .overlay {
+            if showOnboarding {
+                Onboarding(onDone: {
+                    OnboardingSeen.mark()
+                    withAnimation(.snappy(duration: 0.2)) { showOnboarding = false }
+                })
+                .transition(.opacity)
+            }
+        }
         .tint(Theme.ink)
     }
 }
