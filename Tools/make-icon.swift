@@ -11,7 +11,12 @@
 // 긴 낱말, 짧은 조사, 그 사이의 낱말. 글자가 없어 어느 나라 말로도 읽히지 않고,
 // 홈 화면에서 40px 로 줄어도 세 덩어리가 셋으로 남는다.
 //
-// 색은 앱이 쓰는 한 벌 그대로다(Theme.ink · Theme.paper).
+// 색은 앱이 쓰는 한 벌 그대로다(Theme.ink · Theme.paper). **흰 바탕에 검은 알약**이라
+// 앱을 열었을 때의 화면과 같은 색이 이어진다. 순백(1.0)이 아니라 종이색인 것은
+// 화면 배경과 같은 값을 쓰기 위해서다.
+//
+// 흰 바탕은 밝은 배경화면 위에서 아이콘의 경계가 흐려진다 — iOS 는 테두리를
+// 그려 주지 않는다. 굽고 나면 홈 화면에 놓고 보아야 한다.
 import AppKit
 
 let side: CGFloat = 1024
@@ -34,14 +39,14 @@ guard let cg = CGContext(data: nil, width: Int(side), height: Int(side),
                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
 else { fatalError("비트맵을 만들지 못했다") }
 
-cg.setFillColor(red: 0.09, green: 0.09, blue: 0.09, alpha: 1)          // #171717 · Theme.ink
+cg.setFillColor(red: 0.988, green: 0.988, blue: 0.973, alpha: 1)       // #FCFCFA · Theme.paper
 cg.fill(CGRect(x: 0, y: 0, width: side, height: side))
 
 let totalWidth = widths.reduce(0, +) + gap * CGFloat(widths.count - 1)
 var x = ((side - totalWidth) / 2).rounded()
 let y = ((side - barHeight) / 2).rounded()
 
-cg.setFillColor(red: 0.988, green: 0.988, blue: 0.973, alpha: 1)       // #FCFCFA · Theme.paper
+cg.setFillColor(red: 0.09, green: 0.09, blue: 0.09, alpha: 1)          // #171717 · Theme.ink
 for width in widths {
     // 끝이 완전히 둥근 알약. 화면의 다이얼·꼬리표와 같은 결이다.
     let bar = CGRect(x: x, y: y, width: width, height: barHeight)
