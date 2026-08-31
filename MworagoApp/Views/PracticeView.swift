@@ -1,16 +1,23 @@
 import SwiftUI
 import MworagoCore
 
-/// 연습 — 모은 낱말을 한글 음차만 보고 떠올려 본다.
+/// 연습 — 모은 낱말을 **가나만 보고** 떠올려 본다.
 ///
 /// 기획의 목적지는 쉐도잉(소리 내어 따라 하고 얼마나 닮았는지 보기)이고 그것은 v2.0 이다.
 /// 지금 가진 재료로 할 수 있는 것은 **모은 것을 다시 만나는 일**이다 —
-/// 한글 음차를 먼저 보이고, 떠올린 다음 뒤집어 확인한다.
+/// 가나를 먼저 보이고, 떠올린 다음 뒤집어 확인한다.
+///
+/// **한글 음차를 앞에 두지 않는다.** 그것은 찾을 때 쓰는 열쇠이지 익힐 것이 아니다.
+/// 앞에 두면 한글 음차를 보고 뜻을 떠올리는 연습이 되는데, 목적지는 자막 없이
+/// 알아듣는 것이고 자막에 뜨는 것은 가나다. 다만 뒤에는 남긴다 —
+/// 어떻게 찾았는지의 기록이자 소리와 글자를 잇는 다리라서, 답의 일부지 문제가 아니다.
 ///
 /// 채점하지 않는다. 맞혔는지 틀렸는지 기록하기 시작하면 점수를 관리하는 앱이 되는데,
 /// 여기서 하려는 일은 **다시 마주치게 하는 것**뿐이다.
 struct PracticeView: View {
     let collection: CollectionStore
+    /// 한자의 한국 독음. 상세 시트가 이미 한 번 읽어 둔 것을 나눠 쓴다.
+    var hanja: HanjaReading = WordDetail.bundledHanja
     /// 교재에서 하루치만 들고 건너왔을 때 그 낱말들. 비어 있으면 모은 것 전체를 훑는다.
     ///
     /// **늘 전체를 훑으면 오늘 본 것을 다시 만나기까지 한참이 걸린다.** 스무 날치가
@@ -21,7 +28,9 @@ struct PracticeView: View {
     var onClearSubset: () -> Void = {}
 
     @State private var index = 0
-    @State private var revealed = false
+    /// `--revealed` 로 뒤집힌 채 띄운다. `--query=` · `--detail` 과 같은 취지 —
+    /// 시뮬레이터는 손으로 두드릴 수 없어 뒷면을 눈으로 볼 길이 없다.
+    @State private var revealed = ProcessInfo.processInfo.arguments.contains("--revealed")
 
     private var words: [CollectedWord] { subset ?? collection.words }
     private var current: CollectedWord? {
@@ -81,26 +90,40 @@ struct PracticeView: View {
             }
             .padding(.bottom, 40)
 
-            // 소리부터 보인다. 이 앱에 온 사람은 소리를 듣고 왔다.
-            Text(word.hangul)
-                .font(Theme.korean(30, weight: .semibold))
+            // **가나부터 보인다.** 한글 음차는 찾을 때 쓰는 열쇠이지 익힐 것이 아니다.
+            // 그것을 앞에 두면 한글 음차를 보고 뜻을 떠올리는 연습이 되는데,
+            // 자막에 뜨는 것은 `いたい` 이지 `이타이` 가 아니다.
+            Text(word.reading)
+                .font(Theme.japanese(38, weight: .medium))
                 .foregroundStyle(Theme.ink)
 
             // 뒤집기 전에는 자리만 잡아 둔다. 답이 나타나며 아래가 밀리면
             // 눈이 따라가야 해서, 있던 자리에 그대로 나타나게 한다.
+            //
+            // 층의 차례는 화면 어디서나 같다 — 가나(앞면) · 한자 · 한글 · 뜻.
+            // 한글 음차를 뒤에 남기는 것은 **"내가 이것을 어떻게 찾았는지"의 기록**이라서다.
+            // 소리와 글자를 잇는 다리인데, 답의 일부지 문제는 아니다.
             VStack(alignment: .leading, spacing: 7) {
-                Text(word.reading)
-                    .font(Theme.japanese(34, weight: .medium))
-                    .foregroundStyle(Theme.ink)
                 if word.headword != word.reading {
-                    Text(word.headword)
-                        .font(Theme.japanese(21))
-                        .foregroundStyle(Theme.grey1)
+                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                        Text(word.headword)
+                            .font(Theme.japanese(24))
+                            .foregroundStyle(Theme.ink)
+                        if let reading = hanja.reading(of: word.headword) {
+                            Text(reading)
+                                .font(Theme.korean(15))
+                                .foregroundStyle(Theme.grey3)
+                        }
+                    }
                 }
+                Text(word.hangul)
+                    .font(Theme.korean(15))
+                    .foregroundStyle(Theme.grey3)
                 if !word.gloss.isEmpty {
                     Text(word.gloss)
-                        .font(Theme.korean(15))
+                        .font(Theme.korean(17))
                         .foregroundStyle(Theme.grey1)
+                        .padding(.top, 4)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -145,7 +168,7 @@ struct PracticeView: View {
             Text("연습할 것이 없어요")
                 .font(Theme.korean(22, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-            Text("모은 낱말을 한글만 보고 떠올려 보는 자리입니다.")
+            Text("모은 낱말을 가나만 보고 떠올려 보는 자리입니다.")
                 .font(Theme.korean(15))
                 .foregroundStyle(Theme.grey2)
             Text("소리 내어 따라 하고 얼마나 닮았는지 보는 것은 그다음이에요.")
