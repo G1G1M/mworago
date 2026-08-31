@@ -104,3 +104,92 @@ struct JMDictTests {
         #expect(entry.usableWritings.map(\.text) == ["止める"])   // 乃 는 검색 전용이라 빠진다
     }
 }
+
+/// 사용역 꼬리표 — **써도 되는 말인가.**
+///
+/// 이 앱의 빈도표는 애니 자막 말뭉치라 "얼마나 흔한가"라는 축이 이미 애니다.
+/// 그러나 애니에 흔한 것과 일상에서 써도 되는 것은 다르다 — `貴様` 는 애니에 넘치지만
+/// 사람에게 쓰면 싸움이 난다. 그 판단을 **모델에게 묻지 않는다.** 사전이 이미 알고 있다.
+///
+/// `arch`(고어) 3,799 · `col`(구어) 2,506 · `sl`(속어) 1,406 · `hon`(존경) 749 ·
+/// `derog`(경멸) 477 · `vulg`(비속) 238 … 파서가 `misc` 를 이미 읽으면서 `uk` 만
+/// 쓰고 나머지를 버리고 있었다.
+@Suite("사용역 꼬리표")
+struct JMDictUsageTests {
+
+    /// 뜻갈래가 하나인 표제항. 그 뜻에 붙은 꼬리표가 곧 낱말의 꼬리표다.
+    @Test("사전이 붙인 꼬리표를 읽는다")
+    func 꼬리표읽기() throws {
+        let xml = """
+        <JMdict><entry>
+        <r_ele><reb>きさま</reb></r_ele>
+        <k_ele><keb>貴様</keb></k_ele>
+        <sense><pos>&pn;</pos><misc>&derog;</misc><misc>&male;</misc>
+        <gloss>you</gloss></sense>
+        </entry></JMdict>
+        """
+        let entry = try JMDictParser.parse(xml: xml).first
+        #expect(entry?.usageTags == ["derog", "male"])
+    }
+
+    /// **첫 뜻갈래의 것만 쓴다.**
+    ///
+    /// 꼬리표는 표제항이 아니라 **뜻마다** 붙는다. 다 합치면 흔한 낱말이 엉뚱한 딱지를
+    /// 단다 — `い` 가 비속어가 되고 `見` 이 존경어가 된다. 어느 뜻의 꼬리표인지 화면에서
+    /// 가릴 방법이 없으므로, 사용자가 보는 첫 뜻의 것만 남긴다.
+    /// `loadJobs` 가 `でも`/`デモ` 를 가르는 것과 같은 종류의 조심이다.
+    @Test("둘째 뜻갈래의 꼬리표는 딸려오지 않는다")
+    func 첫뜻만() throws {
+        let xml = """
+        <JMdict><entry>
+        <r_ele><reb>かみ</reb></r_ele>
+        <k_ele><keb>紙</keb></k_ele>
+        <sense><gloss>paper</gloss></sense>
+        <sense><misc>&sl;</misc><gloss>awesome</gloss></sense>
+        </entry></JMdict>
+        """
+        let entry = try JMDictParser.parse(xml: xml).first
+        #expect(entry?.usageTags.isEmpty == true)
+    }
+
+    /// `uk` 는 사용역이 아니라 표기 규칙이라 이미 제 자리가 있다. 두 번 세지 않는다.
+    @Test("uk 는 꼬리표에 섞이지 않는다")
+    func uk는따로() throws {
+        let xml = """
+        <JMdict><entry>
+        <r_ele><reb>やめる</reb></r_ele>
+        <k_ele><keb>止める</keb></k_ele>
+        <sense><misc>&uk;</misc><misc>&col;</misc><gloss>to stop</gloss></sense>
+        </entry></JMdict>
+        """
+        let entry = try JMDictParser.parse(xml: xml).first
+        #expect(entry?.usuallyKana == true)
+        #expect(entry?.usageTags == ["col"])
+    }
+
+    @Test("꼬리표가 없는 낱말은 비어 있다")
+    func 없으면빈것() throws {
+        let xml = """
+        <JMdict><entry>
+        <r_ele><reb>やくそく</reb></r_ele><k_ele><keb>約束</keb></k_ele>
+        <sense><pos>&n;</pos><gloss>promise</gloss></sense>
+        </entry></JMdict>
+        """
+        #expect(try JMDictParser.parse(xml: xml).first?.usageTags.isEmpty == true)
+    }
+
+    /// 색인을 거쳐도 살아남아야 한다. 파서만 읽고 색인이 안 실으면 화면에는 없는 것이다.
+    @Test("색인에 굽고 다시 읽어도 남는다")
+    func 색인왕복() throws {
+        let path = NSTemporaryDirectory() + "mworago-usage-\(UUID().uuidString).db"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let entry = DictEntry(readings: [DictForm(text: "きさま", priority: 0)],
+                              writings: [DictForm(text: "貴様", priority: 0)],
+                              glosses: ["you"],
+                              usageTags: ["derog", "male"])
+        try DictionaryStore.build(entries: [entry], at: path)
+        let store = try DictionaryStore(path: path)
+        #expect(store.lookup("きさま").first?.entry.usageTags == ["derog", "male"])
+    }
+}

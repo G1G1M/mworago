@@ -29,16 +29,29 @@ public struct DictEntry: Sendable, Equatable {
     /// JMdict 의 품사 태그(`v5u`·`prt`·`adj-na`…). 먼저 쓰인 순서를 지킨다.
     /// 뜻을 한국어로 옮길 때 동사를 동사로 옮기고, 조사를 아예 건드리지 않기 위해 필요하다.
     public let partsOfSpeech: [String]
+    /// **써도 되는 말인가.** JMdict 의 `misc` 태그 중 사용역에 해당하는 것들 —
+    /// `arch`(고어) · `col`(구어) · `sl`(속어) · `derog`(경멸) · `vulg`(비속) ·
+    /// `hon`(존경) · `male`·`fem`(남성어·여성어)…
+    ///
+    /// 이 앱의 빈도표는 애니 자막 말뭉치라 "얼마나 흔한가"라는 축이 이미 애니다.
+    /// 그런데 애니에 흔한 것과 일상에서 써도 되는 것은 다르다 — `貴様` 는 애니에
+    /// 넘치지만 사람에게 쓰면 싸움이 난다. 그 판단을 **모델에게 묻지 않는다.**
+    /// 사전 편집자가 이미 붙여 둔 사실이고, 모델은 그럴듯한 거짓말을 할 수 있다.
+    ///
+    /// **첫 뜻갈래의 것만 담는다.** 태그는 뜻마다 붙어서, 다 합치면 흔한 낱말이
+    /// 엉뚱한 딱지를 단다(`い` 가 비속어, `見` 이 존경어가 된다).
+    public let usageTags: [String]
 
     public init(readings: [DictForm], writings: [DictForm], glosses: [String],
                 usuallyKana: Bool = false, koreanGloss: String? = nil,
-                partsOfSpeech: [String] = []) {
+                partsOfSpeech: [String] = [], usageTags: [String] = []) {
         self.readings = readings
         self.writings = writings
         self.glosses = glosses
         self.usuallyKana = usuallyKana
         self.koreanGloss = koreanGloss
         self.partsOfSpeech = partsOfSpeech
+        self.usageTags = usageTags
     }
 
     /// 이 낱말의 큰 갈래.
@@ -154,11 +167,24 @@ public enum JMDictParser {
         private var formPriority = 0
         private var formIsRare = false
         private var usuallyKana = false
+        /// 지금 몇 번째 뜻갈래를 읽고 있는가. 꼬리표는 **첫 갈래의 것만** 쓴다.
+        private var senseIndex = -1
+        private var usageTags: [String] = []
 
         private var buffer = ""
         private var capturing = false
 
         private static let captured: Set<String> = ["keb", "reb", "gloss", "ke_pri", "re_pri", "ke_inf", "misc", "pos"]
+
+        /// `misc` 에는 사용역 말고도 여러 표지가 섞여 있다(`abbr`·`on-mim`·`yoji`…).
+        /// **"써도 되는 말인가"에 답하는 것만 고른다** — 나머지는 화면에서 할 말이 없다.
+        private static let usageTagNames: Set<String> = [
+            "arch", "obs", "rare",            // 옛말·안 쓰는 말
+            "col", "sl", "net-sl", "vulg",    // 구어·속어·비속어
+            "derog", "sens", "joc",           // 경멸·민감·농
+            "hon", "hum", "pol",              // 존경·겸양·공손
+            "male", "fem", "chn", "fam",      // 남성어·여성어·아이말·친밀
+        ]
 
         func parser(_ parser: XMLParser, didStartElement elementName: String,
                     namespaceURI: String?, qualifiedName: String?,
@@ -166,7 +192,9 @@ public enum JMDictParser {
             switch elementName {
             case "entry":
                 readings = []; writings = []; glosses = []; usuallyKana = false
-                partsOfSpeech = []
+                partsOfSpeech = []; usageTags = []; senseIndex = -1
+            case "sense":
+                senseIndex += 1
             case "k_ele", "r_ele":
                 formText = ""; formPriority = 0; formIsRare = false
             default: break
@@ -194,7 +222,12 @@ public enum JMDictParser {
                 // exposeEntities 를 거쳐 표지 이름이 그대로 들어온다: sK · rK · iK
                 if text == "sK" || text == "rK" { formIsRare = true }
             case "misc":
+                // `uk` 는 사용역이 아니라 표기 규칙이라 제 자리가 따로 있다.
                 if text == "uk" { usuallyKana = true }
+                else if senseIndex == 0, Self.usageTagNames.contains(text),
+                        !usageTags.contains(text) {
+                    usageTags.append(text)
+                }
             case "k_ele":
                 guard !formText.isEmpty else { return }
                 writings.append(DictForm(text: formText, priority: formPriority, isRare: formIsRare))
@@ -210,7 +243,8 @@ public enum JMDictParser {
                 guard !readings.isEmpty else { return }
                 entries.append(DictEntry(readings: readings, writings: writings,
                                          glosses: glosses, usuallyKana: usuallyKana,
-                                         partsOfSpeech: partsOfSpeech))
+                                         partsOfSpeech: partsOfSpeech,
+                                         usageTags: usageTags))
             default: break
             }
         }

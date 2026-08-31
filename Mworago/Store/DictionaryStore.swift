@@ -27,7 +27,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
     ///
     /// 색인은 구워서 앱에 싣는 물건이라, 코드만 고치고 다시 굽지 않으면
     /// `no such column` 같은 말로 실패한다. 무엇이 잘못됐는지 바로 알 수 있게 새겨 둔다.
-    static let schemaVersion = 3
+    static let schemaVersion = 4
 
     public init(path: String) throws {
         var handle: OpaquePointer?
@@ -55,7 +55,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
 
         // 조회는 한 문장으로 끝난다. 미리 준비해 두고 매번 바인딩만 바꾼다.
         let sql = """
-            SELECT r.display, r.priority, e.writings, e.glosses, e.usually_kana, e.readings, e.korean, e.pos
+            SELECT r.display, r.priority, e.writings, e.glosses, e.usually_kana, e.readings, e.korean, e.pos, e.usage
             FROM readings r JOIN entries e ON e.id = r.entry_id
             WHERE r.reading = ? ORDER BY r.priority DESC, r.entry_id ASC
             """
@@ -97,11 +97,12 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             let korean = column(6).flatMap { $0.isEmpty ? nil : $0 }
             // 빈 칸을 그냥 쪼개면 [""] 가 된다 — 있지도 않은 품사 하나를 지어내는 셈이다.
             let pos = (column(7) ?? "").split(separator: Self.recordSeparator).map(String.init)
+            let usage = (column(8) ?? "").split(separator: Self.recordSeparator).map(String.init)
 
             let entry = DictEntry(readings: readings.isEmpty ? [DictForm(text: display, priority: priority)] : readings,
                                   writings: writings, glosses: glosses,
                                   usuallyKana: usuallyKana, koreanGloss: korean,
-                                  partsOfSpeech: pos)
+                                  partsOfSpeech: pos, usageTags: usage)
             hits.append(DictHit(entry: entry, reading: display, priority: priority))
         }
         return hits
@@ -128,7 +129,8 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
         try exec(db, "PRAGMA journal_mode = OFF; PRAGMA synchronous = OFF;")
         try exec(db, """
             CREATE TABLE entries (id INTEGER PRIMARY KEY, writings TEXT, glosses TEXT,
-                                  usually_kana INTEGER, readings TEXT, korean TEXT, pos TEXT);
+                                  usually_kana INTEGER, readings TEXT, korean TEXT, pos TEXT,
+                                  usage TEXT);
             CREATE TABLE readings (reading TEXT NOT NULL, display TEXT NOT NULL,
                                    priority INTEGER NOT NULL, entry_id INTEGER NOT NULL);
             CREATE TABLE schema_version (version INTEGER);
@@ -139,7 +141,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
 
         var entryStatement: OpaquePointer?
         var readingStatement: OpaquePointer?
-        sqlite3_prepare_v2(db, "INSERT INTO entries VALUES (?, ?, ?, ?, ?, ?, ?)", -1, &entryStatement, nil)
+        sqlite3_prepare_v2(db, "INSERT INTO entries VALUES (?, ?, ?, ?, ?, ?, ?, ?)", -1, &entryStatement, nil)
         sqlite3_prepare_v2(db, "INSERT INTO readings VALUES (?, ?, ?, ?)", -1, &readingStatement, nil)
         defer {
             sqlite3_finalize(entryStatement)
@@ -169,6 +171,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             }.first
             sqlite3_bind_text(entryStatement, 6, korean ?? "", -1, transient)
             sqlite3_bind_text(entryStatement, 7, entry.partsOfSpeech.joined(separator: recordSeparator), -1, transient)
+            sqlite3_bind_text(entryStatement, 8, entry.usageTags.joined(separator: recordSeparator), -1, transient)
             sqlite3_step(entryStatement)
             sqlite3_reset(entryStatement)
 
