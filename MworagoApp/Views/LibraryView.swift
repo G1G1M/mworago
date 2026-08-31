@@ -12,8 +12,11 @@ import MworagoCore
 /// 그래서 날짜 쪽을 기본으로 둔다.
 struct LibraryView: View {
     let collection: CollectionStore
-    /// 낱말을 누르면 찾기로 데려간다. 모아 둔 것을 다시 만나는 길이 없으면
-    /// 이 화면은 쌓아만 두는 서랍이 된다.
+    /// 상세에서 "찾기에서 보기"를 눌렀을 때 건너가는 길.
+    ///
+    /// 전에는 **낱말을 누르는 것 자체가** 이 길이었다. 모아 둔 것을 다시 만나게 하려던
+    /// 것인데, 교재에서 나가 버리니 여러 개를 훑을 때마다 돌아와야 했다.
+    /// 이제 누르면 상세가 열리고, 이 길은 그 안의 버튼으로 남는다.
     var onPick: (String) -> Void = { _ in }
     /// 그날 것만 들고 연습으로 건너간다. 연습이 늘 전체를 훑으면
     /// 스무 날치가 쌓인 뒤에는 오늘 본 것을 다시 만나기까지 한참이 걸린다.
@@ -31,6 +34,14 @@ struct LibraryView: View {
     }
 
     @State private var grouping: Grouping = .days
+    /// 펼쳐 보고 있는 낱말. 누르면 여기 담기고 상세가 열린다.
+    ///
+    /// `--detail` 로 첫 낱말을 펼친 채 띄울 수 있다. `--query=` · `--guide` 와 같은
+    /// 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 시트를 눈으로 볼 길이 없다.
+    @State private var detail: CollectedWord?
+    private var opensFirstDetail: Bool {
+        ProcessInfo.processInfo.arguments.contains("--detail")
+    }
 
     private static let contentWidth: CGFloat = 640
 
@@ -40,6 +51,14 @@ struct LibraryView: View {
         ZStack {
             Theme.paper.ignoresSafeArea()
             if collection.words.isEmpty { empty } else { content }
+        }
+        .onAppear {
+            if opensFirstDetail, detail == nil { detail = collection.words.first }
+        }
+        .sheet(item: $detail) { word in
+            WordDetail(word: word,
+                       onFind: onPick,
+                       onRemove: { collection.remove($0) })
         }
     }
 
@@ -134,7 +153,7 @@ struct LibraryView: View {
             }
             FlowRow(lineSpacing: 8) {
                 ForEach(day.words) { word in
-                    Button { onPick(word.hangul) } label: {
+                    Button { detail = word } label: {
                         Text(word.reading)
                             .font(Theme.japanese(19))
                             .foregroundStyle(Theme.grey1)
@@ -155,7 +174,7 @@ struct LibraryView: View {
     /// 무엇을 보고 담았는지가 그 사람의 기억과 맞다.
     private func row(_ word: CollectedWord) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 14) {
-            Button { onPick(word.hangul) } label: {
+            Button { detail = word } label: {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(word.reading)
                         .font(Theme.japanese(24, weight: .medium))
@@ -179,7 +198,7 @@ struct LibraryView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityHint("찾기에서 다시 봅니다")
+            .accessibilityHint("자세히 봅니다")
 
             Button {
                 collection.remove(word)
