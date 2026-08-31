@@ -17,7 +17,6 @@ import MworagoCore
 struct PracticeView: View {
     let collection: CollectionStore
     /// 한자의 한국 독음. 상세 시트가 이미 한 번 읽어 둔 것을 나눠 쓴다.
-    var hanja: HanjaReading = WordDetail.bundledHanja
     /// 교재에서 하루치만 들고 건너왔을 때 그 낱말들. 비어 있으면 모은 것 전체를 훑는다.
     ///
     /// **늘 전체를 훑으면 오늘 본 것을 다시 만나기까지 한참이 걸린다.** 스무 날치가
@@ -97,29 +96,22 @@ struct PracticeView: View {
             // **가나부터 보인다.** 한글 음차는 찾을 때 쓰는 열쇠이지 익힐 것이 아니다.
             // 그것을 앞에 두면 한글 음차를 보고 뜻을 떠올리는 연습이 되는데,
             // 자막에 뜨는 것은 `いたい` 이지 `이타이` 가 아니다.
-            Text(word.reading)
-                .font(Theme.japanese(38, weight: .medium))
-                .foregroundStyle(Theme.ink)
+            // 앞면에도 소리를 둔다. **뒤집기 전에 들어 보는 것이 곧 문제다** —
+            // 자막에서 만나는 것은 글자만이 아니라 소리이기도 하다.
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                Text(word.reading)
+                    .font(Theme.japanese(38, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                SpeakButton(text: word.reading, size: 18)
+            }
 
             // 뒤집기 전에는 자리만 잡아 둔다. 답이 나타나며 아래가 밀리면
             // 눈이 따라가야 해서, 있던 자리에 그대로 나타나게 한다.
             //
-            // 층의 차례는 화면 어디서나 같다 — 가나(앞면) · 한자 · 한글 · 뜻.
+            // 층의 차례는 화면 어디서나 같다 — 가나(앞면) · 한글 · 뜻.
             // 한글 음차를 뒤에 남기는 것은 **"내가 이것을 어떻게 찾았는지"의 기록**이라서다.
             // 소리와 글자를 잇는 다리인데, 답의 일부지 문제는 아니다.
             VStack(alignment: .leading, spacing: 7) {
-                if word.headword != word.reading {
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Text(word.headword)
-                            .font(Theme.japanese(24))
-                            .foregroundStyle(Theme.ink)
-                        if let reading = hanja.reading(of: word.headword) {
-                            Text(reading)
-                                .font(Theme.korean(15))
-                                .foregroundStyle(Theme.grey3)
-                        }
-                    }
-                }
                 Text(word.hangul)
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.grey3)

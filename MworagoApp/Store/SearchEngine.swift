@@ -17,7 +17,6 @@ final class SearchEngine {
     private var store: DictionaryStore?
     private var frequency: FrequencyList?
     /// 한자의 한국 독음. 쓸 만한 한일 사전이 없어 뜻이 영어로 남은 사이를 메우는 단서다.
-    private(set) var hanja = HanjaReading(tsv: "")
 
     init() {
         do {
@@ -30,9 +29,6 @@ final class SearchEngine {
             if let freqPath = Bundle.main.path(forResource: "jesc_freq", ofType: "tsv") {
                 let list = FrequencyList(contentsOfFile: freqPath)
                 frequency = list.isEmpty ? nil : list
-            }
-            if let hanjaPath = Bundle.main.path(forResource: "hanja-reading", ofType: "tsv") {
-                hanja = HanjaReading(contentsOfFile: hanjaPath)
             }
             isReady = true
         } catch {

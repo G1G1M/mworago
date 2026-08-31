@@ -10,21 +10,9 @@ import MworagoCore
 /// **길을 없애는 것이 아니라 기본 동작을 바꾼다.** 누르면 여기서 펼치고,
 /// 찾기로 가는 것은 버튼 하나로 남긴다.
 ///
-/// 층의 차례는 화면 어디서나 같다 — **가나 · 한자 · 한글**.
+/// 층의 차례는 화면 어디서나 같다 — **가나 · 한글**.
 struct WordDetail: View {
     let word: CollectedWord
-    /// 한자의 한국 독음. 뜻이 아니라 단서라, 뜻 자리가 아니라 한자 곁에 둔다.
-    ///
-    /// 검색 쪽은 `SearchEngine` 이 들고 있지만 교재는 그것을 거치지 않는다.
-    /// 표가 50KB 라 두 벌을 두어도 그만이지만, 한 번만 읽어 나눠 쓴다.
-    var hanja: HanjaReading = WordDetail.bundledHanja
-
-    static let bundledHanja: HanjaReading = {
-        guard let path = Bundle.main.path(forResource: "hanja-reading", ofType: "tsv") else {
-            return HanjaReading(tsv: "")
-        }
-        return HanjaReading(contentsOfFile: path)
-    }()
     /// 찾기로 건너간다. 없애지 않고 버튼 하나로 남겨 둔 길이다.
     var onFind: (String) -> Void = { _ in }
     /// 교재에서 뺀다.
@@ -64,26 +52,18 @@ struct WordDetail: View {
         }
     }
 
-    /// 가나 · 한자 · 한글. 카드와 문장이 쓰는 것과 같은 차례다.
+    /// 가나 · 한글. 카드와 문장이 쓰는 것과 같은 차례다.
     /// 여기서는 다이얼로 접지 않는다 — 펼쳐 보려고 연 화면이기 때문이다.
+    ///
+    /// **소리가 가장 큰 글자 곁에 선다.** 펼쳐 보려고 연 화면이라, 눈으로 볼 것과
+    /// 귀로 들을 것이 같은 자리에 있어야 한다.
     private var layers: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(word.reading)
-                .font(Theme.japanese(34, weight: .medium))
-                .foregroundStyle(Theme.ink)
-
-            // 가나로만 쓰는 낱말은 표기가 읽기와 같다. 같은 것을 두 번 보이지 않는다.
-            if word.headword != word.reading {
-                HStack(alignment: .firstTextBaseline, spacing: 9) {
-                    Text(word.headword)
-                        .font(Theme.japanese(22))
-                        .foregroundStyle(Theme.grey1)
-                    if let reading = hanja.reading(of: word.headword) {
-                        Text(reading)
-                            .font(Theme.korean(14))
-                            .foregroundStyle(Theme.grey3)
-                    }
-                }
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(word.reading)
+                    .font(Theme.japanese(34, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                SpeakButton(text: word.reading, size: 18)
             }
 
             Text(word.hangul)
@@ -157,8 +137,8 @@ struct WordDetail: View {
 
     /// 어느 묶음에 든 낱말인가.
     ///
-    /// 담는 순간에는 묻지 않는다(흐름이 끊긴다). 대신 나중에 여기서 옮긴다 —
-    /// 하루에 두 편을 봤거나, 보기 시작할 때 정해 두는 것을 잊었을 때를 위한 자리다.
+    /// 담을 때 이미 물었지만, 그때 고른 것이 늘 맞는 것은 아니다 — 하루에 두 편을 봤거나
+    /// 지난번 골라져 있던 것을 그대로 눌렀을 수 있다. 여기가 고쳐 넣는 자리다.
     private var folderRow: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("묶음")

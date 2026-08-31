@@ -266,11 +266,6 @@ struct LibraryView: View {
                     Text(word.reading)
                         .font(Theme.japanese(24, weight: .medium))
                         .foregroundStyle(Theme.ink)
-                    if word.headword != word.reading {
-                        Text(word.headword)
-                            .font(Theme.japanese(16))
-                            .foregroundStyle(Theme.grey1)
-                    }
                     Text(word.hangul)
                         .font(Theme.korean(13))
                         .foregroundStyle(Theme.grey3)
@@ -295,7 +290,7 @@ struct LibraryView: View {
                     .foregroundStyle(Theme.ink)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(word.headword) 빼기")
+            .accessibilityLabel("\(word.reading) 빼기")
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.vertical, 16)

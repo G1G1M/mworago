@@ -1,25 +1,5 @@
 import SwiftUI
-import AVFoundation
 import MworagoCore
-
-/// 가나를 소리 내어 읽는다.
-///
-/// `AVSpeechSynthesizer` 는 **기기 안에서 말한다** — 서버로 나가지 않으니 요금도
-/// 네트워크도 없고, 이 앱이 "아무것도 모으지 않는다"고 적어 둔 것과도 어긋나지 않는다.
-///
-/// 한 글자만 읽히면 낱말처럼 들려 어색할 수 있어 **속도를 살짝 늦춘다.**
-@MainActor
-enum KanaVoice {
-    private static let synth = AVSpeechSynthesizer()
-
-    static func speak(_ text: String) {
-        synth.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
-        synth.speak(utterance)
-    }
-}
 
 /// 글자 — 가나를 보고, 듣고, 익힌다.
 ///

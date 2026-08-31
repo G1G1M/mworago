@@ -7,8 +7,10 @@ import MworagoCore
 /// 원문을 사용자가 머릿속으로 이어 붙이고 있었다.
 ///
 /// **가나가 맨 위다.** 낱말 카드와 같은 순서다 — 소리를 듣고 찾아온 사람에게 가장 가까운 것이
-/// 가나이기 때문이다. 문장만 한자를 앞세우면 한 화면 안에서 층의 순서가 둘로 갈린다.
-/// 어디까지 볼지도 카드와 같은 다이얼이 정한다.
+/// 가나이기 때문이다. 어디까지 볼지도 카드와 같은 다이얼이 정한다.
+///
+/// **되살린 문장은 들어 볼 수 있다.** 들린 대로 쳐서 찾아온 사람에게 돌려줄 것은
+/// 결국 소리다 — 내가 들은 것이 이것이 맞는지는 다시 들어 봐야 안다.
 ///
 /// 조각마다 누를 수 있다. **강조는 반전 하나로만** 한다 — 누르지 않았을 때 문장은
 /// 평평하고, 누른 조각 하나만 검게 채워진다. 읽기 보조 다이얼과 같은 문법이라
@@ -34,21 +36,15 @@ struct SentenceHeader: View {
             // 크기만으로는 "큰 카드"로 읽힌다 — 아래 카드들과 생김새가 같고 사이에 놓인 선도
             // 같아서, 첫 번째 조각으로 보인다. 색을 더하는 길도 있지만 **강조는 반전 하나로만**
             // 쓰기로 했으므로, 이름과 여백으로 가른다.
-            Text("문장")
-                .font(Theme.korean(12))
-                .foregroundStyle(Theme.grey3)
+            HStack(spacing: 9) {
+                Text("문장")
+                    .font(Theme.korean(12))
+                    .foregroundStyle(Theme.grey3)
+                SpeakButton(text: segments.kana, size: 13)
+            }
 
             pieces
 
-            // **다이얼이 켜면 자리가 생긴다.** 가나로만 쓰는 문장은 한자가 읽기와 같아서
-            // 보일 것이 없지만, 그때 줄을 통째로 빼면 "한자까지"를 눌러도 화면이
-            // 그대로다 — 다이얼이 고장 난 것처럼 보인다. 층은 늘 세 칸이고,
-            // 다이얼은 그 칸을 켜고 끌 뿐이다.
-            if aid.showsKanji {
-                Text(segments.japanese != segments.kana ? segments.japanese : " ")
-                    .font(Theme.japanese(24))
-                    .foregroundStyle(Theme.grey1)
-            }
             if aid.showsHangul {
                 Text(segments.map(\.hangul).joined())
                     .font(Theme.korean(16))

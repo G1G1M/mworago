@@ -2,29 +2,30 @@ import SwiftUI
 import MworagoCore
 
 /// 무엇까지 보여줄지. 듀오링고가 발음 표시를 끄고 켜게 하듯,
-/// 익숙해질수록 아래 층부터 끄는 다이얼이다.
+/// 익숙해질수록 아래 층을 끄는 다이얼이다.
 ///
 /// **가나가 맨 위다.** 소리를 듣고 찾아온 사람에게 가장 가까운 것이 가나이기 때문이다.
-/// 한자는 아직 못 읽을 수 있고, 일본어를 배우며 처음 만나는 것도 가나다.
+///
+/// 한때는 층이 셋이었다 — 가나 · 한자 · 한글. **한자를 뺐다.** 이 앱이 데려다주려는 곳은
+/// 자막에 뜨는 가나이고, 한자는 그 길에 있지 않다. 뜻은 한국어가 말해 주므로 한자가
+/// 뜻을 거들 자리도 없었다. 층이 둘이 되면서 다이얼도 두 칸이 됐다.
 enum ReadingAid: Int, CaseIterable, Identifiable {
-    case hangul, kanji, kana
+    case hangul, kana
 
     var id: Int { rawValue }
     var label: String {
         switch self {
         case .hangul: "한글까지"
-        case .kanji: "한자까지"
         case .kana: "가나만"
         }
     }
-    var showsKanji: Bool { self != .kana }
     var showsHangul: Bool { self == .hangul }
 
     init?(name: String) {
         switch name {
         case "hangul": self = .hangul
-        case "kanji": self = .kanji
-        case "kana": self = .kana
+        // 한자 층이 있던 시절의 이름. 그때 "한자까지"는 한글을 안 보이는 상태였다.
+        case "kana", "kanji": self = .kana
         default: return nil
         }
     }
@@ -177,7 +178,7 @@ struct SearchView: View {
                     }
 
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
-                        SegmentCard(segment: segment, aid: aid, hanja: engine.hanja,
+                        SegmentCard(segment: segment, aid: aid,
                                     isSelected: selected == index, collection: collection,
                                     onCollect: { collecting = $0 })
                             .id(index)

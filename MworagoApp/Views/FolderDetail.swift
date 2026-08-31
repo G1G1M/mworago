@@ -156,7 +156,7 @@ struct FolderDetail: View {
     ///
     /// 책장 목록에서는 알약으로 늘어놓아 소리만 훑게 했는데, 여기서는 **뜻까지 세운다** —
     /// 한 화 분량을 훑으려고 들어온 화면이라 무엇을 담았는지 읽혀야 한다.
-    /// 층의 차례는 화면 어디서나 같다 — 가나 · 한자 · 한글.
+    /// 층의 차례는 화면 어디서나 같다 — 가나 · 한글.
     private func row(_ word: CollectedWord) -> some View {
         Button { detail = word } label: {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
@@ -164,11 +164,6 @@ struct FolderDetail: View {
                     Text(word.reading)
                         .font(Theme.japanese(21, weight: .medium))
                         .foregroundStyle(Theme.ink)
-                    if word.headword != word.reading {
-                        Text(word.headword)
-                            .font(Theme.japanese(15))
-                            .foregroundStyle(Theme.grey1)
-                    }
                 }
                 if !word.gloss.isEmpty {
                     Spacer(minLength: 12)
