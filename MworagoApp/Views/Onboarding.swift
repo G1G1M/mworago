@@ -115,6 +115,12 @@ struct Onboarding: View {
                             Spacer(minLength: 0)
                         }
                         .padding(.horizontal, Theme.gutter)
+                        // **기둥은 페이지 안에 있다.** 바깥에 두면 `TabView` 자체가
+                        // 좁아져서, 넘길 때 그 폭의 경계에서 옆 페이지가 잘려 나타난다 —
+                        // 미끄러지는 내내 세로선 하나가 서 있는 것처럼 보인다.
+                        // 페이지는 화면 끝까지 흐르고, 글만 기둥 안에 선다.
+                        .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
+                        .frame(maxWidth: .infinity)
                         .tag(i)
                     }
                 }
@@ -161,18 +167,21 @@ struct Onboarding: View {
                     .frame(width: Theme.koreanWidth("시작하기", size: 15), alignment: .leading)
                 }
                 .padding(.horizontal, Theme.gutter)
+                // 페이지와 **같은 기둥**이다. 둘 다 화면 폭 안에서 한 번씩 가운데를
+                // 잡으므로 시작 자리가 맞는다.
+                .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
+                .frame(maxWidth: .infinity)
             }
             .padding(.bottom, 40)
-            // **캐러셀과 점·버튼 줄을 한 기둥에 넣고 한 번만 가운데로 세운다.**
+            // **기둥을 바깥이 아니라 안쪽에 둔다.**
             //
-            // 전에는 둘이 각자 폭을 재고 각자 가운데를 잡았는데, `TabView` 는 아이패드에서
-            // 페이지에 화면보다 좁은 폭을 준다. 그래서 페이지 안에서 잡은 가운데가 바깥과
-            // 어긋났다 — 실측으로 점은 137pt, 글은 169pt 였다.
+            // 한때는 캐러셀과 점·버튼 줄을 통째로 한 기둥에 넣었다. 시작 자리는 맞았지만
+            // `TabView` 자체가 그 폭으로 좁아져서, 넘길 때 기둥 경계에서 옆 페이지가
+            // 잘려 나타났다 — 미끄러지는 내내 세로선 하나가 서 있는 것처럼 보였다.
             //
-            // 기둥 폭은 글 폭에 좌우 여백을 더한 것이다. 안에서는 둘 다 `Theme.gutter`
-            // 하나만 쓰므로, 무엇이 어디서 시작하는지가 한자리에서 정해진다.
-            .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
-            .frame(maxWidth: .infinity)
+            // 페이지와 점·버튼 줄이 **각자 같은 기둥을 화면 폭 안에서** 잡는다.
+            // 폭이 같고 가운데도 같으니 시작 자리는 그대로 맞고, `TabView` 는 화면
+            // 끝까지 써서 미끄러지는 자리에 경계가 없다.
 
             VStack {
                 HStack {
