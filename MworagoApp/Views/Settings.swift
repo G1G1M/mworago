@@ -60,6 +60,23 @@ enum Appearance: String, CaseIterable, Identifiable {
 struct Settings: View {
     @Binding var appearance: Appearance
 
+    // MARK: 이 화면의 간격
+    //
+    // **설정만 유난히 벌어져 있다.** 다른 화면은 한 가지를 여러 층으로 보여 주므로
+    // 층 사이가 붙어야 한 낱말로 읽힌다. 여기 놓이는 것은 성격이 다른 덩어리다 —
+    // 화면 밝기 · 앱에 대하여 · 무엇을 하지 않는지. 서로 붙으면 목록 하나로 보인다.
+    //
+    // "묶인 것은 붙고 다른 것은 떨어진다"는 규칙은 그대로고, 이 화면에서는 그 대비가
+    // 더 커야 성립한다. 그래서 섹션 사이만 키우고 **섹션 안은 그대로 뒀다** —
+    // 둘을 함께 키우면 다시 고르게 늘어서서 아무것도 묶이지 않는다.
+
+    /// 섹션과 섹션 사이. `Theme.sectionGap`(34)보다 벌린다.
+    private static let sectionGap: CGFloat = 44
+    /// 줄 하나가 차지하는 위아래. 손대기 좋은 크기이기도 하다.
+    private static let rowPadding: CGFloat = 17
+    /// 내비게이션 바 아래 첫 섹션까지. 제목에 바로 붙으면 화면이 시작하지 않은 것처럼 보인다.
+    private static let topPadding: CGFloat = 28
+
     private var version: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -69,9 +86,9 @@ struct Settings: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.sectionGap) {
+                VStack(alignment: .leading, spacing: Self.sectionGap) {
                     section("화면") {
-                        VStack(alignment: .leading, spacing: Theme.lineGap + 2) {
+                        VStack(alignment: .leading, spacing: Theme.lineGap + 5) {
                             dial
                             Text("고르지 않으면 기기 설정을 따릅니다.")
                                 .font(Theme.korean(13))
@@ -104,7 +121,7 @@ struct Settings: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, Theme.gutter)
-                .padding(.top, Theme.screenTop)
+                .padding(.top, Self.topPadding)
                 .padding(.bottom, Theme.screenBottom)
                 .frame(maxWidth: Theme.readWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
@@ -166,7 +183,7 @@ struct Settings: View {
                     .foregroundStyle(Theme.grey3)
             }
         }
-        .padding(.vertical, 13)
+        .padding(.vertical, Self.rowPadding)
         .contentShape(Rectangle())
     }
 }
