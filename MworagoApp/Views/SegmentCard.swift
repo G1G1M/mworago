@@ -105,11 +105,34 @@ struct SegmentCard: View {
             // 고르는 일이 아니라 켜고 끄는 스위치이고, 그것이 끄는 것은 이 사람이
             // 낱말을 찾아온 바로 그 열쇠다.
             //
-            // **이 낱말의 소리다.** 조각의 음차(`야메떼`)를 놓으면 위의 가나(`やめる`)와
-            // 다른 낱말의 소리가 되어, 초보에게는 "야메떼가 やめる 라고 읽히나?"가 된다.
-            // 카드는 한 낱말을 보여 주는 자리이므로 세 층이 다 같은 낱말이어야 한다 —
-            // 내가 친 원문은 위 문장 머리에 이미 있고, 되돌린 것은 꼬리표가 말한다.
-            Text(KanaToHangul.transliterate(result.reading))
+            // **되돌렸으면 되돌린 자리를 보인다.** 사전에는 사전형만 실려 있어서
+            // `やめて` 를 치면 카드에는 `やめる` 가 뜬다. 그 사이를 말해 주지 않으면
+            // "야메떼라고 쳤는데 왜 야메루가 나오지?"가 된다 — 만든 사람도 물었다.
+            //
+            // 조각의 음차만 놓아도 안 된다. 그러면 위의 가나(`やめる`)와 다른 낱말의
+            // 소리가 되어 "야메떼가 やめる 라고 읽히나?"가 된다.
+            //
+            // **둘을 화살표로 잇는다.** 내가 친 소리에서 이 낱말의 소리로 건너간 것이
+            // 한 줄에 다 보인다. 되돌리지 않았으면 화살표 없이 소리 하나뿐이다.
+            reading(result)
+        }
+    }
+
+    /// 소리 줄. 되돌렸으면 `야메떼 → 야메루`, 아니면 `쿠다사이`.
+    @ViewBuilder
+    private func reading(_ result: SearchResult) -> some View {
+        let sound = KanaToHangul.transliterate(result.reading)
+        if result.deinflection != nil, segment.hangul != sound {
+            HStack(spacing: 6) {
+                Text(segment.hangul)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 9, weight: .medium))
+                Text(sound)
+            }
+            .font(Theme.korean(14))
+            .foregroundStyle(Theme.grey3)
+        } else {
+            Text(sound)
                 .font(Theme.korean(14))
                 .foregroundStyle(Theme.grey3)
         }
