@@ -78,23 +78,14 @@ struct SegmentCard: View {
                     .font(Theme.japanese(26, weight: .medium))
                     .foregroundStyle(Theme.ink)
 
-                if result.deinflection != nil {
-                    // 되돌린 활용은 회색 꼬리표로. 강조를 나눠 갖지 않는다.
-                    //
-                    // **문법 이름 대신 친 것을, 그것도 한글로 적는다.**
-                    //
-                    // 처음엔 `て형` 이었다. 과거형·명령형·부정형은 한국어 문법에도 있어
-                    // 짐작되지만 `て형` 은 일본어를 배운 사람만 안다. 그래서 `やめて 꼴` 로
-                    // 바꿨더니 이번엔 **가나를 못 읽는 사람이 못 읽는다** — 이 앱은 가나를
-                    // 가르치는 탭을 따로 둘 만큼 못 읽는 사람을 앞에 두고 있다.
-                    //
-                    // `야메떼 꼴` 로 적었다가 다시 고쳤다 — **말이 뒤집혀 있었다.**
-                    // 이 꼬리표는 `やめる` 곁에 붙으므로 "야메떼 꼴"이라 적으면
-                    // *`やめる` 가* 야메떼 꼴이라는 말이 된다. 야메떼 꼴인 것은 야메떼고
-                    // `やめる` 는 그 기본형이다.
-                    //
-                    // `기본형` 은 한국어 문법에도 있는 말이라 `て형` 처럼 낯설지 않다.
-                    Text("\(segment.hangul)의 기본형")
+                // **품사.** 실제 사전이 하는 것과 같다 — 낱말마다 늘 있으므로 자리가 고정된다.
+                //
+                // 여기 있던 것은 활용형 되돌림 표시였다(`야메떼의 기본형`). 그것은
+                // 되돌렸을 때만 떠서 카드마다 있다 없다 했고, 무엇보다 **낱말에 대해
+                // 말해 주는 것이 없었다** — 이 낱말이 동사인지 명사인지가 사전에서
+                // 먼저 알고 싶은 것이다. 내가 친 원문은 위 문장 머리에 그대로 있다.
+                if let 품사 = partOfSpeech(result) {
+                    Text(품사)
                         .font(Theme.korean(11))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
@@ -121,6 +112,24 @@ struct SegmentCard: View {
             Text(KanaToHangul.transliterate(result.reading))
                 .font(Theme.korean(14))
                 .foregroundStyle(Theme.grey3)
+        }
+    }
+
+    /// 이 낱말의 갈래.
+    ///
+    /// 코어의 `koreanName` 은 모델에게 줄 프롬프트용이라 기능어·관용구를 `nil` 로 둔다.
+    /// 화면은 그 자리를 비워 두면 카드마다 꼬리표가 있다 없다 하므로, 사전이 하듯
+    /// 이름을 붙여 준다. 갈래를 정말 모르는 것(`other`)만 비운다 — 지어내지 않는다.
+    private func partOfSpeech(_ result: SearchResult) -> String? {
+        switch result.entry.wordClass {
+        case .verb: "동사"
+        case .adjective: "형용사"
+        case .noun: "명사"
+        case .adverb: "부사"
+        case .expression: "관용구"
+        case .affix: "접사"
+        case .function: "조사·어미"
+        case .other: nil
         }
     }
 
