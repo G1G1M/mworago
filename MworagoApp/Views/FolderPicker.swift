@@ -21,6 +21,13 @@ struct FolderPicker: View {
     let lastFolder: String?
     /// 담는다. `nil` 은 아무 묶음에도 넣지 않는다는 뜻이다.
     var onPick: (String?) -> Void
+    /// 물음. 담을 때와 옮길 때가 다르다.
+    ///
+    /// **옮기기도 같은 모달을 쓴다.** 고르는 일이 같은데 화면이 다르면 새 문법을
+    /// 하나 더 배워야 하고, 옮기기 쪽에만 "새 묶음 만들기"가 빠지는 일도 생긴다.
+    var prompt: String = "어디에 담을까요?"
+    /// 점이 찍힌 자리에 붙는 말. 담을 때는 `지난번`, 옮길 때는 `지금`이다.
+    var markLabel: String = "지난번"
 
     @Environment(\.dismiss) private var dismiss
 
@@ -33,11 +40,14 @@ struct FolderPicker: View {
     @FocusState private var nameFocused: Bool
 
     init(word: CollectedWord, folderNames: [String], lastFolder: String?,
-         onPick: @escaping (String?) -> Void) {
+         onPick: @escaping (String?) -> Void,
+         prompt: String = "어디에 담을까요?", markLabel: String = "지난번") {
         self.word = word
         self.folderNames = folderNames
         self.lastFolder = lastFolder
         self.onPick = onPick
+        self.prompt = prompt
+        self.markLabel = markLabel
         _naming = State(initialValue: folderNames.isEmpty)
     }
 
@@ -77,7 +87,7 @@ struct FolderPicker: View {
     /// 옮겨 가므로, 어느 낱말이었는지 여기서 한 번 더 짚어 준다.
     private var head: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("어디에 담을까요?")
+            Text(prompt)
                 .font(Theme.korean(17))
                 .foregroundStyle(Theme.ink)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -118,7 +128,7 @@ struct FolderPicker: View {
                     .foregroundStyle(dim ? Theme.grey1 : Theme.ink)
                 Spacer(minLength: 10)
                 if picked {
-                    Text("지난번")
+                    Text(markLabel)
                         .font(Theme.korean(11))
                         .foregroundStyle(Theme.grey2)
                 }
@@ -128,7 +138,7 @@ struct FolderPicker: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint(picked ? "지난번에 담은 곳입니다" : "")
+        .accessibilityHint(picked ? "\(markLabel) 자리입니다" : "")
     }
 
     /// 새 묶음. 접혀 있을 때는 한 줄, 펼치면 그 자리가 이름 받는 칸이 된다.

@@ -23,6 +23,8 @@ struct WordDetail: View {
     var folderNames: [String] = []
 
     @Environment(\.dismiss) private var dismiss
+    /// 옮길 곳을 고르는 중인가. 담기와 **같은 모달**을 쓴다.
+    @State private var moving = false
 
     var body: some View {
         NavigationStack {
@@ -49,6 +51,15 @@ struct WordDetail: View {
                         .foregroundStyle(Theme.ink)
                 }
             }
+        }
+        .sheet(isPresented: $moving) {
+            FolderPicker(word: word,
+                         folderNames: folderNames,
+                         // 점은 **지금 있는 자리**를 가리킨다. 담을 때는 지난번 자리였다.
+                         lastFolder: word.folder,
+                         onPick: { onMove(word, $0) },
+                         prompt: "어디로 옮길까요?",
+                         markLabel: "지금")
         }
     }
 
@@ -145,26 +156,23 @@ struct WordDetail: View {
             Text("묶음")
                 .font(Theme.korean(12))
                 .foregroundStyle(Theme.grey2)
-            Menu {
-                ForEach(folderNames, id: \.self) { name in
-                    Button(name) { onMove(word, name) }
-                }
-                if word.folder != nil {
-                    Divider()
-                    Button("빼기") { onMove(word, nil) }
-                }
-            } label: {
-                HStack(spacing: 5) {
+            // **누르면 담기와 같은 모달이 열린다.** 메뉴였을 때는 이미 있는 묶음으로만
+            // 옮길 수 있어서, 새 자리로 보내려면 먼저 딴 낱말을 담아 묶음을 만들어야 했다.
+            Button { moving = true } label: {
+                HStack(spacing: 6) {
                     Text(word.folder ?? "아직 안 넣음")
                         .font(Theme.korean(15))
                         .foregroundStyle(word.folder == nil ? Theme.grey3 : Theme.ink)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9))
-                        .foregroundStyle(Theme.grey3)
+                    Text("옮기기")
+                        .font(Theme.korean(12))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 3)
+                        .background(Theme.grey4, in: Capsule())
+                        .foregroundStyle(Theme.grey1)
                 }
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(folderNames.isEmpty && word.folder == nil)
         }
     }
 }
