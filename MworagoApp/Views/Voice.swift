@@ -10,11 +10,26 @@ import AVFoundation
 /// `KanaVoice` 였는데, 찾은 낱말도 되살린 문장도 들어 봐야 하는 것은 마찬가지다 —
 /// 소리를 듣고 찾아온 사람에게 돌려줄 것도 결국 소리다.
 ///
-/// **가나 한 글자는 0.2초쯤이다.** `あ` 는 모음 하나라 기본 속도로는 들었다는 느낌도
-/// 없이 지나간다. 여기서 들려주는 것은 유창함이 아니라 **한 소리**라서, 늘어져도
-/// 잃을 것이 없다 — 속도를 뚜렷하게 늦춘다.
+/// **속도는 무엇을 읽느냐에 따라 갈린다.** 가나 한 글자는 0.2초쯤이라 기본 속도로는
+/// 들었다는 느낌도 없이 지나가는데, 문장을 같은 속도로 늦추면 말투가 통째로 무너진다.
+/// 짧은 것에서 듣고 싶은 것은 **한 소리**고, 문장에서 듣고 싶은 것은 **말의 흐름**이다.
 @MainActor
 enum Voice {
+
+    /// 얼마나 늦출까.
+    enum Pace {
+        /// 한 소리를 또렷하게. 글자 하나와 낱말은 짧아서 기본 속도로는 지나가 버린다.
+        case word
+        /// 있는 그대로. 문장은 이어지는 말이라, 늦추면 어디서 끊어 읽는지가 무너진다.
+        case sentence
+
+        var rate: Float {
+            switch self {
+            case .word: AVSpeechUtteranceDefaultSpeechRate * 0.4
+            case .sentence: AVSpeechUtteranceDefaultSpeechRate
+            }
+        }
+    }
     private static let synth = AVSpeechSynthesizer()
     private static var sessionReady = false
 
@@ -42,14 +57,14 @@ enum Voice {
         AVSpeechSynthesisVoice(language: "ja-JP")
         ?? AVSpeechSynthesisVoice.speechVoices().first { $0.language.hasPrefix("ja") }
 
-    static func speak(_ text: String) {
+    static func speak(_ text: String, pace: Pace = .word) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         prepareSession()
         synth.stopSpeaking(at: .immediate)
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = japanese
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.4
+        utterance.rate = pace.rate
         // 앞의 말을 끊고 바로 이어 말하면 첫 소리가 잘린다. 짧은 사이를 두어
         // 세션과 합성기가 준비된 뒤에 말이 시작되게 한다.
         utterance.preUtteranceDelay = 0.08
@@ -67,9 +82,11 @@ enum Voice {
 struct SpeakButton: View {
     let text: String
     var size: CGFloat = 15
+    /// 기본은 낱말이다. 이 단추가 서는 자리는 대개 낱말 곁이고, 문장은 한 곳뿐이다.
+    var pace: Voice.Pace = .word
 
     var body: some View {
-        Button { Voice.speak(text) } label: {
+        Button { Voice.speak(text, pace: pace) } label: {
             Image(systemName: "speaker.wave.2")
                 .font(.system(size: size))
                 .foregroundStyle(Theme.grey2)
