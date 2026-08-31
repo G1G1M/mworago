@@ -19,8 +19,6 @@ struct InputBarFrame: PreferenceKey {
 struct SearchView: View {
     /// 한 줄이 지나치게 길어지면 눈이 되돌아올 곳을 잃는다. iPad 에서 특히 그렇다.
     private static let contentWidth: CGFloat = Theme.listWidth
-    /// 입력 바가 차지하는 높이. 그 위에 다른 것을 놓을 때 겹치지 않게 비워 둘 만큼이다.
-    private static let inputBarHeight: CGFloat = 92
 
     /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
     var collection: CollectionStore? = nil
@@ -54,11 +52,28 @@ struct SearchView: View {
     @State private var collecting: CollectedWord?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             Theme.paper.ignoresSafeArea()
 
-            content
-            inputBar
+            // **입력 바는 화면에 하나뿐이고, 늘 이 자리(둘째)에 선다.**
+            //
+            // 한때 답이 있을 때와 없을 때 서로 다른 자리에서 따로 만들었다. 그러면
+            // 첫 글자를 치는 순간 `TextField` 가 헐리고 다시 세워지면서 `@FocusState` 가
+            // 풀린다 — 키보드가 내려가고 **한 글자만 치면 입력이 끊겼다.**
+            //
+            // 그래서 자식 셋의 차례를 고정한다. 위(글 또는 목록) · 바 · 아래 빈자리.
+            // 답이 없을 때만 위아래 빈자리가 벌어져 바가 글에 붙은 채 가운데로 온다.
+            VStack(spacing: 0) {
+                // 빈자리 둘이 **형제로 나란히** 있어야 반반 나눠 갖고, 그래야 글과 바가
+                // 한 덩어리로 화면 한가운데 선다. 한쪽만 안쪽에 숨기면 그쪽이 더 먹어
+                // 덩어리가 위로 치우친다.
+                Spacer(minLength: 0)
+                    .frame(maxHeight: hasResults ? 0 : .infinity)
+                content
+                inputBar
+                Spacer(minLength: 0)
+                    .frame(maxHeight: hasResults ? 0 : .infinity)
+            }
         }
         .onChange(of: incoming?.wrappedValue) { _, new in
             guard let new, !new.isEmpty else { return }
@@ -121,6 +136,11 @@ struct SearchView: View {
 
     // MARK: 결과
 
+    /// 돌려줄 답이 있는가. 입력 바가 바닥에 뜰지 글에 붙을지를 이것이 가른다.
+    private var hasResults: Bool {
+        engine.failure == nil && !input.isEmpty && !engine.segments.isEmpty
+    }
+
     @ViewBuilder
     private var content: some View {
         if let failure = engine.failure {
@@ -134,18 +154,16 @@ struct SearchView: View {
         }
     }
 
-    /// 아직 답이 없을 때 놓이는 자리 — **입력 바 바로 위**다.
+    /// 아직 답이 없을 때 놓이는 자리 — 위쪽 빈자리가 글을 아래로 민다.
     ///
-    /// 위에 붙여 두면 아이패드에서 화면 절반이 통째로 비고, 시선이 맨 위와 맨 아래로 갈라진다.
-    /// 손이 있는 곳도 글을 읽을 곳도 아래쪽이므로 한 덩어리로 모으고, 남는 여백은 위에 둔다.
+    /// 바를 화면 바닥에 두면 "들린 대로 치세요"와 실제로 치는 자리가 화면 절반만큼
+    /// 떨어진다. 읽은 자리에서 바로 손이 가야 하므로 글이 바까지 내려와 붙는다.
+    /// 바 자체는 `body` 가 들고 있다 — 여기서 만들면 답이 나올 때 헐렸다 다시 서고,
+    /// 그 순간 키보드가 내려간다.
     private func resting<V: View>(@ViewBuilder _ inner: () -> V) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
-            inner()
-        }
-        .frame(maxWidth: Self.contentWidth, alignment: .leading)
-        .frame(maxWidth: .infinity)
-        .padding(.bottom, Self.inputBarHeight)
+        inner()
+            .frame(maxWidth: Self.contentWidth, alignment: .leading)
+            .frame(maxWidth: .infinity)
     }
 
     private var results: some View {
@@ -171,7 +189,7 @@ struct SearchView: View {
                     }
                 }
                 .padding(.top, 12)
-                .padding(.bottom, Self.inputBarHeight)   // 입력 바에 가리지 않도록
+                .padding(.bottom, 12)
                 .frame(maxWidth: Self.contentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
@@ -193,28 +211,6 @@ struct SearchView: View {
             Text("띄어 쓰지 않아도 됩니다. 어디서 끊을지는 사전이 정해요.")
                 .font(Theme.korean(15))
                 .foregroundStyle(Theme.grey2)
-
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(["다이죠부", "아타마가이타이", "이타이야메로"], id: \.self) { example in
-                    Button {
-                        input = example
-                        engine.search(example)
-                    } label: {
-                        HStack(spacing: 8) {
-                            Text(example).font(Theme.korean(16))
-                            Image(systemName: "arrow.up.left")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Theme.grey3)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
-                        .background(Theme.grey4, in: Capsule())
-                        .foregroundStyle(Theme.grey1)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.top, 6)
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 24)
@@ -237,7 +233,7 @@ struct SearchView: View {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Theme.grey2)
-                TextField("다이죠부", text: $input)
+                TextField("콘니치와", text: $input)
                     .font(Theme.korean(19))
                     .foregroundStyle(Theme.ink)
                     .focused($inputFocused)

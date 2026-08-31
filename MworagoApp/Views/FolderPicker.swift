@@ -149,7 +149,7 @@ struct FolderPicker: View {
     private var newFolder: some View {
         if naming {
             VStack(alignment: .leading, spacing: 10) {
-                TextField("리코리스 리코일 3화", text: $newName)
+                TextField("예) 일상생활", text: $newName)
                     .font(Theme.korean(16))
                     .foregroundStyle(Theme.ink)
                     .textFieldStyle(.plain)

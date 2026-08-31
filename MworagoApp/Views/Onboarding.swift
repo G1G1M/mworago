@@ -40,6 +40,12 @@ struct Onboarding: View {
         .flatMap { Int($0.dropFirst("--onboarding-page=".count)) } ?? 0
     var onDone: () -> Void = {}
 
+    /// 마지막 버튼이 차지할 자리. `다음` 과 `시작` 중 넓은 쪽에 맞춘다 —
+    /// 장을 넘길 때 글자가 바뀌어도 자리가 흔들리지 않는다.
+    private static var actionWidth: CGFloat {
+        max(Theme.koreanWidth("다음", size: 15), Theme.koreanWidth("시작", size: 15))
+    }
+
     private struct Page {
         let sample: AnyView
         let title: String
@@ -147,16 +153,17 @@ struct Onboarding: View {
                     .accessibilityHidden(page == 0)
                     .padding(.trailing, 18)
 
-                    // **자리를 가장 긴 글자에 맞춰 잡아 두고 왼쪽에 붙인다.**
+                    // **자리를 두 낱말 중 넓은 쪽에 맞춰 붙박고 오른쪽 끝에 맞춘다.**
                     //
-                    // 이 버튼은 `Spacer` 뒤에 있어 오른쪽 끝이 붙박이다. 그래서 글자가
-                    // 길어지면 왼쪽으로 자라, 마지막 장에서 `다음` 이 `시작하기` 로 바뀔 때
-                    // 글자가 시작하는 자리가 왼쪽으로 튀었다.
+                    // 이 버튼은 `Spacer` 뒤에 있어 오른쪽 끝이 붙박이다. 글자가 길어지면
+                    // 왼쪽으로 자라므로, 마지막 장에서 낱말이 바뀔 때 시작 자리가 튄다.
+                    // 그래서 자리를 미리 잡아 둔다 — 첫 장에서 `이전` 을 감추되 자리는
+                    // 남기는 것과 같은 규칙이다.
                     //
-                    // 눈은 자리로 읽는다 — 카드에서 한자 줄이 없어도 자리를 비워 두고,
-                    // 첫 장에서 `이전` 을 감추되 자리는 남기는 것과 같은 규칙이다.
-                    // `이전` 의 자리도 이것이 고정되어야 함께 안정된다.
-                    Button(page == pages.count - 1 ? "시작하기" : "다음") {
+                    // **오른쪽에 맞춘다.** 왼쪽에 붙이면 짧은 낱말일 때 남는 자리가
+                    // 오른쪽에 생겨, 왼쪽 여백(점들)보다 오른쪽이 넓어 보였다. 두 낱말을
+                    // `다음` · `시작` 으로 글자 수까지 맞춰 두면 남는 자리 자체가 거의 없다.
+                    Button(page == pages.count - 1 ? "시작" : "다음") {
                         withAnimation(.snappy(duration: 0.18)) {
                             if page == pages.count - 1 { onDone() } else { page += 1 }
                         }
@@ -164,7 +171,7 @@ struct Onboarding: View {
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.ink)
                     .buttonStyle(.plain)
-                    .frame(width: Theme.koreanWidth("시작하기", size: 15), alignment: .leading)
+                    .frame(width: Self.actionWidth, alignment: .trailing)
                 }
                 .padding(.horizontal, Theme.gutter)
                 // 페이지와 **같은 기둥**이다. 둘 다 화면 폭 안에서 한 번씩 가운데를

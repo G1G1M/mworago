@@ -131,6 +131,9 @@ struct PracticeView: View {
             .padding(.top, 22)
 
             HStack(spacing: 10) {
+                // 되돌아갈 길이 있어야 한다. 한 장 지나쳐 버렸을 때 스무 장을 다시
+                // 넘겨 돌아오게 두지 않는다 — 온보딩의 `이전` 과 같은 이유다.
+                button("이전", filled: false) { previous() }
                 button(revealed ? "다시 덮기" : "뒤집기", filled: !revealed) {
                     withAnimation(.snappy(duration: 0.18)) { revealed.toggle() }
                 }
@@ -162,6 +165,20 @@ struct PracticeView: View {
         }
     }
 
+    /// 한 장 뒤로. 첫 장에서 누르면 마지막 장으로 돌아간다 — `다음` 이 끝에서
+    /// 처음으로 도는 것과 짝을 맞춘다.
+    private func previous() {
+        withAnimation(.snappy(duration: 0.18)) {
+            revealed = false
+            index = words.isEmpty ? 0 : (index - 1 + words.count) % words.count
+        }
+    }
+
+    /// 연습할 것이 없을 때. 화면 한가운데 서고 글줄은 왼쪽에서 시작한다 —
+    /// 책장의 빈 화면과 같은 꼴이라 탭을 옮겨도 같은 말을 같은 자리에서 만난다.
+    ///
+    /// 좌우 여백을 폭 **안쪽**에 둔다. 폭을 잰 뒤에 붙이면 덩어리가
+    /// `readWidth + 여백` 이 되어 재 둔 폭이 실제와 어긋난다.
     private var empty: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("연습할 것이 없어요")
@@ -174,7 +191,12 @@ struct PracticeView: View {
                 .font(Theme.korean(13))
                 .foregroundStyle(Theme.grey3)
         }
-        .frame(maxWidth: Theme.readWidth, alignment: .leading)
         .padding(.horizontal, Theme.gutter)
+        .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        // 첫 줄을 책장의 빈 화면과 같은 높이에 세운다 — 자세한 까닭은 `emptyBlockHeight`.
+        .frame(minHeight: Theme.emptyBlockHeight, alignment: .topLeading)
+        // `ZStack` 안이라 이것 없이도 가운데로 오지만, 책장의 빈 화면과 **같은 문법**으로
+        // 세워 둔다. 기준이 다르면 한쪽만 손댔을 때 두 화면이 소리 없이 어긋난다.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

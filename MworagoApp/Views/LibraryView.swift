@@ -127,15 +127,25 @@ struct LibraryView: View {
     private var root: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
-            // **헤더는 늘 그린다.** 담긴 것이 없어도 화면 이름과 설정으로 가는 길은
-            // 있어야 한다 — 처음 온 사람이야말로 이 앱이 무엇을 쓰는지 궁금할 수 있다.
-            VStack(alignment: .leading, spacing: 0) {
-                // 헤더도 목록과 같은 폭 안에 선다. 목록만 가운데 모이고 헤더가
-                // 화면 끝에 붙으면 같은 화면의 것이 두 자리에서 시작한다.
-                header
-                    .frame(maxWidth: Self.contentWidth, alignment: .leading)
-                    .frame(maxWidth: .infinity)
-                if collection.words.isEmpty { empty } else { content }
+            // **담긴 것이 없으면 헤더도 없다.** 한때는 늘 그렸다 — 화면 이름과
+            // **설정으로 가는 길**은 비어 있어도 있어야 한다는 이유였는데, 설정은 그 뒤
+            // 탭바로 옮겨 갔다. 남은 것은 이름과 개수뿐이고, 둘 다 빈 화면에서는 소음이다.
+            // 개수 `0` 은 알려 주는 것이 없고, 이름은 가운데 글이 "아직 **책장이** 비어
+            // 있어요"로 이미 말한다 — 같은 말을 두 자리에서 하지 않는다.
+            //
+            // 헤더가 빠지면 빈 글이 **화면 전체의 한가운데**에 선다. 연습의 빈 화면과
+            // 같은 자리다 — 탭을 오갈 때 같은 말이 위아래로 흔들리지 않는다.
+            if collection.words.isEmpty {
+                empty
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    // 헤더도 목록과 같은 폭 안에 선다. 목록만 가운데 모이고 헤더가
+                    // 화면 끝에 붙으면 같은 화면의 것이 두 자리에서 시작한다.
+                    header
+                        .frame(maxWidth: Self.contentWidth, alignment: .leading)
+                        .frame(maxWidth: .infinity)
+                    content
+                }
             }
         }
         .onAppear {
@@ -314,32 +324,37 @@ struct LibraryView: View {
         .padding(.vertical, 16)
     }
 
+    /// 담긴 것이 없을 때. 남은 자리 한가운데 글 덩어리 하나가 선다 —
+    /// 연습의 빈 화면과 같은 자리다. 글줄은 왼쪽에서 시작한다.
+    ///
+    /// 좌우 여백을 폭 **안쪽**에 둔다. 폭을 잰 뒤에 붙이면 덩어리가
+    /// `readWidth + 여백` 이 되어 재 둔 폭이 실제와 어긋난다.
+    /// 담긴 것이 없을 때. **연습의 빈 화면과 같은 자리에 선다** — 화면 한가운데
+    /// 글 덩어리 하나가 가운데 정렬로 놓인다. 빈 화면은 읽으라고 두는 것이라
+    /// 목록처럼 위에서부터 왼쪽에 채울 것이 없다.
+    ///
+    /// 두 화면이 **같은 문법으로 선다** — 폭 안쪽 여백 · `readWidth` · 공유 높이 ·
+    /// 남은 자리 채우기. 결과만 비슷하게 맞춰 두면 한쪽을 손볼 때 다시 어긋난다.
     private var empty: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("아직 책장이 비어 있어요")
-                .font(Theme.korean(22, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-            Text("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓입니다.")
-                .font(Theme.korean(15))
-                .foregroundStyle(Theme.grey2)
-            HStack(spacing: 7) {
-                Image(systemName: "bookmark")
-                    .font(.system(size: 14))
-                Text("이 표시예요")
-                    .font(Theme.korean(13))
+        VStack(alignment: .leading, spacing: Theme.blockGap) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("아직 책장이 비어 있어요")
+                    .font(Theme.korean(22, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                Text("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓입니다.")
+                    .font(Theme.korean(15))
+                    .foregroundStyle(Theme.grey2)
             }
-            .foregroundStyle(Theme.grey3)
-            .padding(.top, 2)
             // 온보딩 2장과 같은 이유로 낡았던 말이다. 날짜는 어느 화를 봤는지 앱이
             // 몰라서 쓰던 대용품인데, 이제 담을 때 어느 묶음에 넣을지 직접 고른다.
             Text("묶음은 마음대로 만들고, 담은 뒤에도 옮길 수 있어요.")
                 .font(Theme.korean(13))
                 .foregroundStyle(Theme.grey3)
-                .padding(.top, 6)
         }
-        .frame(maxWidth: Theme.readWidth, alignment: .leading)
         .padding(.horizontal, Theme.gutter)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.top, 40)
+        .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        // 첫 줄을 연습의 빈 화면과 같은 높이에 세운다 — 자세한 까닭은 `emptyBlockHeight`.
+        .frame(minHeight: Theme.emptyBlockHeight, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

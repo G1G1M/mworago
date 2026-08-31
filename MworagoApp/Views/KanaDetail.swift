@@ -130,25 +130,56 @@ struct KanaQuiz: View {
         }
     }
 
+    /// 물을 것 하나 — **소리 하나와, 그것을 어느 글자로 보일지의 짝.**
+    ///
+    /// 한때는 소리만 늘어놓고 히라가나로 보일지 가타카나로 보일지는 넘길 때마다
+    /// 동전을 던졌다. 그래서 범위를 무엇으로 골라도 차례가 107 로 끝났고 —
+    /// 다이얼이 장수를 바꾸는 것처럼 보이는데 숫자는 그대로였다 — 한 판에서
+    /// `あ` 는 봤는데 `ア` 는 한 번도 안 나오기도 했다.
+    ///
+    /// **익힐 것은 소리가 아니라 글자다.** `あ` 와 `ア` 는 따로 외워야 하므로 따로 센다.
+    struct Card: Equatable {
+        let kana: String
+        let katakana: Bool
+        /// 앞면에 보이는 글자. 뒤집기 전에는 이것 하나뿐이다.
+        var shown: String { katakana ? KanaTable.toKatakana(kana) : kana }
+    }
+
     @State private var scope: Scope = .hiragana
     @State private var order: Order = .random
     /// 이번 판에 물을 차례. 범위와 순서가 바뀌면 다시 짠다 —
     /// **범위 셋이 각자 제 차례를 갖는다.**
-    @State private var deck: [String] = KanaQuiz.pool.shuffled()
+    @State private var deck: [Card] = KanaQuiz.cards(scope: .hiragana, order: .random)
     @State private var at = 0
-    @State private var current: String = KanaQuiz.pool.randomElement() ?? "あ"
-    @State private var asKatakana = false
     @State private var revealed = ProcessInfo.processInfo.arguments.contains("--revealed")
 
-    /// 표에 실린 글자 전부. 빈 자리(ゐ·ゑ)는 뺀다 — 표에서는 자리를 지켜야 행과 단이
+    /// 표에 실린 소리 전부. 빈 자리(ゐ·ゑ)는 뺀다 — 표에서는 자리를 지켜야 행과 단이
     /// 맞지만, 여기서는 안 쓰는 소리를 물을 이유가 없다.
     private static let pool: [String] = KanaTable.charts
         .flatMap(\.rows)
         .flatMap { $0 }
         .compactMap { $0 }
 
-    private var shown: String {
-        asKatakana ? KanaTable.toKatakana(current) : current
+    /// 범위와 순서로 이번 판의 차례를 짠다.
+    ///
+    /// **"둘 다"는 히라가나 한 바퀴를 돈 뒤에 가타카나 한 바퀴다.** `あ` 다음에 바로
+    /// `ア` 를 두면 방금 본 답이 그대로 답이라 물어볼 것이 없다 — 표에서 같은 소리의
+    /// 두 글자를 나란히 놓지 않는 것과 같은 이유다.
+    private static func cards(scope: Scope, order: Order) -> [Card] {
+        let hiragana = pool.map { Card(kana: $0, katakana: false) }
+        let katakana = pool.map { Card(kana: $0, katakana: true) }
+        let cards: [Card] = switch scope {
+        case .hiragana: hiragana
+        case .katakana: katakana
+        case .both: hiragana + katakana
+        }
+        return order == .random ? cards.shuffled() : cards
+    }
+
+    /// 지금 물고 있는 것. **차례에서 꺼내 온다** — 따로 들고 있으면 범위를 좁혔을 때
+    /// 지난 판의 글자가 남는다.
+    private var current: Card {
+        deck.indices.contains(at) ? deck[at] : Card(kana: "あ", katakana: false)
     }
 
     /// **이 화면만 가운데 맞춤이다.**
@@ -211,7 +242,7 @@ struct KanaQuiz: View {
                 // 화면에 이것 하나뿐이라 본문 크기를 따를 이유가 없다. 표에서 24pt 로
                 // 훑던 글자를 여기서 크게 다시 만나는 것 자체가 "이제 이걸 본다"는 신호다.
                 // 요음은 두 자(きゃ)라 폭이 배가 되므로 줄이지 않고 넘치게 두면 안 된다.
-                Text(shown)
+                Text(current.shown)
                     .font(Theme.japanese(180, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
@@ -222,7 +253,7 @@ struct KanaQuiz: View {
                 HStack(spacing: 10) {
                     Image(systemName: "speaker.wave.2")
                         .font(.system(size: 18))
-                    Text(KanaToHangul.transliterate(current))
+                    Text(KanaToHangul.transliterate(current.kana))
                         .font(Theme.korean(28))
                 }
                 .foregroundStyle(Theme.grey1)
@@ -235,9 +266,11 @@ struct KanaQuiz: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 12) {
+                // 되돌아갈 길. 지나친 글자를 다시 보려고 한 바퀴를 돌 이유가 없다.
+                button("이전", filled: false) { previous() }
                 button(revealed ? "소리 듣기" : "뒤집기", filled: true) {
                     if revealed {
-                        Voice.speak(current)
+                        Voice.speak(current.kana)
                     } else {
                         withAnimation(.snappy(duration: 0.18)) { revealed = true }
                     }
@@ -313,10 +346,17 @@ struct KanaQuiz: View {
     /// 알 수 없고, 운이 나쁘면 몇 자를 영영 못 본다.
     private func next() {
         guard !deck.isEmpty else { return }
-        at = (at + 1) % deck.count
         withAnimation(.snappy(duration: 0.18)) {
-            current = deck[at]
-            asKatakana = scope == .katakana || (scope == .both && Bool.random())
+            at = (at + 1) % deck.count
+            revealed = false
+        }
+    }
+
+    /// 한 장 뒤로. 첫 장에서 누르면 마지막 장으로 돌아간다 — `다음` 과 짝을 맞춘다.
+    private func previous() {
+        guard !deck.isEmpty else { return }
+        withAnimation(.snappy(duration: 0.18)) {
+            at = (at - 1 + deck.count) % deck.count
             revealed = false
         }
     }
@@ -324,11 +364,9 @@ struct KanaQuiz: View {
     /// 처음으로. **랜덤이면 다시 섞는다** — 초기화가 같은 차례를 되풀이하면
     /// 무작위라고 할 수 없다.
     private func reset() {
-        deck = order == .random ? Self.pool.shuffled() : Self.pool
-        at = 0
         withAnimation(.snappy(duration: 0.18)) {
-            current = deck.first ?? "あ"
-            asKatakana = scope == .katakana || (scope == .both && Bool.random())
+            deck = Self.cards(scope: scope, order: order)
+            at = 0
             revealed = false
         }
     }

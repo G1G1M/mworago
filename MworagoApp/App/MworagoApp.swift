@@ -5,6 +5,7 @@ struct MworagoApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(\.horizontalSizeClass, .compact)
         }
     }
 }
