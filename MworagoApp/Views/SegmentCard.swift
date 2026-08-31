@@ -78,9 +78,18 @@ struct SegmentCard: View {
                     .font(Theme.japanese(26, weight: .medium))
                     .foregroundStyle(Theme.ink)
 
-                if let rule = result.deinflection {
+                if result.deinflection != nil {
                     // 되돌린 활용은 회색 꼬리표로. 강조를 나눠 갖지 않는다.
-                    Text(rule)
+                    //
+                    // **문법 이름 대신 친 것을 보여 준다.** 전에는 `て형` 이라고 적었는데,
+                    // 과거형·명령형·부정형은 한국어 문법에도 있어 짐작되지만 `て형` 은
+                    // 일본어를 배운 사람만 안다. 들린 대로 치고 들어온 사람에게 거기만
+                    // 문법 용어가 섞여 있었다.
+                    //
+                    // `やめて 꼴` 이면 용어를 몰라도 "내가 친 것이 이것이고 사전형은
+                    // 저것"이 바로 읽힌다. 한글 음차로 적지 않는 것은 바로 아랫줄이
+                    // 이미 그것이어서다 — 같은 화면에 `야메떼` 가 두 번 나온다.
+                    Text("\(segment.kana) 꼴")
                         .font(Theme.korean(11))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
