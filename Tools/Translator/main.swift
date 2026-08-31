@@ -31,7 +31,7 @@ struct Skipped {
 }
 
 func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
-              skipped: inout [Skipped]) throws -> [Job] {
+              maxRank: Int? = nil, skipped: inout [Skipped]) throws -> [Job] {
     let store = try DictionaryStore(path: indexPath)
     let frequency = FrequencyList(contentsOfFile: frequencyPath)
     guard !frequency.isEmpty else { throw Failure("빈도 목록이 비어 있다: \(frequencyPath)") }
@@ -41,6 +41,8 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
 
     for entry in frequency.sortedEntries() {
         guard jobs.count < limit else { break }
+        // 순위 상한을 넘으면 더 볼 것이 없다 — 목록이 순위순이다.
+        if let maxRank, entry.rank > maxRank { break }
         // 사전에 있고 영어 뜻이 달린 것만 번역할 수 있다
         guard let hit = store.lookup(entry.reading).first(where: { hit in
             // **가나 종류까지 같아야 한다.** 색인 조회 키는 히라가나로 정규화돼 있어서
@@ -76,6 +78,42 @@ func pickOnly(_ jobs: [Job], _ only: Set<String>) -> [Job] {
 }
 
 // MARK: 번역
+
+/// ollama 로 옮긴다.
+///
+/// **애플 온디바이스 모델이 벽에 부딪혔다.** 한국어가 공식 지원 언어가 아니고
+/// (`unsupportedLanguageOrLocale` 185건), 죽음·폭력이 든 말은 막힌다
+/// (`guardrailViolation` 2,557건). 애니 대사에서 가장 궁금한 말이 정확히 그것들이다.
+///
+/// 견줘 보고 EXAONE 을 골랐다. 사람이 적어 둔 뜻 100개를 정답지 삼아 재니
+/// **쓸 수 있는 꼴 99/100 · 뜻 일치 56/100** 이었다(qwen2.5:7b 는 79 · 30).
+/// 수치보다 **틀리는 결이** 달랐다 — qwen 은 `小太り`(통통하다)를 "약간 마른체형하다"로
+/// 뜻을 뒤집는데, EXAONE 은 "둥근, 살이 많다"로 말만 어색하다.
+/// **어색한 것은 눈에 띄지만 틀린 것은 안 띈다.**
+func translateWithOllama(_ job: Job, model: String, instructions: String) async throws -> String {
+    let 품사 = job.wordClass.koreanName ?? "낱말"
+    let prompt = "\(job.writing)（\(job.reading)）· \(품사) · \(job.english.prefix(2).joined(separator: ", ")) →"
+
+    let body: [String: Any] = [
+        "model": model, "system": instructions, "prompt": prompt, "stream": false,
+        // 사전을 만드는 일이라 매번 같은 답이 나와야 한다. 지어낼 여지를 주지 않는다.
+        "options": ["temperature": 0, "num_predict": 32],
+    ]
+    var request = URLRequest(url: URL(string: "http://localhost:11434/api/generate")!)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+    request.timeoutInterval = 120
+
+    let (data, _) = try await URLSession.shared.data(for: request)
+    guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let text = json["response"] as? String
+    else { throw Failure("ollama 응답을 읽지 못했다") }
+
+    // 모델이 줄을 여럿 뱉으면 첫 줄만 쓴다. 뒷줄은 대개 자기 설명이다.
+    return text.split(separator: "\n").first
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
+}
 
 #if canImport(FoundationModels)
 @available(macOS 26.0, *)
@@ -149,6 +187,11 @@ let only = Set((value("--only") ?? "").split(separator: ",").map(String.init))
 // 건너뛴 기능어만 찍는다. 번역은 안 하지만 화면에는 나오는 낱말들이라,
 // 뜻 자리를 무엇으로 채울지 정하려면 무엇이 자주 나오는지부터 알아야 한다.
 let listSkipped = arguments.contains("--skipped")
+// ollama 로 옮긴다. 없으면 애플 온디바이스 모델을 쓴다.
+let ollamaModel = value("--ollama")
+// 빈도 순위 상한. 대상 개수(`--limit`)와 다르다 — 개수로만 끊으면 조건에 걸려 빠진
+// 낱말들 때문에 훨씬 아래까지 내려간다(2만 개를 채우느라 45,266위까지 갔다).
+let maxRank = value("--max-rank").flatMap(Int.init)
 
 // 이미 번역한 것은 건너뛴다 — 몇 시간짜리 작업이라 중단은 예외가 아니라 일상이다.
 var done: Set<String> = []
@@ -162,7 +205,7 @@ if let existing = try? String(contentsOfFile: outputPath, encoding: .utf8) {
 
 var skipped: [Skipped] = []
 let jobs = pickOnly(try loadJobs(indexPath: indexPath, frequencyPath: frequencyPath, limit: limit,
-                                 skipped: &skipped), only)
+                                 maxRank: maxRank, skipped: &skipped), only)
 
 if listSkipped {
     for word in skipped {
@@ -183,6 +226,65 @@ log("대상 \(jobs.count)개 · 남은 것 \(remaining.count)개")
 
 guard !remaining.isEmpty else {
     log("다 끝났다.")
+    exit(0)
+}
+
+/// ollama 에 줄 지시문.
+///
+/// **사람이 적은 뜻 100개로 채점해 다듬은 것이다.** 처음 것은 중국어가 새어
+/// (`狙う → "목표를主观하다"`) 21%가 꼴부터 못 썼는데, "한 글자도 섞지 않는다"를
+/// 못 박고 보기를 늘리자 1%로 떨어졌다.
+let ollamaInstructions = """
+    너는 일본어-한국어 사전 편집자다. 일본어 낱말의 한국어 뜻만 적는다.
+
+    반드시 지킬 것:
+    - 오직 한국어로만 쓴다. 한자·일본어·영어·중국어를 한 글자도 섞지 않는다.
+    - 뜻만 적는다. 설명·인사·군더더기를 붙이지 않는다.
+    - 뜻은 하나나 둘. 쉼표로 나눈다. 셋 이상 적지 않는다.
+    - 각 뜻은 12자 이내.
+    - 동사는 "-다", 형용사는 "-다"로 끝낸다. 명사는 명사로 적는다.
+    - 영어 뜻을 그대로 옮기지 말고, 한국어에서 실제로 쓰는 말을 고른다.
+    - 모르면 억지로 지어내지 말고 영어 뜻에 가장 가까운 한국어 한 낱말만 적는다.
+
+    보기:
+    約束（やくそく）· 명사 · promise, agreement → 약속
+    思う（おもう）· 동사 · to think, to consider → 생각하다
+    狙う（ねらう）· 동사 · to aim at, to target → 노리다
+    起訴（きそ）· 명사 · prosecution, indictment → 기소
+    不機嫌（ふきげん）· 형용사 · bad mood, sullen → 언짢다
+    発電（はつでん）· 명사 · generation of electricity → 발전
+    """
+
+if let ollamaModel {
+    log("ollama · \(ollamaModel)")
+    if !FileManager.default.fileExists(atPath: outputPath) {
+        try "# 표기\t읽기\t한국어뜻\n".write(toFile: outputPath, atomically: true, encoding: .utf8)
+    }
+    let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: outputPath))
+    try handle.seekToEnd()
+    defer { try? handle.close() }
+
+    let start = Date()
+    var count = 0
+    for job in remaining {
+        do {
+            let korean = try await translateWithOllama(job, model: ollamaModel,
+                                                       instructions: ollamaInstructions)
+            guard !korean.isEmpty else { continue }
+            try handle.write(contentsOf: Data("\(job.writing)\t\(job.reading)\t\(korean)\n".utf8))
+            count += 1
+            if count % 50 == 0 {
+                let elapsed = -start.timeIntervalSinceNow
+                let rate = Double(count) / elapsed
+                let left = Double(remaining.count - count) / max(rate, 0.001)
+                log(String(format: "  %d/%d · %.1f건/초 · 남은 시간 %.0f분",
+                           count, remaining.count, rate, left / 60))
+            }
+        } catch {
+            log("  건너뜀 \(job.writing)(\(job.reading)): \(error)")
+        }
+    }
+    log("번역 \(count)개 완료 → \(outputPath)")
     exit(0)
 }
 
