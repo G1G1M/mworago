@@ -11,6 +11,23 @@ import SwiftUI
 struct TypingGuide: View {
     @Environment(\.dismiss) private var dismiss
 
+    // MARK: 간격
+    //
+    // **좁아 보였던 것은 값이 작아서가 아니라 대비가 없어서였다.** 규칙 이름과 그 예시
+    // 사이가 7, 규칙과 규칙 사이가 18 — 두 배도 안 벌어져서 여섯 덩어리가 목록 하나로
+    // 뭉쳐 보였다. 설정 화면에서 푼 것과 같은 진단이다.
+    // 전체를 고르게 벌리면 다시 아무것도 안 묶인다. **벌리는 것은 사이뿐이다.**
+
+    /// 한 규칙 안 — 이름과 예시, 예시와 예시. 붙어야 한 덩어리로 읽힌다.
+    private static let lineGap: CGFloat = 6
+    /// 규칙과 규칙 사이. `Grid` 의 `verticalSpacing` 위에 더해진다.
+    private static let ruleGap: CGFloat = 24
+    /// 갈래와 갈래 사이. `Theme.sectionGap`(34)보다 벌린다 — 이 화면은 갈래가 둘뿐이고,
+    /// 그 둘이 확실히 갈려야 "신경 안 써도 되는 것"과 "가려야 하는 것"이 구분된다.
+    private static let sectionGap: CGFloat = 46
+    /// 덧말은 예시에 붙지도, 다음 규칙으로 넘어가지도 않을 만큼만 띄운다.
+    private static let noteGap: CGFloat = 9
+
     /// `--credits` 로 출처 화면을 펼친 채 띄울 수 있다.
     /// `--guide` 와 같은 뜻이다 — 시뮬레이터를 손으로 두드리지 않고 화면을 확인하려고.
     @State private var showingCredits = ProcessInfo.processInfo.arguments.contains("--credits")
@@ -70,17 +87,18 @@ struct TypingGuide: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 30) {
+                VStack(alignment: .leading, spacing: Self.sectionGap) {
+                    // 이 화면이 하려는 말 전부다. 규칙은 그 뒤에 오는 각주다.
                     Text("들린 대로 치면 됩니다. 정확히 옮길 필요는 없어요.")
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(17))
                         .foregroundStyle(Theme.grey1)
-                        .padding(.top, 4)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     section("신경 쓰지 않아도 되는 것", rules: Self.forgiving)
                     section("가려 적어야 하는 것", rules: Self.careful)
-
                 }
                 .padding(.horizontal, Theme.gutter)
+                .padding(.top, Theme.screenTop)
                 .padding(.bottom, Theme.screenBottom)
                 .frame(maxWidth: Theme.readWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
@@ -105,8 +123,8 @@ struct TypingGuide: View {
     /// 이름을 본문만큼 키우면 규칙 이름과 섞여서, 무엇이 묶음이고 무엇이 항목인지
     /// 눈이 매번 다시 판단해야 한다.
     private func section(_ title: String, rules: [Rule]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: Theme.blockGap) {
+            VStack(alignment: .leading, spacing: Self.lineGap) {
                 Text(title)
                     .font(Theme.korean(12))
                     .tracking(0.6)
@@ -121,26 +139,35 @@ struct TypingGuide: View {
             // 견주려는 눈이 매번 다시 찾는 것이 그 때문이다.
             // 규칙 이름과 덧말은 세 칸을 다 차지해 격자를 가로지른다.
             Grid(alignment: .leadingFirstTextBaseline,
-                 horizontalSpacing: 12, verticalSpacing: 7) {
+                 horizontalSpacing: 14, verticalSpacing: Self.lineGap) {
                 ForEach(Array(rules.enumerated()), id: \.element.id) { index, rule in
                     GridRow {
                         Text(rule.name)
-                            .font(Theme.korean(15))
+                            .font(Theme.korean(16))
                             .foregroundStyle(Theme.ink)
-                            .padding(.top, index == 0 ? 0 : 11)
+                            .padding(.top, index == 0 ? 0 : Self.ruleGap)
                             .gridCellColumns(3)
                     }
                     ForEach(rule.examples) { example in
                         GridRow {
+                            // **친 것도 왼쪽에서 시작한다.** 오른쪽으로 밀어 붙였더니
+                            // 화살표는 맞는 대신 **시작점이 줄마다 계단처럼 어긋났다.**
+                            // 규칙 이름은 왼쪽 정렬인데 예시만 오른쪽이라 한 격자 안에
+                            // 축이 둘이었고, 눈이 왼쪽·오른쪽을 오가며 읽어야 했다.
+                            // 짧은 예시 뒤에 빈 자리가 생기지만, 그것은 열이 맞는 값이다.
                             Text(example.typed.joined(separator: " · "))
                                 .font(Theme.korean(15))
                                 .foregroundStyle(Theme.grey1)
-                                .gridColumnAlignment(.trailing)
+                                .gridColumnAlignment(.leading)
+                            // 두 열을 잇는 유일한 표시다. 10pt 회색으로는 거의 안 보여
+                            // 친 것과 나온 것이 따로 놓인 두 덩어리로 읽혔다.
                             Image(systemName: "arrow.right")
-                                .font(.system(size: 10))
-                                .foregroundStyle(Theme.grey3)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.grey2)
+                            // **이 표의 답이다.** 친 것과 같은 크기면 무엇이 물음이고
+                            // 무엇이 답인지 눈이 매번 다시 판단한다.
                             Text(example.result)
-                                .font(Theme.japanese(16))
+                                .font(Theme.japanese(19))
                                 .foregroundStyle(Theme.ink)
                                 .gridColumnAlignment(.leading)
                         }
@@ -150,6 +177,8 @@ struct TypingGuide: View {
                             Text(note)
                                 .font(Theme.korean(13))
                                 .foregroundStyle(Theme.grey2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, Self.noteGap - Self.lineGap)
                                 .gridCellColumns(3)
                         }
                     }
