@@ -146,6 +146,40 @@ public struct WordCollection: Sendable {
         save()
     }
 
+    /// 묶음 이름을 바꾼다. 그 묶음에 든 낱말이 전부 따라간다.
+    ///
+    /// **이미 있는 이름으로 바꾸면 둘이 합쳐진다.** 막지 않는다 — 한 편을 두 이름으로
+    /// 담아 둔 것을 합치는 일이 실제로 있고, 막으면 낱말을 하나씩 옮겨야 한다.
+    public mutating func renameFolder(_ old: String, to new: String) {
+        guard let new = new.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+              new != old else { return }
+        var touched = false
+        for index in words.indices where words[index].folder == old {
+            words[index] = words[index].movedTo(new)
+            touched = true
+        }
+        guard touched || lastFolder == old else { return }
+        // 지난번 묶음도 따라간다. 안 따라가면 다음에 담을 때 없는 이름이 골라져 있고,
+        // 그 이름으로 묶음이 하나 더 생긴다.
+        if lastFolder == old { remember(new) }
+        save()
+    }
+
+    /// 묶음을 없앤다. **낱말은 남기고 묶음에서만 뺀다.**
+    ///
+    /// 이름을 지운 것이지 모은 것을 버린 것이 아니다. 담은 낱말이 함께 사라지면 되돌릴
+    /// 길이 없는데, 사용자는 이름만 지우려 했을 뿐이다. 낱말은 "아직 안 넣은 것"으로 간다.
+    public mutating func removeFolder(_ name: String) {
+        var touched = false
+        for index in words.indices where words[index].folder == name {
+            words[index] = words[index].movedTo(nil)
+            touched = true
+        }
+        guard touched || lastFolder == name else { return }
+        if lastFolder == name { remember(nil) }
+        save()
+    }
+
     /// 이름이 붙은 묶음들. 낱말에서 거둔다 — 빈 묶음은 따로 기억하지 않는다.
     /// 지난번 묶음은 그 안이 비었더라도 보여야 하므로 함께 넣는다. 방금 담은 곳이
     /// 목록에서 사라지면 다음에 담을 때 같은 이름을 다시 쳐야 한다.

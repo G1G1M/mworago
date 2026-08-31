@@ -313,3 +313,103 @@ struct WordCollectionFolderTests {
         #expect(collection.words.first?.folder == nil)
     }
 }
+
+/// 묶음을 손보는 일 — 이름 바꾸기와 없애기.
+///
+/// 담기 모달이 묶음을 **만들 수만** 있게 해 두면, 오타를 낸 이름이 영영 남는다.
+/// 만드는 길을 냈으면 고치고 없애는 길도 있어야 한다. 그 자리가 묶음 화면이다.
+@Suite("묶음 손보기")
+struct WordCollectionFolderEditTests {
+
+    static func 임시경로() -> String {
+        NSTemporaryDirectory() + "mworago-folderedit-\(UUID().uuidString).json"
+    }
+
+    static func 낱말(_ 표기: String, _ 읽기: String) -> CollectedWord {
+        CollectedWord(headword: 표기, reading: 읽기, hangul: "요미", gloss: "뜻")
+    }
+
+    @Test("이름을 바꾸면 그 묶음의 낱말이 다 따라간다")
+    func 이름바꾸기() {
+        let path = Self.임시경로()
+        var collection = WordCollection(path: path)
+        collection.add(Self.낱말("犬", "いぬ"), to: "리코리스 3화")
+        collection.add(Self.낱말("猫", "ねこ"), to: "리코리스 3화")
+        collection.add(Self.낱말("茶", "ちゃ"), to: "봇치 1화")
+
+        collection.renameFolder("리코리스 3화", to: "리코리스 리코일 3화")
+        #expect(collection.folderNames == ["리코리스 리코일 3화", "봇치 1화"])
+        #expect(collection.words.filter { $0.folder == "리코리스 리코일 3화" }.count == 2)
+        // 다른 묶음은 건드리지 않는다.
+        #expect(collection.words.filter { $0.folder == "봇치 1화" }.count == 1)
+        #expect(WordCollection(path: path).folderNames == ["리코리스 리코일 3화", "봇치 1화"])
+    }
+
+    @Test("이름을 바꾸면 지난번 묶음도 따라간다")
+    func 지난번도따라간다() {
+        // 안 따라가면 다음에 담을 때 없는 이름이 골라져 있고, 그 이름으로 새 묶음이 하나 더 생긴다.
+        let path = Self.임시경로()
+        var collection = WordCollection(path: path)
+        collection.add(Self.낱말("犬", "いぬ"), to: "리코리스 3화")
+        collection.renameFolder("리코리스 3화", to: "리코리스 리코일 3화")
+        #expect(collection.lastFolder == "리코리스 리코일 3화")
+        #expect(WordCollection(path: path).lastFolder == "리코리스 리코일 3화")
+    }
+
+    @Test("이미 있는 이름으로 바꾸면 두 묶음이 합쳐진다")
+    func 합치기() {
+        // 막지 않는다. 한 편을 두 이름으로 담아 둔 것을 합치는 일이 실제로 있고,
+        // 막으면 사용자가 낱말을 하나씩 옮겨야 한다.
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "いぬ"), to: "3화")
+        collection.add(Self.낱말("猫", "ねこ"), to: "리코리스 3화")
+        collection.renameFolder("3화", to: "리코리스 3화")
+        #expect(collection.folderNames == ["리코리스 3화"])
+        #expect(collection.words.filter { $0.folder == "리코리스 3화" }.count == 2)
+    }
+
+    @Test("빈 이름으로는 바뀌지 않는다")
+    func 빈이름거절() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "いぬ"), to: "3화")
+        collection.renameFolder("3화", to: "   ")
+        #expect(collection.words.first?.folder == "3화")
+    }
+
+    @Test("묶음을 없애도 낱말은 남는다")
+    func 묶음없애기() {
+        // **이름을 지운 것이지 모은 것을 버린 것이 아니다.** 담은 낱말이 함께 사라지면
+        // 되돌릴 길이 없고, 사용자는 이름만 지우려 했을 뿐이다.
+        let path = Self.임시경로()
+        var collection = WordCollection(path: path)
+        collection.add(Self.낱말("犬", "いぬ"), to: "3화")
+        collection.add(Self.낱말("猫", "ねこ"), to: "3화")
+        collection.add(Self.낱말("茶", "ちゃ"), to: "1화")
+
+        collection.removeFolder("3화")
+        #expect(collection.words.count == 3)
+        #expect(collection.words.filter { $0.folder == nil }.count == 2)
+        #expect(collection.folderNames == ["1화"])
+        #expect(WordCollection(path: path).words.count == 3)
+    }
+
+    @Test("없앤 묶음이 지난번 묶음이었으면 지난번도 비워진다")
+    func 없앤곳이지난번() {
+        let path = Self.임시경로()
+        var collection = WordCollection(path: path)
+        collection.add(Self.낱말("犬", "いぬ"), to: "3화")
+        collection.removeFolder("3화")
+        #expect(collection.lastFolder == nil)
+        #expect(WordCollection(path: path).lastFolder == nil)
+    }
+
+    @Test("없는 묶음을 손봐도 아무 일이 없다")
+    func 없는묶음() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "いぬ"), to: "3화")
+        collection.renameFolder("없는 것", to: "새 이름")
+        collection.removeFolder("없는 것")
+        #expect(collection.words.first?.folder == "3화")
+        #expect(collection.folderNames == ["3화"])
+    }
+}

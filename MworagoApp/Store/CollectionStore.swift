@@ -31,6 +31,11 @@ final class CollectionStore {
     var folderNames: [String] { collection.folderNames }
     func move(_ word: CollectedWord, to folder: String?) { collection.move(word, to: folder) }
 
+    /// 묶음을 손본다. 만드는 길만 내면 오타를 낸 이름이 영영 남는다.
+    func renameFolder(_ old: String, to new: String) { collection.renameFolder(old, to: new) }
+    /// 이름만 없앤다. 담은 낱말은 "아직 안 넣은 것"으로 남는다.
+    func removeFolder(_ name: String) { collection.removeFolder(name) }
+
     /// Application Support 아래. Documents 가 아닌 것은 사용자가 파일 앱에서 볼 것이 아니어서다.
     static func defaultPath() -> String {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
