@@ -127,8 +127,7 @@ struct Settings: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.paper)
-            .navigationTitle("설정")
-            .navigationBarTitleDisplayMode(.inline)
+            .koreanNavigationTitle("설정")
         }
     }
 

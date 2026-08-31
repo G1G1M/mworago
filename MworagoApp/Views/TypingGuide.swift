@@ -105,8 +105,7 @@ struct TypingGuide: View {
             }
             .background(Theme.paper)
             .navigationDestination(isPresented: $showingCredits) { Credits() }
-            .navigationTitle("한글로 어떻게 치나")
-            .navigationBarTitleDisplayMode(.inline)
+            .koreanNavigationTitle("한글로 어떻게 치나요?")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("닫기") { dismiss() }

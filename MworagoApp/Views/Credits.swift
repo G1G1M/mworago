@@ -125,7 +125,6 @@ struct Credits: View {
             .frame(maxWidth: .infinity)
         }
         .background(Theme.paper)
-        .navigationTitle("이 앱이 쓰는 자료")
-        .navigationBarTitleDisplayMode(.inline)
+        .koreanNavigationTitle("이 앱이 쓰는 자료")
     }
 }
