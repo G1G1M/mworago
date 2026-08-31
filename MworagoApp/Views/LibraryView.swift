@@ -23,17 +23,21 @@ struct LibraryView: View {
     var onPractice: ([CollectedWord]) -> Void = { _ in }
 
     enum Grouping: Int, CaseIterable, Identifiable {
-        case days, list
+        case folders, days, list
         var id: Int { rawValue }
         var label: String {
             switch self {
+            case .folders: "묶음별"
             case .days: "날짜별"
             case .list: "모두"
             }
         }
     }
 
-    @State private var grouping: Grouping = .days
+    @State private var grouping: Grouping = .folders
+    /// 새 묶음 이름을 받는 자리.
+    @State private var namingFolder = false
+    @State private var newFolderName = ""
     /// 펼쳐 보고 있는 낱말. 누르면 여기 담기고 상세가 열린다.
     ///
     /// `--detail` 로 첫 낱말을 펼친 채 띄울 수 있다. `--query=` · `--guide` 와 같은
@@ -58,7 +62,12 @@ struct LibraryView: View {
         .sheet(item: $detail) { word in
             WordDetail(word: word,
                        onFind: onPick,
-                       onRemove: { collection.remove($0) })
+                       onRemove: { collection.remove($0) },
+                       onMove: { word, folder in
+                           collection.move(word, to: folder)
+                           detail = collection.words.first { $0.id == word.id }
+                       },
+                       folderNames: collection.folderNames)
         }
     }
 
@@ -67,6 +76,11 @@ struct LibraryView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 header
                 switch grouping {
+                case .folders:
+                    ForEach(CollectedWord.byFolder(collection.words)) { folder in
+                        folderBlock(folder)
+                        Divider().overlay(Theme.grey3)
+                    }
                 case .days:
                     ForEach(days) { day in
                         dayBlock(day)
@@ -100,6 +114,7 @@ struct LibraryView: View {
                     .foregroundStyle(Theme.grey2)
             }
             dial
+            currentFolderRow
         }
         .padding(.horizontal, 24)
         .padding(.top, 18)
@@ -125,6 +140,92 @@ struct LibraryView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// 지금 담는 곳.
+    ///
+    /// **담는 순간에 묻지 않기 위한 자리다.** 애니를 보다 낱말 하나가 걸린 그때
+    /// "어느 폴더에 넣지?"를 물으면 흐름이 끊긴다. 보기 시작할 때 여기서 한 번 정해 두면
+    /// 그 뒤로는 갈피표 한 번으로 끝난다 — 지금 무엇을 보고 있는지는 사용자만 안다.
+    private var currentFolderRow: some View {
+        HStack(spacing: 8) {
+            Text("지금 담는 곳")
+                .font(Theme.korean(12))
+                .foregroundStyle(Theme.grey2)
+            Menu {
+                Button("새 묶음…") {
+                    newFolderName = ""
+                    namingFolder = true
+                }
+                if !collection.folderNames.isEmpty {
+                    Divider()
+                    ForEach(collection.folderNames, id: \.self) { name in
+                        Button(name) { collection.setCurrentFolder(name) }
+                    }
+                }
+                if collection.currentFolder != nil {
+                    Divider()
+                    Button("안 넣기") { collection.setCurrentFolder(nil) }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Text(collection.currentFolder ?? "아직 없음")
+                        .font(Theme.korean(13, weight: collection.currentFolder == nil ? .regular : .semibold))
+                        .foregroundStyle(collection.currentFolder == nil ? Theme.grey3 : Theme.ink)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9))
+                        .foregroundStyle(Theme.grey3)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .alert("새 묶음", isPresented: $namingFolder) {
+            TextField("리코리스 리코일 3화", text: $newFolderName)
+            Button("만들기") { collection.setCurrentFolder(newFolderName) }
+            Button("그만두기", role: .cancel) { }
+        } message: {
+            Text("지금부터 담는 낱말이 이 묶음으로 갑니다.")
+        }
+    }
+
+    /// 묶음 하나. 날짜 묶음과 같은 꼴이라 눈이 두 번 배우지 않아도 된다.
+    private func folderBlock(_ folder: CollectedWord.Folder) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 9) {
+                Text(folder.name ?? "아직 안 넣은 것")
+                    .font(Theme.korean(17, weight: .medium))
+                    .foregroundStyle(folder.name == nil ? Theme.grey2 : Theme.ink)
+                Text("\(folder.words.count)개")
+                    .font(Theme.korean(13))
+                    .foregroundStyle(Theme.grey3)
+
+                Spacer(minLength: 12)
+
+                Button { onPractice(folder.words) } label: {
+                    Text("이 묶음 연습")
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey1)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("이 묶음의 낱말만 연습합니다")
+            }
+            FlowRow(lineSpacing: 8) {
+                ForEach(folder.words) { word in
+                    Button { detail = word } label: {
+                        Text(word.reading)
+                            .font(Theme.japanese(19))
+                            .foregroundStyle(Theme.grey1)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Theme.grey4, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 8)
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 18)
     }
 
     /// 하루치.

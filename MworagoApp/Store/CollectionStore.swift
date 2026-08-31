@@ -27,6 +27,12 @@ final class CollectionStore {
 
     func remove(_ word: CollectedWord) { collection.remove(word) }
 
+    /// 지금 담으면 들어갈 묶음. 담는 순간에 묻지 않으려고 미리 정해 둔다.
+    var currentFolder: String? { collection.currentFolder }
+    var folderNames: [String] { collection.folderNames }
+    func setCurrentFolder(_ name: String?) { collection.setCurrentFolder(name) }
+    func move(_ word: CollectedWord, to folder: String?) { collection.move(word, to: folder) }
+
     /// Application Support 아래. Documents 가 아닌 것은 사용자가 파일 앱에서 볼 것이 아니어서다.
     static func defaultPath() -> String {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first

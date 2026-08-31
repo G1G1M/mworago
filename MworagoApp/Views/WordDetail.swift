@@ -29,6 +29,10 @@ struct WordDetail: View {
     var onFind: (String) -> Void = { _ in }
     /// 교재에서 뺀다.
     var onRemove: (CollectedWord) -> Void = { _ in }
+    /// 다른 묶음으로 옮긴다. 담을 때는 묻지 않는 대신, 나중에 여기서 고쳐 넣는다.
+    var onMove: (CollectedWord, String?) -> Void = { _, _ in }
+    /// 고를 수 있는 묶음들.
+    var folderNames: [String] = []
 
     @Environment(\.dismiss) private var dismiss
 
@@ -38,6 +42,7 @@ struct WordDetail: View {
                 VStack(alignment: .leading, spacing: 26) {
                     layers
                     gloss
+                    folderRow
                     collectedAt
                     actions
                 }
@@ -147,6 +152,38 @@ struct WordDetail: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    /// 어느 묶음에 든 낱말인가.
+    ///
+    /// 담는 순간에는 묻지 않는다(흐름이 끊긴다). 대신 나중에 여기서 옮긴다 —
+    /// 하루에 두 편을 봤거나, 보기 시작할 때 정해 두는 것을 잊었을 때를 위한 자리다.
+    private var folderRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("묶음")
+                .font(Theme.korean(12))
+                .foregroundStyle(Theme.grey2)
+            Menu {
+                ForEach(folderNames, id: \.self) { name in
+                    Button(name) { onMove(word, name) }
+                }
+                if word.folder != nil {
+                    Divider()
+                    Button("빼기") { onMove(word, nil) }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Text(word.folder ?? "아직 안 넣음")
+                        .font(Theme.korean(15))
+                        .foregroundStyle(word.folder == nil ? Theme.grey3 : Theme.ink)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9))
+                        .foregroundStyle(Theme.grey3)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(folderNames.isEmpty && word.folder == nil)
         }
     }
 }

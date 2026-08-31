@@ -171,3 +171,78 @@ struct CollectionDayTests {
     @Test("빈 것은 빈 채로")
     func 빈것() { #expect(CollectedWord.byDay([]).isEmpty) }
 }
+
+/// 묶음(폴더).
+///
+/// 날짜만으로는 부족하다 — 하루에 두 편을 보면 한 덩어리로 뭉치고, 한 편을 이틀에
+/// 걸쳐 보면 갈라진다. "날짜가 곧 그 화"라는 전제가 실제 시청 습관과 어긋나는 자리다.
+/// 그래서 사용자가 묶음을 정할 수 있게 하되, **담는 순간에는 묻지 않는다.**
+@Suite("모은 낱말 묶음")
+struct WordCollectionFolderTests {
+
+    static func 임시경로() -> String {
+        NSTemporaryDirectory() + "mworago-folder-\(UUID().uuidString).json"
+    }
+
+    static func 낱말(_ 표기: String, _ 읽기: String) -> CollectedWord {
+        CollectedWord(headword: 표기, reading: 읽기, hangul: "요미", gloss: "뜻")
+    }
+
+    @Test("담을 때 어디에 넣을지 묻지 않는다 — 지금 담는 곳으로 간다")
+    func 지금담는곳() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.setCurrentFolder("리코리스 3화")
+        collection.add(Self.낱말("犬", "いぬ"))
+        #expect(collection.words.first?.folder == "리코리스 3화")
+
+        var 빈곳 = WordCollection(path: Self.임시경로())
+        빈곳.add(Self.낱말("猫", "ねこ"))
+        #expect(빈곳.words.first?.folder == nil)
+    }
+
+    @Test("지금 담는 곳은 앱을 다시 열어도 남는다")
+    func 담는곳저장() {
+        let path = Self.임시경로()
+        var collection = WordCollection(path: path)
+        collection.setCurrentFolder("2화")
+        #expect(WordCollection(path: path).currentFolder == "2화")
+
+        collection.setCurrentFolder(nil)
+        #expect(WordCollection(path: path).currentFolder == nil)
+        // 공백만 적은 것은 이름이 아니다.
+        collection.setCurrentFolder("   ")
+        #expect(WordCollection(path: path).currentFolder == nil)
+    }
+
+    @Test("담은 뒤에도 묶음을 옮길 수 있다")
+    func 옮기기() {
+        let path = Self.임시경로()
+        var collection = WordCollection(path: path)
+        let word = Self.낱말("犬", "いぬ")
+        collection.add(word)
+        collection.move(word, to: "1화")
+        #expect(collection.words.first?.folder == "1화")
+        #expect(WordCollection(path: path).words.first?.folder == "1화")
+
+        collection.move(word, to: nil)
+        #expect(collection.words.first?.folder == nil)
+    }
+
+    @Test("묶음으로 나눈다 — 아직 안 넣은 것이 마지막")
+    func 묶음나누기() {
+        let words = [Self.낱말("犬", "いぬ").movedTo("2화"),
+                     Self.낱말("猫", "ねこ").movedTo("1화"),
+                     Self.낱말("茶", "ちゃ")]
+        #expect(CollectedWord.byFolder(words).map(\.name) == ["1화", "2화", nil])
+    }
+
+    @Test("묶음 칸이 없던 파일도 그대로 읽힌다")
+    func 옛파일() throws {
+        let path = Self.임시경로()
+        let old = #"[{"headword":"犬","reading":"いぬ","hangul":"이누","gloss":"개","collectedAt":"2026-08-31T11:00:00Z"}]"#
+        try old.write(toFile: path, atomically: true, encoding: .utf8)
+        let collection = WordCollection(path: path)
+        #expect(collection.words.count == 1)
+        #expect(collection.words.first?.folder == nil)
+    }
+}
