@@ -141,7 +141,9 @@ struct RootView: View {
         // 먼저 뜨고 그 위로 스플래시가 덮인다 — 순서가 뒤집힌다.
         .overlay {
             if showSplash {
-                Splash(target: inputBarFrame, onDone: {
+                // **온보딩이 뒤따르면 알약까지만 보인다.** 변신해 놓고 그 위를 온보딩이
+                // 덮으면 아무도 못 본 변신이 되고, 이 장면이 하려는 말도 거짓이 된다.
+                Splash(target: inputBarFrame, becomesInputBar: !showOnboarding, onDone: {
                     withAnimation(.easeOut(duration: 0.22)) { showSplash = false }
                 })
                 .transition(.opacity)
