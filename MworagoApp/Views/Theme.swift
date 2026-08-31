@@ -24,6 +24,20 @@ enum Theme {
         .custom(weight == .regular ? "ZenMaruGothic-Regular" : "ZenMaruGothic-Medium", size: size)
     }
 
+    /// 이 글자열을 이어서 그릴 때의 폭.
+    ///
+    /// **`Text` 는 제 크기를 재면서 좌우에 여유를 둔다.** 조각을 따로 그려 이어 붙이면
+    /// 그 여유가 조각마다 두 번씩 끼어들어, 한 문장인데 조각 경계에서만 자간이 벌어진다.
+    /// 일본어는 띄어 쓰지 않으므로 그 틈이 곧 **없는 띄어쓰기**로 읽힌다 —
+    /// 되살린 문장이 원문과 다른 곳에서 끊겨 보이는 셈이다.
+    ///
+    /// 그래서 글자가 실제로 차지하는 폭을 재어 자리를 그만큼만 준다.
+    static func japaneseWidth(_ text: String, size: CGFloat, weight: Font.Weight = .regular) -> CGFloat {
+        let name = weight == .regular ? "ZenMaruGothic-Regular" : "ZenMaruGothic-Medium"
+        let font = UIFont(name: name, size: size) ?? .systemFont(ofSize: size)
+        return (text as NSString).size(withAttributes: [.font: font]).width
+    }
+
     /// 한글은 고운돋움. 굵기가 하나뿐이라 위계는 크기와 색으로 만든다.
     static func korean(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom("GowunDodum-Regular", size: size)

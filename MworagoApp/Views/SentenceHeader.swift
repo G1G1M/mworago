@@ -76,6 +76,10 @@ struct SentenceHeader: View {
                     // (やめる), 문장은 사용자가 한 말을 되살리는 자리다 (やめろ).
                     Text(segment.kana)
                         .font(Theme.japanese(44, weight: .medium))
+                        // **조각이 차지하는 폭을 글자 폭에 맞춘다.** 그러지 않으면 `Text` 가
+                        // 좌우에 두는 여유가 조각마다 끼어들어, 조각 경계에서만 자간이 벌어진다.
+                        // 일본어는 띄어 쓰지 않으므로 그 틈은 없는 띄어쓰기로 읽힌다.
+                        .frame(width: Theme.japaneseWidth(segment.kana, size: 44, weight: .medium))
                         .padding(.vertical, 4)
                         .background(isSelected ? Theme.ink : .clear,
                                     in: RoundedRectangle(cornerRadius: 7, style: .continuous))
