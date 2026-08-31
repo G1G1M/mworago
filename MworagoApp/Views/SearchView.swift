@@ -82,7 +82,14 @@ struct SearchView: View {
                                    to: nil)
                 }
             }
-            if input.isEmpty { inputFocused = true } else { engine.search(input) }
+            // **스스로 키보드를 올리지 않는다.**
+            //
+            // 처음 열면 바로 칠 수 있게 하려던 것이었는데, `onAppear` 는 스플래시와
+            // 온보딩이 위에 덮여 있어도 돈다 — 실기기에서 앱을 열면 온보딩 뒤에서
+            // 키보드가 먼저 올라왔다. 탭을 오갈 때마다 다시 올라오기도 한다.
+            //
+            // 키보드는 **칠 때** 올라오면 된다. 입력 바를 누르는 것이 그 신호다.
+            if !input.isEmpty { engine.search(input) }
 
             // `--collecting` 은 첫 조각의 담기 모달을 펼친 채 띄운다. `--detail` · `--guide` 와
             // 같은 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 시트를 눈으로 볼 길이 없다.
