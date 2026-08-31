@@ -233,11 +233,17 @@ struct Splash: View {
         // 바뀌었는지 보이지 않으면 이 장면은 아무 말도 하지 않는 셈이다.
 
         for index in Self.ratios.indices {
-            await wait(index == 0 ? 100 : 130)
+            // **알약 사이 터울이 등장의 속도를 정한다.** 130 이면 셋이 거의 한꺼번에
+            // 뜬 것처럼 보여, 하나씩 떨어지는 것이 눈에 들어오지 않는다.
+            // 첫 하나도 조금 늦게 시작한다 — 화면이 켜지자마자 튀어나오면 급해 보인다.
+            await wait(index == 0 ? 140 : 200)
             guard !done else { return }
             // 통통 — 낮은 감쇠가 그 튐을 만든다. 앱이 쓰는 `.snappy` 는 튀지 않아서
             // 여기서만 스프링을 쓰되, 값 하나로 셋을 다 그린다.
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) {
+            //
+            // **느긋하게 만드는 것은 `response` 다.** 감쇠(0.5)를 올리면 느려지는 대신
+            // 튐이 사라져 통통이 아니라 스윽이 된다 — 그것은 뒤 변형 구간의 문법이다.
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.5)) {
                 arrived[index] = true
             }
         }
