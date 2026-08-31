@@ -101,6 +101,18 @@ struct KoreanGlossTests {
         #expect(KoreanGloss.tidy("~하지 마, ~구나") == "~하지 마, ~구나")
     }
 
+    @Test("문장 끝의 마침표는 뗀다")
+    func 마침표() {
+        // 27,814조각 중 902개(3.2%)가 마침표로 끝났다. "크다." 는 마침표만 떼면
+        // 멀쩡한 뜻이 되는데, 붙어 있으면 화면에서 낱말이 아니라 문장으로 읽힌다.
+        #expect(KoreanGloss.tidy("크다.") == "크다")
+        #expect(KoreanGloss.tidy("숨을 쉬어라., 쉬었다.") == "숨을 쉬어라, 쉬었다")
+        // 말줄임표도 같다.
+        #expect(KoreanGloss.tidy("그렇구나...") == "그렇구나")
+        // 떼고 나면 아무것도 안 남는 조각은 뜻이 아니다.
+        #expect(KoreanGloss.tidy("좋다, .") == "좋다")
+    }
+
     @Test("멀쩡한 뜻은 그대로 둔다")
     func 그대로() {
         #expect(KoreanGloss.tidy("생각하다") == "생각하다")
@@ -108,5 +120,6 @@ struct KoreanGlossTests {
         #expect(KoreanGloss.tidy("긴장, 긴장감") == "긴장, 긴장감")
         // 물음표와 느낌표는 남긴다 — 감탄사와 되묻는 말에서는 그것이 뜻의 일부다.
         #expect(KoreanGloss.tidy("뭐야?") == "뭐야?")
+        #expect(KoreanGloss.tidy("오!") == "오!")
     }
 }

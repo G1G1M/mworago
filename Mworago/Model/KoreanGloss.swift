@@ -28,7 +28,7 @@ public enum KoreanGloss {
     public static func tidy(_ raw: String) -> String? {
         var pieces: [String] = []
         for piece in stripParentheses(raw).split(whereSeparator: isSeparator) {
-            let text = piece.trimmingCharacters(in: .whitespacesAndNewlines)
+            let text = trimSentenceEnd(piece.trimmingCharacters(in: .whitespacesAndNewlines))
             guard !text.isEmpty,
                   text.count <= maxPieceLength,
                   // 한글이 한 자도 없으면 옮기지 못한 것이다 — "(not) particularly" 가 그대로 왔다.
@@ -44,6 +44,20 @@ public enum KoreanGloss {
             if pieces.count == maxPieces { break }
         }
         return pieces.isEmpty ? nil : pieces.joined(separator: ", ")
+    }
+
+    /// 문장 끝의 마침표를 뗀다.
+    ///
+    /// 27,814조각 중 902개(3.2%)가 마침표로 끝났다. `크다.` 는 마침표만 떼면
+    /// 멀쩡한 뜻인데, 붙어 있으면 화면에서 낱말이 아니라 문장으로 읽힌다.
+    ///
+    /// **가르는 자리로 보지는 않는다.** 마침표를 구분자에 넣으면 뜻 안에 마침표가
+    /// 있는 경우까지 통째로 쪼개진다. 꼬리에서만 뗀다.
+    /// (일본어 마침표 `。` 는 한 건도 나오지 않아 막지 않는다.)
+    private static func trimSentenceEnd(_ text: String) -> String {
+        var result = text
+        while result.hasSuffix(".") { result.removeLast() }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// 괄호와 그 안을 걷어낸다.
