@@ -162,18 +162,34 @@ struct KanaQuiz: View {
     /// 축이 둘이 되어 어긋난 것이 더 크게 보인다.
     var body: some View {
         VStack(spacing: 0) {
-            // 범위 · 순서 · 초기화. 셋 다 "무엇을 물을까"를 정하는 것이라 한자리에 모은다.
+            // 범위 · 순서 · 초기화. 셋 다 "무엇을 물을까"를 정하는 것이지만
+            // **무게가 같으면 안 된다.**
+            //
+            // 한때는 다섯이 다 같은 캡슐이었다. 그러면 "고르는 것"과 "하는 것"이 같은
+            // 옷을 입는다 — 초기화는 선택지가 아니라 동작인데 나머지 넷과 나란히
+            // 앉아 있어, 무엇이 지금 켜져 있는지 세어 봐야 알 수 있었다.
+            //
+            // 범위가 가장 큰 결정이라 가장 무겁고(캡슐), 순서는 같은 문법이되 한 단계
+            // 작으며, 초기화는 **배경을 벗는다.** 책장의 `이 묶음 연습` 이 이미 쓰는
+            // 문법이라 새로 배울 것이 없다.
             VStack(spacing: 10) {
                 scopeDial
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     orderDial
+                    // 종류가 다른 것 사이에는 선을 세운다. 자리로 갈리면 글자로
+                    // 설명하지 않아도 된다.
+                    Divider()
+                        .overlay(Theme.grey3)
+                        .frame(height: 14)
                     Button { reset() } label: {
-                        Text("초기화")
-                            .font(Theme.korean(12.5))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(Theme.grey4, in: Capsule())
-                            .foregroundStyle(Theme.grey1)
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 10, weight: .medium))
+                            Text("초기화")
+                                .font(Theme.korean(12))
+                        }
+                        .foregroundStyle(Theme.grey2)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -243,10 +259,12 @@ struct KanaQuiz: View {
                     order = option
                     reset()
                 } label: {
+                    // 범위 다이얼과 같은 문법이되 **한 단계 작다.** 같은 일을 하지만
+                    // 덜 중요한 결정이라는 것이 크기로 드러난다.
                     Text(option.label)
-                        .font(Theme.korean(12.5, weight: selected ? .semibold : .regular))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
+                        .font(Theme.korean(11.5, weight: selected ? .semibold : .regular))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
                         .background(selected ? Theme.ink : .clear, in: Capsule())
                         .foregroundStyle(selected ? Theme.paper : Theme.grey2)
                 }
