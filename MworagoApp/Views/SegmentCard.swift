@@ -77,16 +77,26 @@ struct SegmentCard: View {
                 }
             }
 
-            // 가나로만 쓰는 낱말은 표기가 읽기와 같다. 같은 것을 두 번 보일 필요는 없다.
-            if aid.showsKanji, result.headword != result.reading {
+            // 가나로만 쓰는 낱말은 표기가 읽기와 같다. 같은 것을 두 번 보일 필요는 없지만,
+            // **자리는 비워 둔다.** 줄을 통째로 빼면 아래가 위로 올라와서, 카드마다
+            // 한글 음차가 다른 높이에 놓인다 — 옆으로 늘어선 카드에서는 그 어긋남이
+            // 바로 보이고, 같은 것을 찾는 눈이 매번 다시 헤맨다.
+            // 문장 머리는 하나뿐이라 이 문제가 없어 그쪽은 지금대로 둔다.
+            if aid.showsKanji {
                 HStack(alignment: .firstTextBaseline, spacing: 9) {
-                    Text(result.headword)
-                        .font(Theme.japanese(18))
-                        .foregroundStyle(Theme.grey1)
-                    if let reading = hanja.reading(of: result.headword) {
-                        Text(reading)
-                            .font(Theme.korean(13))
-                            .foregroundStyle(Theme.grey3)
+                    if result.headword != result.reading {
+                        Text(result.headword)
+                            .font(Theme.japanese(18))
+                            .foregroundStyle(Theme.grey1)
+                        if let reading = hanja.reading(of: result.headword) {
+                            Text(reading)
+                                .font(Theme.korean(13))
+                                .foregroundStyle(Theme.grey3)
+                        }
+                    } else {
+                        Text(" ")
+                            .font(Theme.japanese(18))
+                            .accessibilityHidden(true)
                     }
                 }
             }
@@ -126,36 +136,40 @@ struct SegmentCard: View {
     // 1위가 정답인 비율은 93%지만 3위 안에 있을 비율은 98%다.
     // 그 5%를 사용자가 직접 고를 수 있게 곁에 둔다.
 
+    /// 대안 후보도 **첫 줄과 같은 차례로** 쌓는다 — 가나가 먼저, 한자가 그 아래.
+    ///
+    /// 한때는 "첫 줄과 무엇이 다른지"에 따라 한자를 보이기도 하고 가나를 보이기도 했다.
+    /// 대안들은 같은 소리를 내는 낱말이라 가나가 대개 겹치므로, 다른 것만 보이면
+    /// 짧아진다는 생각이었다.
+    ///
+    /// **그런데 짧아지는 대신 낱말마다 층이 달라졌다.** 어떤 후보는 한자 한 줄로,
+    /// 어떤 후보는 가나 한 줄로 나와서, 한 화면 안에서 같은 자리에 다른 것이 놓였다.
+    /// 눈은 자리로 읽는다 — 위가 소리, 아래가 글자라는 것이 화면 어디서나 같아야
+    /// 무엇을 보고 있는지 매번 다시 판단하지 않는다. 조금 겹치더라도 차례를 지킨다.
     private var alternateList: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 9) {
             ForEach(Array(alternates.enumerated()), id: \.offset) { _, result in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    // 첫 줄에서는 가나가 주인공이지만, 여기서는 아니다.
-                    // 대안들은 같은 소리를 내는 다른 낱말이라 가나가 모두 같다 —
-                    // 무엇이 다른지 말해 주는 것은 한자다.
-                    Text(distinguisher(result))
-                        .font(Theme.japanese(16))
-                        .foregroundStyle(Theme.grey1)
-                    Text(result.entry.koreanGloss ?? result.entry.glosses.first ?? "")
-                        .font(Theme.korean(12))
-                        .foregroundStyle(Theme.grey2)
-                        .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(result.reading)
+                            .font(Theme.japanese(16))
+                            .foregroundStyle(Theme.grey1)
+                        Text(result.entry.koreanGloss ?? result.entry.glosses.first ?? "")
+                            .font(Theme.korean(12))
+                            .foregroundStyle(Theme.grey2)
+                            .lineLimit(1)
+                    }
+                    // 첫 줄과 같은 규칙이다 — 가나로만 쓰는 낱말은 표기가 읽기와 같아서
+                    // 이 줄이 없다. 없는 층에 빈 자리를 남기지는 않는다.
+                    if aid.showsKanji, result.headword != result.reading {
+                        Text(result.headword)
+                            .font(Theme.japanese(13))
+                            .foregroundStyle(Theme.grey2)
+                    }
                 }
             }
         }
         .padding(.top, 2)
-    }
-
-    /// 이 후보를 첫 줄의 답과 갈라 주는 것.
-    ///
-    /// **첫 줄과 무엇이 다른지가 곧 이 후보의 이름이다.** 한자가 다르면 한자로,
-    /// 한자가 같다면 소리로 가른다(机 つくえ · つき). 둘 다 같은 후보는 애초에
-    /// `alternates()` 가 걸러 내므로 여기까지 오지 않는다.
-    private func distinguisher(_ result: SearchResult) -> String {
-        guard let top else { return result.headword }
-        if aid.showsKanji, result.headword != top.headword { return result.headword }
-        if result.reading != top.reading { return result.reading }
-        return aid.showsKanji ? result.headword : ""
     }
 
     // MARK: 못 찾은 조각
