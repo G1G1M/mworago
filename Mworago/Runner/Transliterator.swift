@@ -168,6 +168,33 @@ public enum Transliterator {
         public let longVowelsAdded: Int   // 한글에 없던 장음을 몇 개 지어냈나
     }
 
+    /// 촉음 뒤에 올 수 있는 소리의 첫 글자. 모라는 로마자 키로 다루므로
+    /// か·さ·た·ぱ 행이 각각 k · s · t(ch 는 c) · p 로 온다.
+    /// 탁음 앞의 촉음(っが)은 일본 고유어에 없어 넣지 않는다.
+    private static let afterGeminate: Set<Character> = ["k", "s", "t", "c", "p"]
+
+    /// 촉음을 **한 번** 끼운 변형들.
+    ///
+    /// 촉음은 한국 사람 귀에 가장 안 들리는 소리다. 앞 음절 받침으로 적어야 하는데
+    /// (`らっしゃ` → `랏샤`) 뒤 음절과 이어져 들려서 그냥 넘어가기 쉽다.
+    /// 실제로 `잇테라샤이` 는 첫 촉음만 맞히고 둘째를 빠뜨린 꼴이다.
+    ///
+    /// **한 번만 끼운다.** 자리마다 넣고 빼면 후보가 2ⁿ 으로 터진다. 두 개를 한꺼번에
+    /// 빠뜨리는 일은 드물고, 하나만 열어도 대부분 닿는다.
+    private static func geminateVariants(_ morae: [String]) -> [[String]] {
+        guard morae.count >= 2 else { return [] }
+        var out: [[String]] = []
+        for i in 0..<(morae.count - 1) {
+            guard morae[i] != "Q", morae[i + 1] != "Q", morae[i + 1] != "n",
+                  let head = morae[i + 1].first, afterGeminate.contains(head)
+            else { continue }
+            var copy = morae
+            copy.insert("Q", at: i + 1)   // 촉음. 로마자 표기가 없어 대문자로 쓴다
+            out.append(copy)
+        }
+        return out
+    }
+
     /// 한글 음차가 될 수 있는 가나 표기를 모두 만든다. 한글이 아니면 빈 배열.
     public static func kanaCandidates(for hangul: String, limit: Int = 5000) -> [String] {
         candidates(for: hangul, limit: limit).map(\.kana)
@@ -202,6 +229,19 @@ public enum Transliterator {
                 guard let kana = KanaTable.compose(variant.morae), seen.insert(kana).inserted else { continue }
                 result.append(KanaCandidate(kana: kana, rank: result.count, longVowelsAdded: variant.added))
                 if result.count >= limit { return result }
+            }
+        }
+
+        // **촉음을 지어낸 것은 맨 뒤에 선다.** 사용자가 적지 않은 소리를 넣는 것이라
+        // 장음보다도 과감한 추측이다. 제대로 친 사람의 답을 밀어내면 안 된다.
+        for sequence in sequences {
+            for variant in longVowelVariants(sequence) {
+                for geminated in geminateVariants(variant.morae) {
+                    guard let kana = KanaTable.compose(geminated), seen.insert(kana).inserted else { continue }
+                    result.append(KanaCandidate(kana: kana, rank: result.count,
+                                                longVowelsAdded: variant.added))
+                    if result.count >= limit { return result }
+                }
             }
         }
         return result

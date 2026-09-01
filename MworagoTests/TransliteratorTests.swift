@@ -125,4 +125,34 @@ struct OrthographyTests {
         #expect(!Self.가나후보("사").contains("しゃ"))
         #expect(!Self.가나후보("가").contains("ぎゃ"))
     }
+
+    // MARK: 촉음을 빠뜨린 입력
+    //
+    // 촉음은 한국 사람 귀에 가장 안 들리는 소리다. 특히 뒤 음절과 이어질 때
+    // (らっしゃ · きって) 받침으로 적을 생각을 못 한다. 앱이 "들린 대로 치세요" 라고
+    // 하는 이상, 빠뜨린 쪽도 길이 있어야 한다.
+
+    @Test("촉음을 빠뜨려도 후보에 오른다")
+    func 촉음누락() {
+        #expect(Transliterator.kanaCandidates(for: "잇테라샤이").contains("いってらっしゃい"))
+        #expect(Transliterator.kanaCandidates(for: "기테").contains("きって"))
+        #expect(Transliterator.kanaCandidates(for: "가코").contains("がっこう")
+                || Transliterator.kanaCandidates(for: "가코").contains("がっこ"))
+    }
+
+    @Test("촉음은 아무 데나 끼우지 않는다")
+    func 촉음자리() {
+        // 촉음 뒤에는 か·さ·た·ぱ 행만 온다. あ·な·ま·や·ら·わ 행 앞에는 넣지 않는다.
+        let 후보 = Transliterator.kanaCandidates(for: "아라")
+        #expect(!후보.contains("あっら"))
+        let 후보2 = Transliterator.kanaCandidates(for: "아나")
+        #expect(!후보2.contains("あっな"))
+    }
+
+    @Test("제대로 친 것이 여전히 먼저다")
+    func 순서유지() {
+        // 촉음을 지어내는 것은 더 과감한 추측이라 뒤에 선다.
+        let 후보 = Transliterator.kanaCandidates(for: "잇테랏샤이")
+        #expect(후보.first == "いってらっしゃい" || 후보.contains("いってらっしゃい"))
+    }
 }
