@@ -1,4 +1,5 @@
 import Foundation
+import Translation
 import MworagoCore
 
 // M0 스파이크 측정기.
@@ -83,6 +84,16 @@ if let deinflectionPenalty { tunedWeights.deinflectionPenalty = deinflectionPena
 // 낱말 검색은 등재형 쪽에 무게를 두는 본래 값을 쓴다(활용 벌점 25).
 var wordWeights = Ranker.Weights()
 if let deinflectionPenalty { wordWeights.deinflectionPenalty = deinflectionPenalty }
+// 문장 뜻을 모델에게 물어본다. 앱이 부를 것과 같은 재료를 같은 모델에 태운다 —
+// 도구가 다른 것을 물으면 여기서 본 답이 앱의 답이 아니다.
+let translateInputs = flagValues("--translate")
+// 자막 문장을 줄줄이 태워 **몇 개나 막히는지** 센다. 문장 뜻은 사람이 채점해야 알지만,
+// 막힌 것은 세면 안다 — 그리고 막히는 비율이 크면 뜻이 좋고 나쁘고는 따질 일이 아니다.
+let translateCaseCount = flagValues("--translate-cases").first.flatMap(Int.init)
+// 애플 번역기(Translation 프레임워크)로도 같은 문장을 태운다.
+// 온디바이스 모델은 만들어 내는 물건이라 안전 필터가 옮기는 일까지 막는데,
+// 번역기는 옮기는 것이 본업이다. 어느 쪽이 이 앱에 맞는지는 나란히 놓고 봐야 안다.
+let mtCaseCount = flagValues("--mt-cases").first.flatMap(Int.init)
 let buildFrequencyLimit = flagValues("--build-frequency").first.flatMap(Int.init)
 let buildIndexPath = flagValues("--build-index").first
 let useIndexPath = flagValues("--index").first
@@ -94,6 +105,7 @@ let positional: [String] = {
         if args[i].hasPrefix("--") {
             let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
+                || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--mt-cases"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -398,6 +410,125 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         print(String(format: "\n최고: 조각 비용 %.0f · 활용 벌점 %.0f · 완전일치 %.1f%% · 경계 F1 %.3f",
                      best.cost, best.unknown, best.exact * 100, best.f1))
     }
+    exit(0)
+}
+
+// MARK: --translate
+//
+// 문장 뜻을 온디바이스 모델에게 물어본다. 낱말 뜻과 달리 문장은 미리 구울 수가 없어서
+// (조합이 무한하다) 런타임에 묻는 수밖에 없다. 낱말을 구울 때 이 모델은 한국어가
+// 지원 언어에서 빠져 있고 죽음·폭력이 든 말이 막혀 EXAONE 으로 갈아탔었다.
+// 문장에서 그 벽이 어떻게 나타나는지는 태워 봐야 안다.
+
+if !translateInputs.isEmpty {
+    #if canImport(FoundationModels)
+    if #available(macOS 26.0, *) {
+        log(SentenceTranslator.isAvailable ? "모델 준비됨" : "모델을 쓸 수 없다")
+        for input in translateInputs {
+            let segments = Segmenter.segment(input, in: index, frequency: frequency)
+            print("\n입력: \(input)")
+            guard let prompt = SentencePrompt.prompt(for: segments) else {
+                print("  물을 것이 없다 (조각이 하나뿐)")
+                continue
+            }
+            print(prompt.split(separator: "\n").map { "  | " + $0 }.joined(separator: "\n"))
+            let start = Date()
+            do {
+                let korean = try await SentenceTranslator.translate(segments)
+                print(String(format: "  → %@  (%.1f초)", korean ?? "(빈 답)", -start.timeIntervalSinceNow))
+            } catch {
+                // 무엇에 막혔는지가 이 도구의 존재 이유다. 앱에서는 조용히 삼킬 것을 여기서는 적는다.
+                print(String(format: "  ✗ %@  (%.1f초)", String(describing: error), -start.timeIntervalSinceNow))
+            }
+        }
+    } else {
+        log("이 맥은 macOS 26 이 아니다.")
+    }
+    #else
+    log("이 SDK 에는 FoundationModels 가 없다.")
+    #endif
+    exit(0)
+}
+
+// MARK: --mt-cases
+//
+// 애플 번역기로 문장을 옮긴다. 우리가 되살린 원문을 그대로 넘긴다 —
+// 번역기는 사전 뜻도 품사도 받지 않으므로, 넘길 수 있는 것은 문장 한 줄뿐이다.
+
+if let mtCaseCount {
+    // 세션을 곧바로 여는 이 이니셜라이저는 macOS 26 것이다. 앱에서는 iOS 18 부터
+    // `.translationTask` 로 세션을 받으므로, 배포 타깃을 올릴 이유는 되지 않는다.
+    if #available(macOS 26.0, *) {
+        let cases = SegmentCaseBuilder.build(from: "Tools/data/examples.utf", limit: mtCaseCount)
+        log("문장 \(cases.count)개")
+        let session = TranslationSession(installedSource: Locale.Language(identifier: "ja"),
+                                         target: Locale.Language(identifier: "ko"))
+        var 옮긴것 = 0, 막힌것 = 0
+        var 시간 = 0.0
+        for testCase in cases {
+            let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency)
+            // 앱이 화면에 되살려 놓는 그 문장을 넘긴다. 사용자가 친 것은 한글이지만
+            // 번역기가 받을 수 있는 것은 일본어다.
+            let japanese = segments.filter { !$0.isWhole }.japanese
+            let start = Date()
+            do {
+                let response = try await session.translate(japanese)
+                시간 += -start.timeIntervalSinceNow
+                옮긴것 += 1
+                print("○ \(testCase.words.joined(separator: " "))\t\(japanese)\t\(response.targetText)")
+            } catch {
+                시간 += -start.timeIntervalSinceNow
+                막힌것 += 1
+                print("✗ \(testCase.words.joined(separator: " "))\t\(japanese)\t\(String(describing: error).prefix(60))")
+            }
+        }
+        let 물어본것 = 옮긴것 + 막힌것
+        log("")
+        log(String(format: "옮김 %d (%.0f%%) · 못 옮김 %d · 문장당 %.2f초",
+                   옮긴것, Double(옮긴것) / Double(max(1, 물어본것)) * 100, 막힌것,
+                   시간 / Double(max(1, 물어본것))))
+    } else {
+        log("이 맥은 macOS 26 이 아니다.")
+    }
+    exit(0)
+}
+
+// MARK: --translate-cases
+
+if let translateCaseCount {
+    #if canImport(FoundationModels)
+    if #available(macOS 26.0, *) {
+        let cases = SegmentCaseBuilder.build(from: "Tools/data/examples.utf", limit: translateCaseCount)
+        log("문장 \(cases.count)개")
+        var 옮긴것 = 0, 막힌것 = 0, 물을것없음 = 0, 그밖에 = 0
+        var 시간 = 0.0
+        for testCase in cases {
+            let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency)
+            guard SentencePrompt.materials(for: segments) != nil else { 물을것없음 += 1; continue }
+            let start = Date()
+            do {
+                let korean = try await SentenceTranslator.translate(segments)
+                시간 += -start.timeIntervalSinceNow
+                옮긴것 += 1
+                print("○ \(testCase.words.joined(separator: " "))\t\(korean ?? "")")
+            } catch {
+                시간 += -start.timeIntervalSinceNow
+                let 막힘 = String(describing: error).contains("guardrail")
+                if 막힘 { 막힌것 += 1 } else { 그밖에 += 1 }
+                print("\(막힘 ? "✗" : "?") \(testCase.words.joined(separator: " "))\t\(막힘 ? "막힘" : String(describing: error).prefix(60))")
+            }
+        }
+        let 물어본것 = 옮긴것 + 막힌것 + 그밖에
+        log("")
+        log("물어본 문장 \(물어본것)개 · 물을 것 없던 문장 \(물을것없음)개")
+        if 물어본것 > 0 {
+            log(String(format: "  옮김 %d (%.0f%%) · 막힘 %d (%.0f%%) · 그 밖 %d",
+                       옮긴것, Double(옮긴것) / Double(물어본것) * 100,
+                       막힌것, Double(막힌것) / Double(물어본것) * 100, 그밖에))
+            log(String(format: "  문장당 %.1f초", 시간 / Double(물어본것)))
+        }
+    }
+    #endif
     exit(0)
 }
 

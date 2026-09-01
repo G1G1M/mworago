@@ -183,6 +183,9 @@ struct SearchView: View {
                     // 사전에 통째로 실려 있어 한 조각으로 나온다).
                     if engine.segments.count > 1 {
                         SentenceHeader(segments: engine.segments, selected: $selected)
+                        // 문장 뜻은 헤더에 붙여 둔다. 되살린 문장 바로 아래가 그 문장을
+                        // 옮긴 말의 자리다 — 카드 사이에 끼면 낱말 뜻처럼 보인다.
+                        SentenceMeaning(segments: engine.segments)
                         Divider().overlay(Theme.grey3)
                     }
 

@@ -18,9 +18,45 @@ extension Segment {
     ///  4. 그 밖에는 한자 표기를 쓴다
     public var japanese: String {
         guard let top = results.first else { return hangul }
-        if top.deinflection != nil { return top.matchedKana }
+        if top.deinflection != nil { return Self.inflectedWriting(top) ?? top.matchedKana }
         if top.entry.usuallyKana { return top.reading }
         return top.headword
+    }
+
+    /// 활용형에 한자를 되살린다. 되살릴 근거가 없으면 nil.
+    ///
+    /// 되돌리기 전 표면형은 가나다(`おこって`). 그런데 **가나만으로는 낱말이 갈리지 않는다** —
+    /// `おこる` 는 怒る(화내다)이기도 하고 起こる(일어나다)이기도 하다.
+    /// 애플 번역기에 문장을 넘겨 보고 알았다. `彼はおこっている` 가 "그는 일어나고 있다"로
+    /// 돌아왔는데, 번역기가 틀린 것이 아니라 우리가 한자를 잃고 넘긴 탓이었다.
+    ///
+    /// **지어내는 것이 아니다.** 사전이 그 낱말의 표기를 이미 알려 주었고, 어느 자리까지가
+    /// 한자인지도 표기와 읽기를 맞대면 나온다 — 함께 끝나는 부분이 보내는 글자다
+    /// (怒る·おこる 의 `る`, 食べる·たべる 의 `べる`). 그 앞자리만 한자로 바꾼다.
+    private static func inflectedWriting(_ result: SearchResult) -> String? {
+        // 사전이 uk 라고 한 낱말은 꺼내지 않는다. 자막도 가나로 쓴다.
+        guard !result.entry.usuallyKana else { return nil }
+        let writing = result.headword, reading = result.reading
+        guard writing != reading else { return nil }
+
+        let okurigana = commonSuffixCount(writing, reading)
+        let writingStem = writing.dropLast(okurigana)
+        let readingStem = reading.dropLast(okurigana)
+        // 표면형이 사전형 어간으로 시작하지 않으면 어디를 바꿀지 알 수 없다(来る → きた).
+        guard !writingStem.isEmpty, !readingStem.isEmpty,
+              result.matchedKana.hasPrefix(readingStem)
+        else { return nil }
+        return String(writingStem) + result.matchedKana.dropFirst(readingStem.count)
+    }
+
+    /// 두 글자열이 함께 끝나는 글자 수.
+    private static func commonSuffixCount(_ a: String, _ b: String) -> Int {
+        var count = 0
+        for (x, y) in zip(a.reversed(), b.reversed()) {
+            guard x == y else { break }
+            count += 1
+        }
+        return count
     }
 
     /// 문장에 놓일 이 조각의 소리.
