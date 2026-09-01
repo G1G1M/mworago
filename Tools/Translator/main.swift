@@ -51,6 +51,19 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
             // もの 는 "mono" 였다 — 모델은 받은 대로 옮겼을 뿐이다.
             hit.reading == entry.reading
                 && (hit.entry.usableWritings.contains { $0.text == entry.writing }
+                    // **가나로만 쓴 낱말이라도 표기가 딸린 항목은 받지 않는다.**
+                    //
+                    // 한때 받아 봤다. ある · くる · できる 같은 최상위 빈도 2,635개가
+                    // 한자 표기(有る · 来る)가 있다는 이유로 빠져 있어서였다. 그런데
+                    // **형태만으로는 어느 항목인지 고를 수가 없다.**
+                    //
+                    //   の  → [野] [없음=조사] [箆] [幅]  → 첫 항목을 집어 "지대"
+                    //   が  → [蛾] [없음=조사] [絵] [我]  → "나방"
+                    //   なる → [生る] [成る] [鳴る]        → "맺다" (되다가 아니라)
+                    //   こと → [琴] [事] [古都]           → "거문고"
+                    //
+                    // 뜻이 없는 것은 "아직 안 된 것"으로 보이지만 **틀린 뜻은 사람을 속인다.**
+                    // 이런 낱말은 손으로 적는다 — guardrail-gloss.tsv 가 그 자리다.
                     || (hit.entry.usableWritings.isEmpty && entry.writing == entry.reading))
         }), !hit.entry.glosses.isEmpty else { continue }
 
