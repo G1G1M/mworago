@@ -166,6 +166,12 @@ public enum Transliterator {
         public let kana: String
         public let rank: Int              // 규칙이 낸 순서. 앞일수록 보수적인 추측
         public let longVowelsAdded: Int   // 한글에 없던 장음을 몇 개 지어냈나
+        /// 한글에 없던 촉음을 몇 개 지어냈나.
+        ///
+        /// 후보 **순서**를 뒤로 미루는 것만으로는 모자랐다. 점수는 빈도로 매기므로
+        /// 지어낸 쪽이 더 흔한 낱말이면 그대로 이긴다 — `이타이` 가 `いったい`(도대체)로
+        /// 잡혀 `いたい`(아프다)를 밀어냈다. 그래서 점수에서도 깎는다.
+        public var geminatesAdded: Int = 0
     }
 
     /// 촉음 뒤에 올 수 있는 소리의 첫 글자. 모라는 로마자 키로 다루므로
@@ -239,7 +245,8 @@ public enum Transliterator {
                 for geminated in geminateVariants(variant.morae) {
                     guard let kana = KanaTable.compose(geminated), seen.insert(kana).inserted else { continue }
                     result.append(KanaCandidate(kana: kana, rank: result.count,
-                                                longVowelsAdded: variant.added))
+                                                longVowelsAdded: variant.added,
+                                                geminatesAdded: 1))
                     if result.count >= limit { return result }
                 }
             }

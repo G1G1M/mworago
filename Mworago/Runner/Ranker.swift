@@ -129,6 +129,10 @@ public enum Ranker {
                     }
                     score -= weights.rankPenalty * Double(candidate.rank)
                     score -= weights.longVowelPenalty * Double(candidate.longVowelsAdded)
+                    // 촉음을 지어낸 것은 장음보다 과감한 추측이라 더 깎는다.
+                    // 사용자가 **적지 않은 소리**를 넣는 것이어서, 지어낸 쪽이 더 흔한
+                    // 낱말이면 제대로 친 답을 밀어낸다.
+                    score -= weights.longVowelPenalty * 3 * Double(candidate.geminatesAdded)
                     if deinflection.rule != nil { score -= weights.deinflectionPenalty }
 
                     results.append(SearchResult(entry: hit.entry,
