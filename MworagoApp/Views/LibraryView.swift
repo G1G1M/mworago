@@ -166,6 +166,16 @@ struct LibraryView: View {
         }
     }
 
+    /// 줄과 줄 사이를 가르는 선.
+    ///
+    /// **글이 시작하는 자리에서 함께 시작한다.** 줄 안쪽에서 여백을 주는 탓에
+    /// 선만 형제로 남아 기둥 끝까지 뻗었고, 목록이 글보다 넓어 보였다.
+    private var rowDivider: some View {
+        Divider()
+            .overlay(Theme.grey3)
+            .padding(.horizontal, Theme.gutter)
+    }
+
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -176,7 +186,7 @@ struct LibraryView: View {
                                  dim: folder.name == nil,
                                  words: folder.words,
                                  route: .folder(folder.name))
-                        Divider().overlay(Theme.grey3)
+                        rowDivider
                     }
                 case .days:
                     ForEach(days) { day in
@@ -184,12 +194,12 @@ struct LibraryView: View {
                                  dim: false,
                                  words: day.words,
                                  route: .day(day.date))
-                        Divider().overlay(Theme.grey3)
+                        rowDivider
                     }
                 case .list:
                     ForEach(collection.words) { word in
                         row(word)
-                        Divider().overlay(Theme.grey3)
+                        rowDivider
                     }
                 }
             }
