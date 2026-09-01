@@ -90,14 +90,19 @@ func pickOnly(_ jobs: [Job], _ only: Set<String>) -> [Job] {
 /// 수치보다 **틀리는 결이** 달랐다 — qwen 은 `小太り`(통통하다)를 "약간 마른체형하다"로
 /// 뜻을 뒤집는데, EXAONE 은 "둥근, 살이 많다"로 말만 어색하다.
 /// **어색한 것은 눈에 띄지만 틀린 것은 안 띈다.**
-func translateWithOllama(_ job: Job, model: String, instructions: String) async throws -> String {
+func translateWithOllama(_ job: Job, model: String, instructions: String,
+                         temperature: Double = 0, tokens: Int = 32) async throws -> String {
     let 품사 = job.wordClass.koreanName ?? "낱말"
     let prompt = "\(job.writing)（\(job.reading)）· \(품사) · \(job.english.prefix(2).joined(separator: ", ")) →"
 
     let body: [String: Any] = [
         "model": model, "system": instructions, "prompt": prompt, "stream": false,
-        // 사전을 만드는 일이라 매번 같은 답이 나와야 한다. 지어낼 여지를 주지 않는다.
-        "options": ["temperature": 0, "num_predict": 32],
+        // 사전을 만드는 일이라 **매번 같은 답이 나와야 한다.** 그래서 기본은 온도 0 이다.
+        //
+        // 다만 그 결정성에는 뒷면이 있다 — 한 번 틀린 것은 다시 돌려도 글자 하나까지
+        // 똑같이 틀린다. 옮기다 만 것(`이웃hood`)을 다시 구우려면 온도를 올려야 한다.
+        // 토큰 한도도 마찬가지다. 32 로는 설명이 붙는 낱말에서 문장이 잘려 나갔다.
+        "options": ["temperature": temperature, "num_predict": tokens],
     ]
     var request = URLRequest(url: URL(string: "http://localhost:11434/api/generate")!)
     request.httpMethod = "POST"
@@ -189,6 +194,9 @@ let only = Set((value("--only") ?? "").split(separator: ",").map(String.init))
 let listSkipped = arguments.contains("--skipped")
 // ollama 로 옮긴다. 없으면 애플 온디바이스 모델을 쓴다.
 let ollamaModel = value("--ollama")
+// **다시 구울 때만 건드린다.** 기본값은 처음 구울 때 쓴 것 그대로다.
+let temperature = value("--temp").flatMap(Double.init) ?? 0
+let tokens = value("--tokens").flatMap(Int.init) ?? 32
 // 빈도 순위 상한. 대상 개수(`--limit`)와 다르다 — 개수로만 끊으면 조건에 걸려 빠진
 // 낱말들 때문에 훨씬 아래까지 내려간다(2만 개를 채우느라 45,266위까지 갔다).
 let maxRank = value("--max-rank").flatMap(Int.init)
@@ -269,7 +277,8 @@ if let ollamaModel {
     for job in remaining {
         do {
             let korean = try await translateWithOllama(job, model: ollamaModel,
-                                                       instructions: ollamaInstructions)
+                                                       instructions: ollamaInstructions,
+                                                       temperature: temperature, tokens: tokens)
             guard !korean.isEmpty else { continue }
             try handle.write(contentsOf: Data("\(job.writing)\t\(job.reading)\t\(korean)\n".utf8))
             count += 1
