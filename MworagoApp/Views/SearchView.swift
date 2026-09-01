@@ -74,6 +74,12 @@ struct SearchView: View {
                 Spacer(minLength: 0)
                     .frame(maxHeight: hasResults ? 0 : .infinity)
             }
+            // 첫 글자를 치는 순간 바가 가운데에서 바닥으로 옮겨 간다. 그 자리바꿈을
+            // 그냥 두면 한 프레임 만에 튀어, 치던 손이 따라가지 못한다.
+            //
+            // 키보드가 함께 올라오는 자리라 **키보드보다 느리면 안 된다** —
+            // 0.28초는 키보드가 다 올라오기 전에 끝나는 길이다.
+            .animation(.snappy(duration: 0.28), value: hasResults)
         }
         .onChange(of: incoming?.wrappedValue) { _, new in
             guard let new, !new.isEmpty else { return }
