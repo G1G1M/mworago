@@ -25,6 +25,11 @@ import MworagoCore
 /// 카드를 함께 내렸다(둘 다 30 언저리면 몇 포인트 차이는 눈에 띄지 않는다).
 struct SentenceHeader: View {
     let segments: [Segment]
+
+    /// 되살린 원문을 이룰 조각들. **통째로 찾아본 것은 뺀다** —
+    /// 그것은 문장의 한 부분이 아니라 문장 전체를 한 번 더 적은 것이라, 함께 이으면
+    /// 원문이 두 번 나온다(`いってきますいってきます`).
+    private var parts: [Segment] { segments.filter { !$0.isWhole } }
     /// 지금 고른 조각. 아무것도 안 골랐으면 nil 이고, 그때가 기본 상태다.
     @Binding var selected: Int?
     /// 글자 크기 설정. **폭을 재는 데 쓰지는 않지만 여기 적어 둔다** —
@@ -43,12 +48,12 @@ struct SentenceHeader: View {
                 Text("문장")
                     .font(Theme.korean(12))
                     .foregroundStyle(Theme.grey3)
-                SpeakButton(text: segments.kana, size: 13, pace: .sentence)
+                SpeakButton(text: parts.kana, size: 13, pace: .sentence)
             }
 
             pieces
 
-            Text(segments.map(\.hangul).joined())
+            Text(parts.map(\.hangul).joined())
                 .font(Theme.korean(16))
                 .foregroundStyle(Theme.grey3)
         }
@@ -65,7 +70,7 @@ struct SentenceHeader: View {
         // 줄 사이는 벌리고 글자 사이는 붙인다. 44 로 키우자 세 줄이 다닥다닥 붙어 답답해졌는데,
         // 가로로 벌릴 수는 없다 — 일본어는 띄어 쓰지 않으므로 되살린 문장도 붙어 있어야 한다.
         FlowRow(lineSpacing: 8) {
-            ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
+            ForEach(Array(parts.enumerated()), id: \.offset) { index, segment in
                 let isSelected = selected == index
                 Button {
                     // 같은 것을 다시 누르면 놓는다. 고른 상태에서 빠져나갈 길이 있어야 한다.

@@ -4,6 +4,11 @@ import Foundation
 public struct Segment: Sendable {
     public let hangul: String            // 이 조각의 한글 음차
     public let results: [SearchResult]   // 이 조각을 찾아본 결과. 비어 있으면 사전에 없는 조각이다
+    /// 나눈 조각이 아니라 **입력 전체**를 통째로 찾아본 결과인가.
+    ///
+    /// 관용구는 조각 점수 싸움에서 져서 묻히므로 통째 뜻을 앞에 얹는다. 다만 이것은
+    /// 문장을 이루는 조각이 아니다 — 되살린 원문을 그릴 때 함께 이으면 문장이 두 번 적힌다.
+    public var isWhole: Bool = false
 
     /// 첫 답 다음에 곁들일 후보들.
     ///
@@ -182,6 +187,7 @@ public enum Segmenter {
         // 통째 뜻을 **앞에** 얹는다 — 어느 쪽이 맞는지는 보는 사람이 안다.
         guard segments.count > 1 else { return segments }
         let whole = lookup(word)
-        return whole.isEmpty ? segments : [Segment(hangul: word, results: whole)] + segments
+        return whole.isEmpty ? segments
+                             : [Segment(hangul: word, results: whole, isWhole: true)] + segments
     }
 }
