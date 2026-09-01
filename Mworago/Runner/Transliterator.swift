@@ -79,13 +79,28 @@ public enum Transliterator {
         syllable.initial == "ㅆ" && syllable.medial == "ㅡ"
     }
 
+    /// 외래어의 끝소리를 적는 `ㅡ` 앞의 치경음.
+    ///
+    /// 두 언어가 같은 일을 다르게 한다. 영어 자음 하나를 한국어는 **자음 + ㅡ** 로 적고
+    /// (coat → 코트), 일본어는 자음 + ウ단으로 적는다(milk → ミルク). 여기까지는 짝이 맞는다.
+    ///
+    /// 그런데 t·d 만은 일본어가 **オ단**으로 간다 — ツ·ヅ 가 딴소리가 되기 때문이다.
+    /// coat 는 コート 이고 card 는 カード 다. 한글의 `트`·`드` 는 つ·づ 로만 길이 나 있어서,
+    /// `코트` 를 친 사람이 コート 에 닿지 못했다. 이 자리에만 お단을 함께 연다.
+    static let dentalInitials: Set<Character> = ["ㄷ", "ㄸ", "ㅌ"]
+
     // MARK: 음절 하나
 
     /// 음절 하나가 만들 수 있는 모라 열들. 일본어에 없는 소리는 여기서 이미 걸러진다.
     public static func moraCandidates(for syllable: HangulSyllable) -> [[String]] {
         guard let consonants = consonants[syllable.initial],
-              let medials = medials[syllable.medial]
+              var medials = medials[syllable.medial]
         else { return [] }
+
+        // 트·드 는 외래어에서 ト·ド 를 적는 자리이기도 하다
+        if syllable.medial == "ㅡ", Self.dentalInitials.contains(syllable.initial) {
+            medials.append(("o", .plain))
+        }
 
         // 받침이 있는데 ん·っ 어느 쪽도 아니면(ㄹ, 겹받침) 이 음절은 포기한다.
         var tail: [String] = []
@@ -126,7 +141,15 @@ public enum Transliterator {
     // MARK: 장음 복원
 
     /// 모음 뒤에 붙는 장음 글자. 한글 음차에서 가장 흔하게 증발하는 정보다.
-    private static let longVowel: [Character: String] = ["o": "u", "u": "u", "e": "i"]
+    ///
+    /// **다섯 모음 모두 열어 둔다.** 처음엔 お·う·え단만 열었는데, 그것은 한자어의
+    /// 장음(`とうきょう`·`けいざい`)만 본 것이었다. 외래어는 어느 모음이든 늘인다 —
+    /// `カード`·`ビール`·`スキー`. `코트` 가 コート 를 못 찾은 것이 그래서였다.
+    ///
+    /// 어느 글자로 늘이는가는 사전 대조에서 문제가 되지 않는다. 조회 키가 늘인 자리를
+    /// 장음부호 하나로 접기 때문에(`KanaTable.lookupKey`), `かあど` 든 `カード` 든 같은 자리에 모인다.
+    /// 그래서 여기서는 **히라가나로 적을 때의 표기**를 고른다 — 화면에 그대로 보이는 글자다.
+    private static let longVowel: [Character: String] = ["a": "a", "i": "i", "u": "u", "e": "i", "o": "u"]
 
     /// 장음을 넣을 수 있는 자리를 모두 조합해 변형을 만든다.
     /// こう·とう처럼 어디에 들어갔는지 한글만 봐서는 알 수 없으므로 전부 시도한다.

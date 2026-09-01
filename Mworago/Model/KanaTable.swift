@@ -75,6 +75,66 @@ public enum KanaTable {
         }))
     }
 
+    // MARK: 조회 키
+
+    /// 장음부호. 외래어는 늘인 소리를 이 글자 하나로 적는다(`コート`).
+    static let longVowelMark: Character = "ー"
+
+    /// 가나 한 글자의 모음. 요음의 작은 가나(`ゃ`)까지 담는다 — `きゃ` 의 모음은 a 다.
+    /// `ん`·`っ` 은 모음이 없어 여기 없다.
+    private static let vowelOfKana: [Character: Character] = {
+        var map: [Character: Character] = [:]
+        for (mora, kana) in table where kana.count == 1 {
+            guard let last = mora.last, vowels.contains(last) else { continue }
+            map[Character(kana)] = last
+        }
+        for (kana, vowel) in [("ゃ", "a"), ("ゅ", "u"), ("ょ", "o"),
+                              ("ぁ", "a"), ("ぃ", "i"), ("ぅ", "u"), ("ぇ", "e"), ("ぉ", "o")] {
+            map[Character(kana)] = Character(vowel)
+        }
+        return map
+    }()
+
+    /// 앞 모음을 늘이는 글자인가. `けい`·`とう` 처럼 앞 소리를 늘이는 자리만 참이다.
+    /// `あい`(愛)의 `い` 는 늘이는 것이 아니라 딴 모음이라 거짓이다.
+    private static func lengthens(_ character: Character, after vowel: Character) -> Bool {
+        switch character {
+        case "あ": vowel == "a"
+        case "い": vowel == "i" || vowel == "e"
+        case "う": vowel == "u" || vowel == "o"
+        case "え": vowel == "e"
+        case "お": vowel == "o"
+        default: false
+        }
+    }
+
+    /// 사전을 찾을 때 쓰는 키. **색인을 구울 때와 찾을 때 반드시 같은 것을 거쳐야 한다.**
+    ///
+    /// 히라가나로 맞추는 것만으로는 모자랐다. 같은 소리를 일본어가 세 가지로 적기 때문이다 —
+    /// `コート` 는 장음부호로, `とうきょう` 는 `う` 로, `おおきい` 는 `お` 로 늘인다.
+    /// 그런데 한글은 늘인 소리를 아예 적지 못해서(`코트`·`도쿄`·`오키이`),
+    /// 규칙이 지어낸 후보가 사전이 고른 표기와 어긋나면 그대로 못 찾는다.
+    ///
+    /// 그래서 **늘인 자리를 모두 장음부호 하나로 접는다.** 어떻게 적었든 같은 자리에 모인다.
+    /// 늘이지 않은 낱말까지 뭉개지는 않는다 — `こと`(일)와 `コート`(외투)는 끝까지 다른 키다.
+    public static func lookupKey(_ text: String) -> String {
+        var result = ""
+        var previousVowel: Character?
+        for character in toHiragana(text) {
+            if character == longVowelMark, previousVowel != nil {
+                result.append(longVowelMark)
+                continue                       // 앞 모음은 그대로 이어진다
+            }
+            if let previousVowel, lengthens(character, after: previousVowel) {
+                result.append(longVowelMark)
+                continue
+            }
+            result.append(character)
+            previousVowel = vowelOfKana[character]
+        }
+        return result
+    }
+
     /// 오십음도를 화면에 그릴 수 있게 내어 준다.
     ///
     /// 규칙 표(`table`)는 로마자에서 가나를 찾는 사전이라 **차례가 없다.** 배우는 사람에게

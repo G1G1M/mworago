@@ -32,6 +32,10 @@ struct DictionaryStoreTests {
     <r_ele><reb>ポイント</reb></r_ele>
     <sense><gloss>point</gloss></sense>
     </entry>
+    <entry>
+    <r_ele><reb>コート</reb></r_ele>
+    <sense><gloss>coat</gloss></sense>
+    </entry>
     </JMdict>
     """
 
@@ -96,7 +100,8 @@ struct DictionaryStoreTests {
         defer { try? FileManager.default.removeItem(atPath: path) }
         let memory = DictIndex(entries: try JMDictParser.parse(xml: Self.sample))
 
-        for reading in ["だいじょうぶ", "だいじょぶ", "やめる", "ぽいんと", "없음"] {
+        // 장음을 지어낸 후보(こうと)도 두 색인이 같은 자리로 데려가야 한다
+        for reading in ["だいじょうぶ", "だいじょぶ", "やめる", "ぽいんと", "こうと", "없음"] {
             let a = store.lookup(reading).map(\.entry.headword)
             let b = memory.lookup(reading).map(\.entry.headword)
             #expect(a == b, "읽기 \(reading)")

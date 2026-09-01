@@ -82,6 +82,23 @@ struct JMDictTests {
         #expect(hit.reading == "ポイント")
     }
 
+    @Test("장음부호로 실린 외래어를 장음 없는 음차로도 찾는다")
+    func 장음부호표제어() throws {
+        let xml = """
+        <JMdict><entry><ent_seq>1</ent_seq>
+        <r_ele><reb>コート</reb></r_ele>
+        <sense><gloss>coat</gloss></sense>
+        </entry></JMdict>
+        """
+        let index = DictIndex(entries: try JMDictParser.parse(xml: xml))
+        // 규칙이 만드는 후보는 히라가나에 장음을 지어낸 꼴이다. 조회 키가 장음 표기를
+        // 접지 않으면 `こーと` 와 `こうと` 는 영영 만나지 못한다.
+        #expect(index.lookup("こうと").first?.reading == "コート")
+        #expect(index.lookup("コート").first?.reading == "コート")
+        // 장음을 지우면 다른 낱말이다 — 여기까지 뭉개지면 안 된다
+        #expect(index.lookup("こと").isEmpty)
+    }
+
     @Test("가나로 쓰는 낱말(uk)과 검색 전용 표기(sK)를 읽는다")
     func 표지읽기() throws {
         // XMLParser 는 내부 DTD 엔티티를 확장하지 않는다. 그냥 두면 이 정보가 통째로 사라진다.

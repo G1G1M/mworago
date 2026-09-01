@@ -27,7 +27,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
     ///
     /// 색인은 구워서 앱에 싣는 물건이라, 코드만 고치고 다시 굽지 않으면
     /// `no such column` 같은 말로 실패한다. 무엇이 잘못됐는지 바로 알 수 있게 새겨 둔다.
-    static let schemaVersion = 4
+    static let schemaVersion = 5
 
     public init(path: String) throws {
         var handle: OpaquePointer?
@@ -74,7 +74,7 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
     }
 
     public func lookup(_ reading: String) -> [DictHit] {
-        let key = KanaTable.toHiragana(reading)
+        let key = KanaTable.lookupKey(reading)
         lock.lock()
         defer {
             sqlite3_reset(statement)
@@ -176,8 +176,8 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             sqlite3_reset(entryStatement)
 
             for reading in entry.readings {
-                // 조회 키는 히라가나로 맞춘다 — 외래어 표제어는 가타카나로 실려 있다.
-                sqlite3_bind_text(readingStatement, 1, KanaTable.toHiragana(reading.text), -1, transient)
+                // 조회 키는 접어서 넣는다 — 가타카나도, 장음을 달리 적은 표기도 여기서 만난다.
+                sqlite3_bind_text(readingStatement, 1, KanaTable.lookupKey(reading.text), -1, transient)
                 sqlite3_bind_text(readingStatement, 2, reading.text, -1, transient)
                 sqlite3_bind_int(readingStatement, 3, Int32(reading.priority))
                 sqlite3_bind_int(readingStatement, 4, id)

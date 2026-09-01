@@ -80,3 +80,36 @@ struct KanaChartTests {
         #expect(charts[2].rows[0] == ["きゃ", "きゅ", "きょ"])
     }
 }
+
+@Suite("사전 조회 키")
+struct LookupKeyTests {
+
+    @Test("장음을 어떻게 적었든 같은 키가 된다")
+    func 장음접기() {
+        // 가타카나 장음부호와 히라가나 장음이 만나야 외래어가 찾힌다
+        #expect(KanaTable.lookupKey("コート") == KanaTable.lookupKey("こうと"))
+        #expect(KanaTable.lookupKey("ビール") == KanaTable.lookupKey("びいる"))
+        #expect(KanaTable.lookupKey("スキー") == KanaTable.lookupKey("すきい"))
+        #expect(KanaTable.lookupKey("カード") == KanaTable.lookupKey("かあど"))
+        #expect(KanaTable.lookupKey("ケーキ") == KanaTable.lookupKey("けいき"))
+        // 히라가나끼리도 갈라져 있다 — お단은 う로도 お로도 늘인다
+        #expect(KanaTable.lookupKey("とおり") == KanaTable.lookupKey("とうり"))
+        #expect(KanaTable.lookupKey("おおきい") == KanaTable.lookupKey("おうきい"))
+        #expect(KanaTable.lookupKey("おねえさん") == KanaTable.lookupKey("おねいさん"))
+    }
+
+    @Test("장음이 아닌 이어짐은 접지 않는다")
+    func 안접는것() {
+        // あ단 뒤의 い는 장음이 아니라 이중모음이다 — 愛(あい)
+        #expect(KanaTable.lookupKey("あい") == "あい")
+        #expect(KanaTable.lookupKey("ここ") == "ここ")
+        // 장음을 지운 꼴과 뭉쳐서도 안 된다. コート(외투)와 こと(일)는 다른 낱말이다
+        #expect(KanaTable.lookupKey("コート") != KanaTable.lookupKey("こと"))
+        #expect(KanaTable.lookupKey("こと") == "こと")
+    }
+
+    @Test("가나가 아닌 글자는 건드리지 않는다")
+    func 한자() {
+        #expect(KanaTable.lookupKey("大丈夫") == "大丈夫")
+    }
+}

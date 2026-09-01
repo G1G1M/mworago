@@ -57,6 +57,24 @@ struct TransliteratorTests {
         #expect(후보.contains(정답), "\(입력) → \(정답) 가 후보 \(후보.count)개 안에 없음")
     }
 
+    /// 한글은 장음을 아예 적지 못한다. 외래어는 그 자리가 통째로 비어 있어서
+    /// (`코트` → コート) 지어내지 않으면 영영 닿지 못한다.
+    @Test("한글이 적지 못한 장음도 후보에 든다", arguments: [
+        ("코트", "コート"),
+        ("비루", "ビール"),
+        ("스키", "スキー"),
+        ("카도", "カード"),
+        ("케키", "ケーキ"),
+        ("데토", "デート"),
+        ("카바", "カバー"),
+        ("오사카", "おおさか"),      // 히라가나 쪽 장음도 마찬가지다
+    ])
+    func 장음지어내기(_ 입력: String, _ 정답: String) {
+        let 키 = Set(Transliterator.kanaCandidates(for: 입력).map(KanaTable.lookupKey))
+        #expect(키.contains(KanaTable.lookupKey(정답)),
+                "\(입력) → \(정답) 이 후보에 없음")
+    }
+
     @Test("한글이 아니면 빈 배열")
     func 비한글() throws {
         #expect(Transliterator.kanaCandidates(for: "だいじょうぶ").isEmpty)
