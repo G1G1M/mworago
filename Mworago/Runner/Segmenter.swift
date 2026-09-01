@@ -169,6 +169,19 @@ public enum Segmenter {
             pieces.append(String(syllables[step.start..<cursor]))
             cursor = step.start
         }
-        return pieces.reversed().map { Segment(hangul: $0, results: lookup($0)) }
+        let segments = pieces.reversed().map { Segment(hangul: $0, results: lookup($0)) }
+
+        // **통째로도 사전에 실려 있으면 그것부터 낸다.**
+        //
+        // 관용구는 조각 점수 싸움에서 진다 — 조각이 다 흔한 낱말일수록 그렇다.
+        // `잇테키마스` 는 `잇테`(行って)와 `키마스`(来ます)가 둘 다 최상위 빈도라
+        // 나누는 쪽이 이겨서, 사전에 있는 `行ってきます`("다녀오겠습니다")가 묻혔다.
+        // `잇테랏샤이` 가 살아남은 것은 `랏샤이` 가 실재하지 않아 쪼갤 수 없어서였을 뿐이다.
+        //
+        // 분절 가중치를 손대면 검색 전체가 흔들린다. 나눈 결과는 그대로 두고
+        // 통째 뜻을 **앞에** 얹는다 — 어느 쪽이 맞는지는 보는 사람이 안다.
+        guard segments.count > 1 else { return segments }
+        let whole = lookup(word)
+        return whole.isEmpty ? segments : [Segment(hangul: word, results: whole)] + segments
     }
 }
