@@ -113,6 +113,10 @@ public enum Deinflector {
         ("てた",   ["る"],            "진행형 과거"),
         ("でた",   ["る"],            "진행형 과거"),
 
+        // い형용사 부사형 — 大きく · 詳しく. 5단 사전형(書く)도 く 로 끝나지만
+        // 후보를 하나 더 낼 뿐이고, 없는 말이면 사전이 걸러 낸다.
+        ("く",    ["い"],            "부사형"),
+
         // 그 밖
         ("ろ",    ["る"],            "명령형"),   // 1단: やめろ → やめる
         ("で",    [""],              "조사 で"),  // まじで → まじ
@@ -185,6 +189,33 @@ public enum Deinflector {
             add(stem + "る", "정중형")
             if let last = stem.last, let restored = iToU[last] {
                 add(String(stem.dropLast()) + String(restored), "정중형")
+            }
+        }
+
+        // 맨 연용형: 어미가 하나도 안 붙은 어간이 그대로 실려 있다.
+        //
+        // 코퍼스의 토크나이저가 話します 를 話し 에서 자르기 때문에, 빈도 목록에는
+        // 話し · 分かり · 取り組み 처럼 **어간만 있는 꼴**이 1,270개나 들어 있다.
+        // 되돌리는 방법은 정중형과 같다 — 5단은 い단을 う단으로, 1단은 る 를 붙인다.
+        if let last = kana.last {
+            if let restored = iToU[last] {
+                add(String(kana.dropLast()) + String(restored), "연용형")
+            }
+            // 1단 어간은 い단이나 え단으로 끝난다(食べ · 見). 그 자리에만 る 를 붙여
+            // 아무 낱말에나 る 가 붙는 것을 막는다.
+            if iToU[last] != nil || eToU[last] != nil {
+                add(kana + "る", "연용형")
+            }
+        }
+
+        // 5단 가능형: え단 + る. 使える → 使う · 話せる → 話す.
+        //
+        // 1단 사전형(食べる)도 같은 꼴이라 食ぶ 같은 없는 말이 후보에 오르지만,
+        // 원형이 첫 후보로 남아 있고 사전에 없는 것은 걸러지므로 해롭지 않다.
+        if kana.hasSuffix("る"), kana.count >= 3 {
+            let stem = String(kana.dropLast())
+            if let last = stem.last, let restored = eToU[last] {
+                add(String(stem.dropLast()) + String(restored), "가능형")
             }
         }
 
