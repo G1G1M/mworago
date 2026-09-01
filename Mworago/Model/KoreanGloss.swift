@@ -21,6 +21,13 @@ public enum KoreanGloss {
     /// 화면에 싣는 뜻의 개수. 사전 자체가 영어 뜻을 둘까지만 담는다.
     static let maxPieces = 2
 
+    /// 이어 붙인 뜻의 최대 길이.
+    ///
+    /// 조각마다 12자를 지켜도 둘이 붙으면 26자가 된다. 낱말 카드는 한 줄짜리 자리라
+    /// 그 길이는 잘려 나가고, 잘린 자리에서는 둘째 뜻이 반 토막으로 보인다.
+    /// 넘치면 **첫 조각만** 쓴다 — 모델이 가장 먼저 댄 것이 대개 대표 뜻이다.
+    static let maxTotalLength = 16
+
     /// 다듬은 뜻. 남는 것이 없으면 `nil` — 그 자리는 영어 뜻이 대신한다.
     ///
     /// 어설픈 한국어보다 정확한 영어가 낫다. 뜻 자리에 문장이 들어앉거나
@@ -43,7 +50,9 @@ public enum KoreanGloss {
             pieces.append(text)
             if pieces.count == maxPieces { break }
         }
-        return pieces.isEmpty ? nil : pieces.joined(separator: ", ")
+        guard !pieces.isEmpty else { return nil }
+        let joined = pieces.joined(separator: ", ")
+        return joined.count <= maxTotalLength ? joined : pieces[0]
     }
 
     /// 문장 끝의 마침표를 뗀다.

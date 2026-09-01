@@ -279,7 +279,11 @@ let ollamaInstructions = """
 if let ollamaModel {
     log("ollama · \(ollamaModel)")
     if !FileManager.default.fileExists(atPath: outputPath) {
-        try "# 표기\t읽기\t한국어뜻\n".write(toFile: outputPath, atomically: true, encoding: .utf8)
+        // **무엇으로 구웠는지 파일에 적어 둔다.** 대상 집합은 `--limit` 이 정하는데,
+        // 그 값을 어디에도 남기지 않아 다시 구울 때 같은 집합을 만들지 못했다.
+        try ("# 표기\t읽기\t한국어뜻\n"
+             + "# ollama \(ollamaModel) · limit=\(limit) · temp=\(temperature) · tokens=\(tokens)\n")
+            .write(toFile: outputPath, atomically: true, encoding: .utf8)
     }
     let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: outputPath))
     try handle.seekToEnd()
@@ -343,7 +347,9 @@ if #available(macOS 26.0, *) {
 
     // 파일을 열어 두고 한 건씩 덧붙인다. 도중에 멈춰도 거기까지는 남는다.
     if !FileManager.default.fileExists(atPath: outputPath) {
-        try "# 표기\t읽기\t한국어뜻\n".write(toFile: outputPath, atomically: true, encoding: .utf8)
+        try ("# 표기\t읽기\t한국어뜻\n"
+             + "# 애플 온디바이스 모델 · limit=\(limit)\n")
+            .write(toFile: outputPath, atomically: true, encoding: .utf8)
     }
     let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: outputPath))
     try handle.seekToEnd()

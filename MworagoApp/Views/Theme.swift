@@ -16,7 +16,9 @@ enum Theme {
 
     static let grey1 = adaptive(light: .init(white: 0.28), dark: .init(white: 0.78))  // 본문 다음으로 진한 것
     static let grey2 = adaptive(light: .init(white: 0.48), dark: .init(white: 0.60))  // 읽기·부가 정보
-    static let grey3 = adaptive(light: .init(white: 0.70), dark: .init(white: 0.40))  // 구분선·비활성
+    static let grey3 = adaptive(light: .init(white: 0.70), dark: .init(white: 0.50))  // 구분선·비활성
+    // 어두운 바탕에서 0.40 은 배경과 3.3:1 밖에 안 벌어져, 구분선이 아니라 **정보**를
+    // 담을 때(묶음 줄의 낱말 미리보기 · 개수) 묻혀 버렸다. 0.50 이면 4.4:1 이다.
     static let grey4 = adaptive(light: .init(white: 0.92), dark: .init(white: 0.18))  // 면
 
     /// 이 앱이 쓰는 말.
