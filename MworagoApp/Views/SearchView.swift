@@ -59,7 +59,18 @@ struct SearchView: View {
 
     var body: some View {
         ZStack {
-            Theme.paper.ignoresSafeArea()
+            // **빈 곳을 누르면 키보드를 내린다.**
+            //
+            // 스크롤로 내리는 길은 이미 있었지만(`scrollDismissesKeyboard`), 답을 보려고
+            // 화면을 툭 누르는 사람에게는 그 길이 없었다. 키보드가 답의 절반을 덮은 채
+            // 남아 있어서, 내리려면 스크롤을 해야 했다.
+            //
+            // **바탕에만 붙인다.** 화면 전체에 붙이면 카드의 갈피표·소리 단추가 눌리는
+            // 자리까지 함께 먹는다. 바탕은 카드가 없는 곳이므로 겹칠 것이 없다.
+            Theme.paper
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { inputFocused = false }
 
             // **글자체를 미리 데운다.** 빈 화면에는 한국어만 있고 일본어는 첫 글자를
             // 칠 때에야 처음 그려진다. 일본어 글자체는 글리프가 많아 파일을 읽는 그 한 번이
