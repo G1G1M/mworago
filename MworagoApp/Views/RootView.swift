@@ -27,7 +27,7 @@ struct RootView: View {
     /// 온보딩 시안 — 실행 인자로만 뜬다.
     /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
     /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
-    /// 화면을 밝게 볼지 어둡게 볼지. 기본은 기기를 따르는 것이다.
+    /// 앱을 밝게 볼지 어둡게 볼지 — 설정의 `모습`. 기본은 기기를 따르는 것이다.
     @State private var appearance = Appearance.saved
     @State private var showOnboarding = OnboardingSeen.forced || !OnboardingSeen.already
     /// 앱을 여는 한 장. `--no-splash` 로 건너뛴다 — 다른 화면을 찍을 때마다

@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// 화면을 밝게 볼지 어둡게 볼지.
+/// 앱을 밝게 볼지 어둡게 볼지.
+///
+/// **"화면"이라 부르지 않는다.** 그 말은 기기의 스크린을 가리켜서, 밝기 설정처럼
+/// 들린다 — 여기서 정하는 것은 이 앱이 입는 옷이다. 그래서 `모습`이라 적는다.
+/// `책장` · `묶음` · `갈피표`처럼 이 앱이 쓰는 말의 결과도 맞는다.
 ///
 /// 기본은 **기기를 따르는 것**이다. 자막을 보면서 쓰는 앱이라 밤에 켤 일이 많고,
 /// 그때마다 앱에서 따로 바꾸게 하면 번거롭다. 다만 이 앱은 흰검 한 벌이라
@@ -64,7 +68,7 @@ struct Settings: View {
     //
     // **설정만 유난히 벌어져 있다.** 다른 화면은 한 가지를 여러 층으로 보여 주므로
     // 층 사이가 붙어야 한 낱말로 읽힌다. 여기 놓이는 것은 성격이 다른 덩어리다 —
-    // 화면 밝기 · 앱에 대하여 · 무엇을 하지 않는지. 서로 붙으면 목록 하나로 보인다.
+    // 모습 · 앱에 대하여 · 무엇을 하지 않는지. 서로 붙으면 목록 하나로 보인다.
     //
     // "묶인 것은 붙고 다른 것은 떨어진다"는 규칙은 그대로고, 이 화면에서는 그 대비가
     // 더 커야 성립한다. 그래서 섹션 사이만 키우고 **섹션 안은 그대로 뒀다** —
@@ -87,14 +91,10 @@ struct Settings: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Self.sectionGap) {
-                    section("화면") {
-                        VStack(alignment: .leading, spacing: Theme.lineGap + 5) {
-                            dial
-                            Text("고르지 않으면 기기 설정을 따릅니다.")
-                                .font(Theme.korean(13))
-                                .foregroundStyle(Theme.grey2)
-                        }
-                    }
+                    // 곁말("고르지 않으면 기기 설정을 따릅니다")을 뺐다. 고르개에
+                    // `기기 따라`가 이미 적혀 있고 그것이 골라져 있으므로, 같은 말을
+                    // 두 자리에서 하는 셈이었다.
+                    section("모습") { dial }
 
                     section("앱에 대하여") {
                         VStack(alignment: .leading, spacing: 0) {
@@ -111,13 +111,19 @@ struct Settings: View {
 
                     // 계정도 서버도 없는 앱이라 약관에 적을 것이 사실상 없다.
                     // 없는 것을 있는 척 적기보다, 무엇을 하지 않는지를 적는다.
+                    //
+                    // **짧게 적는다.** 아무것도 안 한다는 말을 길게 쓰면 오히려 무언가
+                    // 하는 것처럼 읽힌다. 자세한 것은 '이 앱이 쓰는 자료' 안에 있다.
+                    //
+                    // **줄은 뜻 단위로 손수 끊는다.** 흐르게 두면 폭에 따라 아무 데서나
+                    // 갈려서, 한 문장이 두 조각으로 읽힌다.
                     Text("""
-                        계정이 없고 서버로 보내는 것도 없습니다. \
-                        사전이 앱 안에 통째로 들어 있어 찾을 때 인터넷을 쓰지 않고, \
-                        모은 낱말은 기기 안에만 있습니다.
+                        계정도 서버도 없습니다.
+                        사전은 앱 안에 있고, 모은 낱말은 기기 안에만 있습니다.
                         """)
                         .font(Theme.korean(13))
                         .foregroundStyle(Theme.grey2)
+                        .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, Theme.gutter)
@@ -131,9 +137,21 @@ struct Settings: View {
         }
     }
 
-    /// 읽기 보조 다이얼과 같은 문법 — 평평하고, 고른 것 하나만 검게 채워진다.
+    /// 모습 고르개.
+    ///
+    /// **고른 것 하나만 검게 채워진다** — 책장의 `묶음별 / 날짜별 / 모두`,
+    /// 읽기 보조의 `가나 / 한자 / 한글`과 같은 문법이다.
+    ///
+    /// 다만 그 둘과 달리 **셋을 감싸는 면(트랙)을 깐다.** 그것들은 글 곁에 붙어 있어
+    /// 눌러 보기 전에도 컨트롤로 읽히는데, 여기는 섹션 하나에 이것만 놓여 안 고른 둘이
+    /// 바탕 위에 그냥 떠 있었다 — **누를 수 있는 것인지가 안 보였다.**
+    /// 트랙이 "이 셋 중 하나를 고른다"를 말하고, 채워지는 것은 여전히 하나뿐이라
+    /// 강조 규칙(반전 하나)은 그대로다.
+    ///
+    /// 굵기로는 가르지 않는다. 고운돋움은 굵기가 하나뿐이라 `weight` 를 줘도 듣지 않는다 —
+    /// 위계는 채움과 색이 만든다.
     private var dial: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             ForEach(Appearance.allCases) { option in
                 let selected = option == appearance
                 Button {
@@ -143,15 +161,22 @@ struct Settings: View {
                     }
                 } label: {
                     Text(option.label)
-                        .font(Theme.korean(13, weight: selected ? .semibold : .regular))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
+                        .font(Theme.korean(14))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 9)
                         .background(selected ? Theme.ink : .clear, in: Capsule())
-                        .foregroundStyle(selected ? Theme.paper : Theme.grey2)
+                        .foregroundStyle(selected ? Theme.paper : Theme.grey1)
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
+        .padding(3)
+        .background(Theme.grey4, in: Capsule())
+        // 트랙이 글 폭을 다 먹지 않게 한다. 셋뿐인 고르개가 560 을 가로지르면
+        // 컨트롤이 아니라 띠로 보인다.
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
@@ -170,7 +195,7 @@ struct Settings: View {
     private func row(_ title: String, detail: String, chevron: Bool = true) -> some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(Theme.korean(15))
+                .font(Theme.korean(16))
                 .foregroundStyle(Theme.ink)
             Spacer(minLength: 12)
             Text(detail)
@@ -178,7 +203,7 @@ struct Settings: View {
                 .foregroundStyle(Theme.grey2)
             if chevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.grey3)
             }
         }
