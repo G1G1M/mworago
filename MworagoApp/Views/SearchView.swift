@@ -250,6 +250,8 @@ struct SearchView: View {
         inner()
             .frame(maxWidth: Self.contentWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture { inputFocused = false }
     }
 
     private var results: some View {
@@ -281,6 +283,11 @@ struct SearchView: View {
                 .padding(.bottom, 12)
                 .frame(maxWidth: Self.contentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
+                // **여기에도 붙여야 닿는다.** 바탕에만 두었더니 목록이 있을 때는
+                // 손가락이 바탕까지 가지 못했다 — 스크롤 뷰가 자기 자리의 탭을 먼저 먹는다.
+                // 카드 안의 갈피표·소리 단추는 자식이라 먼저 처리되므로 가려지지 않는다.
+                .contentShape(Rectangle())
+                .onTapGesture { inputFocused = false }
             }
             // **스크롤로는 내리지 않는다.**
             //
