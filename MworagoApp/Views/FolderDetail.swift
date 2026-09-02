@@ -65,7 +65,7 @@ struct FolderDetail: View {
                             }
                             row(word)
                         }
-                        Divider().overlay(Theme.grey3)
+                        Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
                     }
                 }
                 .padding(.bottom, Theme.screenBottom)

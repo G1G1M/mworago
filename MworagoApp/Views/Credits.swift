@@ -78,7 +78,7 @@ struct Credits: View {
                     }
                 }
 
-                Divider().overlay(Theme.grey3)
+                Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
 
                 // 동일조건변경허락 — 받은 조건 그대로 넘긴다는 약속이다.
                 // 앱에 실린 사전 색인은 JMdict 를 다시 엮은 것이라 원본과 같은 조건에 놓인다.
@@ -95,7 +95,7 @@ struct Credits: View {
                     .foregroundStyle(Theme.grey2)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Divider().overlay(Theme.grey3)
+                Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
 
                 // 개인정보 처리방침. 모으는 것이 없으면 방침도 짧아야 한다 —
                 // 아무것도 안 한다는 말을 길게 쓰면 오히려 무언가 하는 것처럼 읽힌다.

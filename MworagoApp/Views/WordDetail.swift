@@ -115,7 +115,7 @@ struct WordDetail: View {
 
     private var actions: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Divider().overlay(Theme.grey3)
+            Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
 
             HStack(spacing: 10) {
                 Button {

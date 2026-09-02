@@ -101,7 +101,13 @@ struct SearchView: View {
                 // 올라오고, 칠 때는 찾는 일만 남는다. 글은 바 바로 위에 붙어 함께 내려와
                 // 있으므로, 읽은 자리에서 손이 가는 것도 그대로다.
                 Spacer(minLength: 0)
+                // **키보드가 올라와도 목록은 제자리에 둔다.**
+                //
+                // 키보드가 올라오면 안전 영역이 줄어 위쪽까지 함께 밀려 올라간다.
+                // 손이 얹히는 순간 답이 통째로 들썩이는데, 읽던 자리를 눈이 다시 찾아야 한다.
+                // 목록은 키보드를 못 본 척하고, **바만 그 위로 올라간다.**
                 content
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
                 inputBar
             }
         }
@@ -268,7 +274,7 @@ struct SearchView: View {
                         // 그것을 옮긴 말은 한 덩어리라, 사이에 덩어리를 닫는 여백이
                         // 끼면 안 된다.
                         SentenceHeader(segments: engine.segments, selected: $selected)
-                        Divider().overlay(Theme.grey3)
+                        Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
                     }
 
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
@@ -276,7 +282,7 @@ struct SearchView: View {
                                     isSelected: selected == index, collection: collection,
                                     onCollect: { collecting = $0 })
                             .id(index)
-                        Divider().overlay(Theme.grey3)
+                        Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
                     }
                 }
                 .padding(.top, 12)

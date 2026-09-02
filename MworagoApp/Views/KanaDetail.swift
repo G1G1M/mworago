@@ -209,7 +209,7 @@ struct KanaQuiz: View {
                     orderDial
                     // 종류가 다른 것 사이에는 선을 세운다. 자리로 갈리면 글자로
                     // 설명하지 않아도 된다.
-                    Divider()
+                    Divider().padding(.horizontal, Theme.gutter)
                         .overlay(Theme.grey3)
                         .frame(height: 14)
                     Button { reset() } label: {

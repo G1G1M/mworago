@@ -96,7 +96,9 @@ struct RootView: View {
                                  practiceLabel = nil
                              })
             } label: {
-                Image(systemName: "waveform")
+                // **소리가 아니라 카드다.** `waveform` 은 소리 파형이라 녹음·발음으로 읽힌다.
+                // 이 탭이 하는 일은 담아 둔 낱말을 한 장씩 넘겨 보는 것이므로 카드 더미로 적는다.
+                Image(systemName: "rectangle.stack")
                     .accessibilityLabel("연습")
             }
             // 글자는 낱말과 짝이다 — 글자는 마흔여섯 자로 끝나지만 낱말은 끝이 없다.

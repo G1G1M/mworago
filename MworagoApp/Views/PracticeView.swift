@@ -142,6 +142,9 @@ struct PracticeView: View {
             .padding(.top, 26)
         }
         .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        // 글은 왼쪽에서 시작하되 **덩어리는 화면 가운데 선다.** 아이패드처럼 넓은 화면에서
+        // 폭만 묶어 두면 덩어리가 왼쪽에 붙어, 오른쪽이 통째로 비어 보인다.
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, Theme.gutter)
     }
 
@@ -193,6 +196,9 @@ struct PracticeView: View {
         }
         .padding(.horizontal, Theme.gutter)
         .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        // 글은 왼쪽에서 시작하되 **덩어리는 화면 가운데 선다.** 아이패드처럼 넓은 화면에서
+        // 폭만 묶어 두면 덩어리가 왼쪽에 붙어, 오른쪽이 통째로 비어 보인다.
+        .frame(maxWidth: .infinity)
         // 첫 줄을 책장의 빈 화면과 같은 높이에 세운다 — 자세한 까닭은 `emptyBlockHeight`.
         .frame(minHeight: Theme.emptyBlockHeight, alignment: .topLeading)
         // `ZStack` 안이라 이것 없이도 가운데로 오지만, 책장의 빈 화면과 **같은 문법**으로
