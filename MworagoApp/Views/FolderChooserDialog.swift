@@ -13,6 +13,12 @@ struct FolderChooserDialog: View {
     let folderNames: [String]
     /// 지금 있는 자리. 점이 찍히고, 눌러도 달라질 것이 없으므로 흐리게 둔다.
     let current: String?
+    /// 지금 자리를 표시할 것인가.
+    ///
+    /// **여러 묶음에서 골라 왔으면 "지금"이 하나가 아니다.** 책장의 `모두` 목록에서
+    /// 고르면 서로 다른 묶음의 낱말이 섞이는데, 그때 아무 자리에나 점을 찍으면
+    /// 있지도 않은 사실을 적는 것이 된다.
+    var marksCurrent = true
     @Binding var isPresented: Bool
     var onPick: (String?) -> Void
 
@@ -47,12 +53,13 @@ struct FolderChooserDialog: View {
     private var rows: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(folderNames, id: \.self) { name in
-                row(name: name, here: name == current) { onPick(name) }
+                row(name: name, here: marksCurrent && name == current) { onPick(name) }
             }
             Divider().overlay(Theme.grey4).padding(.vertical, 5)
             // 묶음에서 빼기. 지우는 것이 아니라 **아직 안 넣은 것으로 되돌리는** 일이라
             // 책장에 그대로 남는다 — 이름이 그것을 말해 준다.
-            row(name: "아직 안 넣은 것으로", here: current == nil, dim: true) { onPick(nil) }
+            row(name: "아직 안 넣은 것으로", here: marksCurrent && current == nil,
+                dim: true) { onPick(nil) }
         }
     }
 

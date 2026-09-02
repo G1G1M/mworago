@@ -163,6 +163,8 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 #   --new-folder                  책장의 "새 묶음" 판을 펼친 채로
 #   --menu                        묶음 화면의 할 일 목록을 펼친 채로
 #   --picking                     묶음 화면에서 낱말을 전부 고른 채로
+#   --list-picking                책장 `모두` 목록에서 낱말을 전부 고른 채로
+#   --list-moving                 그 위에 "어디로 옮길까요" 판까지
 #   --moving                      그 위에 "어디로 옮길까요" 판까지
 #   --revealed                    연습 카드를 뒤집은 채로
 #   --no-splash                   스플래시 건너뛰기
