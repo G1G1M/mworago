@@ -114,8 +114,10 @@ struct SearchView: View {
                 content
                     .ignoresSafeArea(.keyboard, edges: .bottom)
                 inputBar
+                // 아래쪽은 **손이 얹히는 순간에도** 닫는다. 그래야 바가 바닥까지 내려가
+                // 키보드가 그 자리에서 곧바로 밀어 올린다 — 키보드 바로 위가 바의 자리다.
                 Spacer(minLength: 0)
-                    .frame(maxHeight: hasResults ? 0 : .infinity)
+                    .frame(maxHeight: hasResults || inputFocused ? 0 : .infinity)
             }
         }
         .environment(desk)
@@ -245,7 +247,9 @@ struct SearchView: View {
         if let failure = engine.failure {
             resting { notice("사전을 열지 못했습니다", detail: failure) }
         } else if input.isEmpty {
-            resting { emptyState }
+            // **손이 얹히면 안내문은 물러난다.** 읽으라고 둔 글인데, 치기 시작한 사람에게는
+            // 이미 읽은 글이다. 키보드가 올라오는 좁은 자리를 그 글이 차지하고 있을 이유가 없다.
+            if !inputFocused { resting { emptyState } }
         } else if engine.segments.isEmpty {
             resting { notice("찾지 못했습니다", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.") }
         } else {
