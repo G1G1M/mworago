@@ -81,7 +81,27 @@ struct PracticeView: View {
         }
     }
 
+    /// 한 장.
+    ///
+    /// **덩어리는 가운데, 글줄은 왼쪽.** 이름·낱말·답이 저마다 가운데로 서면 줄마다
+    /// 시작하는 자리가 달라 눈이 매번 첫 글자를 찾아야 한다. 한 자리에서 시작하되,
+    /// 그 덩어리를 **폭에 맞춰 재서** 화면 가운데 세운다 — 폭을 넓게 잡아 두고 그 안에서
+    /// 왼쪽에 붙이면 글은 여전히 화면 왼쪽에 쏠린다.
+    ///
+    /// **단추 줄만 따로 가운데다.** 그것은 읽는 것이 아니라 누르는 것이고,
+    /// 세 알약이 좌우로 균형을 이룰 때 손이 어디로 갈지가 분명하다.
     private func card(_ word: CollectedWord) -> some View {
+        VStack(spacing: 0) {
+            upper(word)
+            buttons
+        }
+        .frame(maxWidth: Theme.readWidth)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, Theme.gutter)
+    }
+
+    /// 읽는 것들 — 이름·낱말·답. 왼쪽에서 시작하고, 덩어리째 가운데로 간다.
+    private func upper(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("연습")
@@ -102,10 +122,7 @@ struct PracticeView: View {
                 Text(word.reading)
                     .font(Theme.japanese(38, weight: .medium))
                     .foregroundStyle(Theme.ink)
-                // **품사는 앞면에 둔다.** 답이 아니라 문제의 일부다 —
-                // 동사인지 명사인지를 알고 뜻을 떠올리는 것이 실제로 하는 일이다.
-                if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
-                SpeakButton(text: word.reading, size: 18)
+                marks(word)
             }
 
             // 뒤집기 전에는 자리만 잡아 둔다. 답이 나타나며 아래가 밀리면
@@ -125,27 +142,39 @@ struct PracticeView: View {
                         .padding(.top, 4)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: 130, alignment: .top)
+            // 폭을 넓게 잡지 않는다. `maxWidth: .infinity` 를 주면 이 줄이 카드 폭을
+            // 끝까지 벌려, 덩어리를 재서 가운데 세우려던 것이 도로 왼쪽에 붙는다.
+            .frame(minHeight: 130, alignment: .topLeading)
             .opacity(revealed ? 1 : 0)
             .padding(.top, 22)
-
-            HStack(spacing: 10) {
-                // 되돌아갈 길이 있어야 한다. 한 장 지나쳐 버렸을 때 스무 장을 다시
-                // 넘겨 돌아오게 두지 않는다 — 온보딩의 `이전` 과 같은 이유다.
-                button("이전", filled: false) { previous() }
-                button(revealed ? "다시 덮기" : "뒤집기", filled: !revealed) {
-                    withAnimation(.snappy(duration: 0.18)) { revealed.toggle() }
-                }
-                button("다음", filled: revealed) { next() }
-            }
-            .padding(.top, 26)
         }
-        .frame(maxWidth: Theme.readWidth, alignment: .leading)
-        // 글은 왼쪽에서 시작하되 **덩어리는 화면 가운데 선다.** 아이패드처럼 넓은 화면에서
-        // 폭만 묶어 두면 덩어리가 왼쪽에 붙어, 오른쪽이 통째로 비어 보인다.
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, Theme.gutter)
+    }
+
+    /// 누르는 것들. 읽는 덩어리와 달리 **줄째 가운데** 선다.
+    private var buttons: some View {
+        HStack(spacing: 10) {
+            // 되돌아갈 길이 있어야 한다. 한 장 지나쳐 버렸을 때 스무 장을 다시
+            // 넘겨 돌아오게 두지 않는다 — 온보딩의 `이전` 과 같은 이유다.
+            button("이전", filled: false) { previous() }
+            button(revealed ? "다시 덮기" : "뒤집기", filled: !revealed) {
+                withAnimation(.snappy(duration: 0.18)) { revealed.toggle() }
+            }
+            button("다음", filled: revealed) { next() }
+        }
+        .padding(.top, 26)
+    }
+
+    /// 낱말 옆에 붙는 것들 — 품사와 소리.
+    ///
+    /// **품사는 앞면에 둔다.** 답이 아니라 문제의 일부다 — 동사인지 명사인지를 알고
+    /// 뜻을 떠올리는 것이 실제로 하는 일이다. 소리도 마찬가지로, 뒤집기 전에
+    /// 들어 보는 것이 곧 문제다.
+    @ViewBuilder
+    private func marks(_ word: CollectedWord) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
+            SpeakButton(text: word.reading, size: 18)
+        }
     }
 
     /// 강조는 반전 하나로만 — 지금 눌러야 하는 것이 채워진다.

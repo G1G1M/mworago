@@ -148,7 +148,8 @@ xcodebuild -project Mworago.xcodeproj -scheme Mworago \
   -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M5)' build
 ```
 
-시뮬레이터에 한글을 타이핑하지 않고 화면을 확인하려고 실행 인자를 넷 두었다.
+시뮬레이터에 한글을 타이핑하지 않고 화면을 확인하려고 실행 인자를 두었다.
+손으로 두드릴 수 없는 자리(시트·모달)를 눈으로 보려는 것이다.
 
 ```sh
 xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
@@ -156,6 +157,12 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 #   --select=<N>                  N 번째 조각을 고른 상태
 #   --aid=kana|kanji|hangul       읽기 보조 다이얼
 #   --guide                       입력 도움말
+#   --tab=library|practice|kana|settings   그 탭을 연 채로
+#   --folder[=이름]               책장의 그 묶음에 들어간 채로
+#   --detail                      첫 낱말의 상세 시트를 펼친 채로
+#   --new-folder                  책장의 "새 묶음" 시트를 펼친 채로
+#   --revealed                    연습 카드를 뒤집은 채로
+#   --no-splash                   스플래시 건너뛰기
 ```
 
 **색인 스키마를 바꾸면 `schemaVersion` 을 올리고 다시 구울 것.** 안 그러면 앱이

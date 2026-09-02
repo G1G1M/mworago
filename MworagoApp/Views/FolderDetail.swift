@@ -37,7 +37,8 @@ struct FolderDetail: View {
     /// 펼쳐 보고 있는 낱말. 목록에서와 같은 상세 시트를 쓴다.
     @State private var detail: CollectedWord?
     @State private var renaming = false
-    @State private var newName = ""
+    /// 이름을 바꾸고 나왔는가. 시트가 닫히는 것을 본 뒤에 이 화면을 나가려고 든다.
+    @State private var renamed = false
     @State private var removing = false
     /// 지우는 손이 얹혔는가. 책장 첫 화면과 같은 문법이다 —
     /// 미는 몸짓 대신 편집 자리를 두고, 지울 셈일 때만 단추를 보인다.
@@ -92,15 +93,26 @@ struct FolderDetail: View {
                        },
                        folderNames: folderNames)
         }
-        .alert("이름 바꾸기", isPresented: $renaming) {
-            TextField(title, text: $newName)
-            Button("바꾸기") {
-                if let folder { onRename(folder, newName) }
-                dismiss()   // 이름이 바뀌면 이 화면이 가리키던 묶음이 없다
+        // 책장의 "새 묶음"과 같은 자리를 쓴다. 이름을 만드는 일과 고치는 일이
+        // 다른 얼굴로 뜨면 같은 일을 두 번 배워야 한다.
+        .sheet(isPresented: $renaming, onDismiss: {
+            // **시트가 다 닫힌 뒤에 이 화면을 나간다.** 이름이 바뀌면 이 화면이
+            // 가리키던 묶음이 없는데, 같은 순간에 둘을 닫으면 닫히던 시트가 갈 곳을 잃는다.
+            if renamed {
+                renamed = false
+                dismiss()
             }
-            Button("그만두기", role: .cancel) { }
-        } message: {
-            Text("이 묶음에 담긴 낱말이 다 따라갑니다.")
+        }) {
+            FolderNameSheet(title: "이름 바꾸기",
+                            hint: "이 묶음에 담긴 낱말이 다 따라갑니다.",
+                            placeholder: title,
+                            existing: folderNames.filter { $0 != folder },
+                            mergesOnDuplicate: true,
+                            confirmLabel: "바꾸기",
+                            initialName: title) { newName in
+                if let folder { onRename(folder, newName) }
+                renamed = true
+            }
         }
         .alert("묶음을 없앨까요?", isPresented: $removing) {
             Button("없애기", role: .destructive) {
@@ -172,10 +184,7 @@ struct FolderDetail: View {
                             }
                         }
                         if folder != nil {
-                            Button("이름 바꾸기") {
-                                newName = title
-                                renaming = true
-                            }
+                            Button("이름 바꾸기") { renaming = true }
                             Button("묶음 없애기", role: .destructive) { removing = true }
                         }
                     } label: {

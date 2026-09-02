@@ -81,6 +81,12 @@ struct LibraryView: View {
         return name.isEmpty ? .some(collection.folderNames.first) : .some(name)
     }
 
+    /// `--new-folder` 로 이름 받는 자리를 펼친 채 띄운다.
+    /// `--detail` · `--folder=` 와 같은 취지 — 시뮬레이터는 손으로 두드릴 수 없다.
+    private var opensNewFolder: Bool {
+        ProcessInfo.processInfo.arguments.contains("--new-folder")
+    }
+
     private static let contentWidth: CGFloat = Theme.listWidth
 
     private var days: [CollectedWord.Day] { CollectedWord.byDay(collection.words) }
@@ -159,6 +165,7 @@ struct LibraryView: View {
             Self.openedFromArguments = true
             if opensFirstDetail { detail = collection.words.first }
             if let name = opensFolder { path = [.folder(name)] }
+            if opensNewFolder { naming = true }
         }
         .sheet(item: $detail) { word in
             WordDetail(word: word,
@@ -170,15 +177,15 @@ struct LibraryView: View {
                        },
                        folderNames: collection.folderNames)
         }
-        .alert("새 묶음", isPresented: $naming) {
-            TextField("예) 리코리스 리코일 4화", text: $newFolderName)
-            Button("만들기") {
-                collection.createFolder(newFolderName)
-                newFolderName = ""
+        // 이름은 **담기 모달과 같은 얼굴로** 받는다. 시스템 알림은 어느 앱에서나 같은
+        // 얼굴이라 그 순간만 남의 앱이 된다 — 글자체부터 이 앱의 것이 아니다.
+        .sheet(isPresented: $naming) {
+            FolderNameSheet(title: "새 묶음",
+                            hint: "보기 전에 자리를 만들어 두면, 담을 때 그 자리를 고를 수 있어요.",
+                            placeholder: "예) 리코리스 리코일 4화",
+                            existing: collection.folderNames) { name in
+                collection.createFolder(name)
             }
-            Button("그만두기", role: .cancel) { newFolderName = "" }
-        } message: {
-            Text("보기 전에 자리를 만들어 두면, 담을 때 그 자리를 고를 수 있어요.")
         }
     }
 
@@ -188,7 +195,6 @@ struct LibraryView: View {
     /// 이름을 받아도 되지만, 여기는 훑는 목록이다 — 칸이 목록 한가운데 서면 키보드가
     /// 올라오며 보고 있던 줄이 밀린다.
     @State private var naming = false
-    @State private var newFolderName = ""
 
     /// 줄과 줄 사이를 가르는 선.
     ///
