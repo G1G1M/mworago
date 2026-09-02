@@ -65,6 +65,25 @@ final class SearchEngine {
         }
     }
 
+    /// 첫 글자를 칠 때 몰릴 일을 미리 해 둔다.
+    ///
+    /// 첫 글자에서만 걸린다는 것은 **그 순간에 처음 일어나는 일**이 있다는 뜻이다.
+    /// 여기서는 셋이었다 — 색인 파일의 첫 조회(39MB 짜리라 읽을 페이지를 디스크에서
+    /// 가져온다), 규칙표들의 첫 초기화(가나 표·활용 규칙은 처음 쓸 때 만들어진다),
+    /// 그리고 조각 캐시가 통째로 비어 있는 것.
+    ///
+    /// 셋 다 한 번 겪고 나면 다시 겪지 않는다. 그러니 **손이 얹히기 전에** 겪어 둔다.
+    /// 화면 밖에서 낮은 우선순위로 도므로 뜨는 데 걸리적거리지 않는다.
+    func prewarm() {
+        guard let store else { return }
+        let frequency = self.frequency
+        let cache = self.cache
+        Task.detached(priority: .utility) {
+            // 한 글자면 충분하다. 색인·규칙표·캐시가 모두 한 번씩 지나간다.
+            _ = Segmenter.segment("아", in: store, frequency: frequency, cache: cache)
+        }
+    }
+
     /// 곧바로 찾아 결과까지 채운다.
     ///
     /// 화면 밖에서 결과가 그 자리에서 필요한 자리에만 쓴다 — 실행 인자로 화면을 세워

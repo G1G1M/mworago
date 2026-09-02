@@ -61,6 +61,15 @@ struct SearchView: View {
         ZStack {
             Theme.paper.ignoresSafeArea()
 
+            // **글자체를 미리 데운다.** 빈 화면에는 한국어만 있고 일본어는 첫 글자를
+            // 칠 때에야 처음 그려진다. 일본어 글자체는 글리프가 많아 파일을 읽는 그 한 번이
+            // 눈에 띈다 — 첫 글자에서만 걸리던 것의 한 몫이다.
+            // 보이지 않게 한 번 그려 두면 그 읽기가 손 얹히기 전에 끝난다.
+            Text("あ")
+                .font(Theme.japanese(17))
+                .opacity(0)
+                .accessibilityHidden(true)
+
             // **입력 바는 화면에 하나뿐이고, 늘 이 자리(둘째)에 선다.**
             //
             // 한때 답이 있을 때와 없을 때 서로 다른 자리에서 따로 만들었다. 그러면
@@ -90,6 +99,8 @@ struct SearchView: View {
         // 흘려 넣는다. 번역을 못 하는 기기에서는 설정을 만들지 않으므로 세션도 열리지
         // 않는다 — 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
         .task {
+            // 색인·규칙표·캐시를 손 얹히기 전에 한 번 지나가게 한다.
+            engine.prewarm()
             let korean = Locale.Language(identifier: "ko")
             let availability = LanguageAvailability()
             for (identifier, keep) in [("ja", { fromJapanese = $0 }), ("en", { fromEnglish = $0 })]
