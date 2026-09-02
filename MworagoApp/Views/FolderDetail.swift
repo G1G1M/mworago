@@ -138,43 +138,52 @@ struct FolderDetail: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("이 묶음의 낱말만 연습합니다")
 
-                // 담긴 것이 없으면 지울 것도 없다. 묶음이 아닌 자리(날짜·전체)에서도
-                // 낱말은 지울 수 있다 — 지우는 것은 낱말이지 묶음이 아니기 때문이다.
-                if !words.isEmpty {
+                // 지우는 중일 때만 밖에 선다. **켜는 자리와 끄는 자리가 다르면 안 된다** —
+                // 메뉴로 켜 놓고 끌 때 다시 메뉴를 열게 하면, 켠 것을 못 끄는 사람이 생긴다.
+                if editing {
                     Button {
-                        withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
+                        withAnimation(.snappy(duration: 0.18)) { editing = false }
                     } label: {
-                        Text(editing ? "완료" : "지우기")
+                        Text("완료")
                             .font(Theme.korean(13.5))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
-                            .background(editing ? Theme.ink : Theme.grey4, in: Capsule())
-                            .foregroundStyle(editing ? Theme.paper : Theme.grey1)
+                            .background(Theme.ink, in: Capsule())
+                            .foregroundStyle(Theme.paper)
                     }
                     .buttonStyle(.plain)
                 }
 
-                // **묶음 자체를 손보는 일은 한 자리에 모은다.**
+                // **자주 하는 일 하나만 밖에 둔다.**
                 //
-                // 캡슐 넷이 나란히 서면 무엇이 주된 일인지 안 보인다. 여기서 자주 하는 일은
-                // 연습이고, 이름을 고치거나 묶음을 없애는 일은 몇 번 하지 않는다.
-                // 자주 하는 것만 밖에 두고 나머지는 안으로 넣는다.
-                if folder != nil {
+                // 캡슐이 넷이면 무엇이 주된 일인지 안 보인다. 여기서 자주 하는 일은
+                // 연습이고, 지우거나 이름을 고치거나 묶음을 없애는 일은 몇 번 하지 않는다.
+                //
+                // **줄임표(`⋯`) 대신 글자로 적는다.** 애플이 안 쓰는 기호는 아니지만
+                // (메모·파일이 그 자리에 쓴다), 이 화면의 다른 캡슐이 모두 한국어로
+                // 말하고 있어서 기호 하나만 끼면 그것만 딴 문법이 된다.
+                if !words.isEmpty || folder != nil {
                     Menu {
-                        Button("이름 바꾸기") {
-                            newName = title
-                            renaming = true
+                        if !words.isEmpty {
+                            Button("낱말 지우기") {
+                                withAnimation(.snappy(duration: 0.18)) { editing = true }
+                            }
                         }
-                        Button("묶음 없애기", role: .destructive) { removing = true }
+                        if folder != nil {
+                            Button("이름 바꾸기") {
+                                newName = title
+                                renaming = true
+                            }
+                            Button("묶음 없애기", role: .destructive) { removing = true }
+                        }
                     } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 13, weight: .medium))
+                        Text("손보기")
+                            .font(Theme.korean(13.5))
                             .padding(.horizontal, 14)
-                            .padding(.vertical, 9)
+                            .padding(.vertical, 8)
                             .background(Theme.grey4, in: Capsule())
                             .foregroundStyle(Theme.grey1)
                     }
-                    .accessibilityLabel("묶음 손보기")
                 }
             }
         }
