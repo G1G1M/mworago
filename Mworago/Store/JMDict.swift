@@ -179,7 +179,7 @@ public enum JMDictParser {
         /// `misc` 에는 사용역 말고도 여러 표지가 섞여 있다(`abbr`·`on-mim`·`yoji`…).
         /// **"써도 되는 말인가"에 답하는 것만 고른다** — 나머지는 화면에서 할 말이 없다.
         private static let usageTagNames: Set<String> = [
-            "arch", "obs", "rare",            // 옛말·안 쓰는 말
+            "arch", "obs", "rare", "poet",    // 옛말·안 쓰는 말·시어
             "col", "sl", "net-sl", "vulg",    // 구어·속어·비속어
             "derog", "sens", "joc",           // 경멸·민감·농
             "hon", "hum", "pol",              // 존경·겸양·공손

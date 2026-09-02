@@ -35,7 +35,8 @@ public struct FrequencyList: Sendable {
         for line in tsv.split(separator: "\n").dropFirst() {   // 첫 줄은 헤더
             let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
             guard columns.count >= 3, let rank = Int(columns[2]) else { continue }
-            let key = Key(writing: String(columns[0]), reading: String(columns[1]))
+            let key = Key(writing: String(columns[0]),
+                          reading: KanaTable.lookupKey(String(columns[1])))
             // 같은 낱말이 여러 번 나오면 더 흔한(순위가 앞선) 쪽을 남긴다
             if let existing = ranks[key], existing <= rank { continue }
             ranks[key] = rank
@@ -64,7 +65,19 @@ public struct FrequencyList: Sendable {
     /// 이 낱말의 순위. 표기를 주지 않으면 가나로만 쓰는 낱말로 보고 찾는다.
     /// 표기와 읽기가 **둘 다** 맞아야 한다 — `痛い`는 `つう`로 읽지 않는다.
     public func rank(writing: String?, reading: String) -> Int? {
-        ranks[Key(writing: writing ?? reading, reading: reading)]
+        // **읽기는 사전 조회와 같은 키로 맞춘다.**
+        //
+        // 빈도를 센 쪽은 외래어를 `ブラシ · ぶらし`(표기는 가타카나, 읽기는 히라가나)로
+        // 싣는데, 사전은 그 낱말의 읽기를 `ブラシ` 로 싣는다. 글자가 어긋나 조회가
+        // 빗나가면서 **가타카나 낱말 14,630 개가 통째로 0점**이었다 —
+        // `コート` 는 536번 나오는데도 그랬다.
+        //
+        // 그 바람에 분절이 외래어를 깨뜨렸다. `に + ブラシ` 로 나누면 조각 비용을 두 번
+        // 내야 하는데 ブラシ 가 0점이라 못 버티고, `にぶらし`(鈍らす·둔하게 하다)로
+        // 뭉쳐 버린다. 화면에는 "옷이 둔해져서"가 나온다.
+        //
+        // 같은 키로 접으면 장음 표기 차이(`こおと` · `コート`)까지 함께 만난다.
+        ranks[Key(writing: writing ?? reading, reading: KanaTable.lookupKey(reading))]
     }
 
     /// 읽기를 묻지 않고 표기만으로 찾은 최고 순위.

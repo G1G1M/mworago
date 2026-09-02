@@ -163,7 +163,12 @@ public enum Transliterator {
             if index + 1 < morae.count, morae[index + 1] == inserted { continue }
             slots.append((index, inserted))
         }
-        slots = Array(slots.prefix(8))   // 2^8 = 256. 이 이상은 후보가 쓸모없이 불어난다
+        // **다섯 자리까지만 연다.** 여덟이었는데, 장음을 다섯 모음 모두에 열고 나서
+        // 긴 조각의 후보가 터졌다 — 열다섯 글자를 치는 동안 5.6초를 여기서 썼다.
+        // 여덟에서 다섯으로 줄이니 그 시간이 1951ms 에서 349ms 가 되는데,
+        // **낱말 정확도는 1위 142 · 3위 안 147 로 한 건도 움직이지 않았다.**
+        // 한 낱말에 지어낼 장음이 다섯을 넘는 일은 실제로 없다.
+        slots = Array(slots.prefix(5))
 
         var variants: [(morae: [String], added: Int)] = []
         for mask in 0..<(1 << slots.count) {

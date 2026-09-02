@@ -90,6 +90,11 @@ let translateInputs = flagValues("--translate")
 // 자막 문장을 줄줄이 태워 **몇 개나 막히는지** 센다. 문장 뜻은 사람이 채점해야 알지만,
 // 막힌 것은 세면 안다 — 그리고 막히는 비율이 크면 뜻이 좋고 나쁘고는 따질 일이 아니다.
 let translateCaseCount = flagValues("--translate-cases").first.flatMap(Int.init)
+// 한 글자씩 늘려 가며 분절 시간을 잰다. 화면은 글자를 칠 때마다 다시 찾으므로,
+// **한 번의 검색이 아니라 치는 동안의 비용**이 사용자가 느끼는 것이다.
+let typingInput = flagValues("--typing").first
+// 조사에게 돌려주는 조각 비용을 훑는다.
+let particleBonus = flagValues("--particle").first.flatMap(Double.init) ?? Segmenter.defaultParticleBonus
 // 애플 번역기(Translation 프레임워크)로도 같은 문장을 태운다.
 // 온디바이스 모델은 만들어 내는 물건이라 안전 필터가 옮기는 일까지 막는데,
 // 번역기는 옮기는 것이 본업이다. 어느 쪽이 이 앱에 맞는지는 나란히 놓고 봐야 안다.
@@ -105,7 +110,8 @@ let positional: [String] = {
         if args[i].hasPrefix("--") {
             let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
-                || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--mt-cases"
+                || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
+                || args[i] == "--particle" || args[i] == "--mt-cases"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -344,7 +350,8 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         log("조각 비용 \(cost) · 활용 벌점 \(weights.deinflectionPenalty)")
         for testCase in segmentCases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
-                                             weights: weights, segmentCost: cost)
+                                             weights: weights, segmentCost: cost,
+                                             particleBonus: particleBonus)
             let mine = segments.map(\.hangul)
             guard mine != testCase.pieces else { continue }
             wrong += 1
@@ -354,7 +361,8 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         // 여기 있는 것은 문맥 판별로도 구제되지 않는다.
         for testCase in segmentCases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
-                                             weights: weights, segmentCost: cost)
+                                             weights: weights, segmentCost: cost,
+                                             particleBonus: particleBonus)
             guard segments.map(\.hangul) == testCase.pieces else { continue }
             for (i, segment) in segments.enumerated() where i < testCase.words.count {
                 let word = testCase.words[i]
@@ -389,8 +397,11 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
     // 미지 점수는 축에서 뺐다. 네 값(-200·-350·-500·-800)이 완전일치도 F1 도 똑같아서
     // 이 표본에서는 아무것도 가르지 못한다 — 대신 활용 벌점을 훑는다.
     // 범위는 실패의 76%가 과분할이라는 것을 보고 위로 넓혔다(옛 범위의 끝 145 가 최적이었다).
-    for cost in stride(from: 135.0, through: 205.0, by: 5.0) {
-        for penalty in [0.0, 5.0, 10.0, 25.0] {
+    // **범위는 재면서 옮긴다.** 한때 최적이 하한(135)에서 나왔는데, 그것은 범위 밖에
+    // 더 좋은 값이 있다는 신호다. 외래어가 빈도 점수를 되찾으면서 조각들의 점수가
+    // 전반적으로 올라, 조각 비용도 함께 내려가야 균형이 맞는다.
+    for cost in stride(from: 90.0, through: 160.0, by: 5.0) {
+        for penalty in [0.0, 5.0, 10.0, 15.0, 20.0, 25.0] {
             let unknown = Segmenter.defaultUnknownScore
             var sweepWeights = Segmenter.defaultWeights
             sweepWeights.deinflectionPenalty = penalty
@@ -410,6 +421,30 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         print(String(format: "\n최고: 조각 비용 %.0f · 활용 벌점 %.0f · 완전일치 %.1f%% · 경계 F1 %.3f",
                      best.cost, best.unknown, best.exact * 100, best.f1))
     }
+    exit(0)
+}
+
+// MARK: --typing
+
+if let typingInput {
+    print("글자 수  누적 입력                        분절 시간")
+    print(String(repeating: "─", count: 62))
+    var total = 0.0
+    let characters = Array(typingInput)
+    // 화면과 같은 조건으로 잰다 — 앱은 조각을 찾아본 결과를 들고 있다.
+    let cache = args.contains("--no-cache") ? nil : SearchCache()
+    for count in 1...characters.count {
+        let prefix = String(characters[0..<count])
+        let start = Date()
+        _ = Segmenter.segment(prefix, in: index, frequency: frequency, cache: cache)
+        let elapsed = -start.timeIntervalSinceNow * 1000
+        total += elapsed
+        // 화면이 60번 그려지는 사이가 16ms 다. 그보다 오래 걸리면 치는 손이 기다린다.
+        let mark = elapsed > 16 ? " ←" : ""
+        print(String(format: "%5d    %@%@%8.1fms%@", count, prefix,
+                     String(repeating: " ", count: max(0, 30 - prefix.count * 2)), elapsed, mark))
+    }
+    print(String(format: "\n다 치는 동안 %.0fms · 글자당 평균 %.1fms", total, total / Double(characters.count)))
     exit(0)
 }
 
@@ -469,7 +504,10 @@ if let mtCaseCount {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency)
             // 앱이 화면에 되살려 놓는 그 문장을 넘긴다. 사용자가 친 것은 한글이지만
             // 번역기가 받을 수 있는 것은 일본어다.
-            let japanese = segments.filter { !$0.isWhole }.japanese
+            let parts = segments.filter { !$0.isWhole }
+            let japanese = args.contains("--mt-kana") ? parts.kana
+                         : args.contains("--mt-kanji") ? parts.japanese
+                         : parts.forTranslation
             let start = Date()
             do {
                 let response = try await session.translate(japanese)

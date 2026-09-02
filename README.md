@@ -121,7 +121,7 @@ Mworago/                  MworagoCore — 앱·도구가 함께 쓰는 순수 �
     Ranker.swift          살아남은 후보 줄 세우기
 MworagoApp/               앱. 폴더 자리는 SpringLab 을 따른다
   App/ · Store/ · Views/
-MworagoTests/             테스트 206개. 평면으로 두고 파일 이름으로 구분한다
+MworagoTests/             테스트 223개. 평면으로 두고 파일 이름으로 구분한다
 Tools/
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
   Translator/             한국어 뜻을 온디바이스 모델로 미리 굽는다
@@ -133,7 +133,7 @@ docs/                     기록
 ## 실행
 
 ```sh
-swift test                  # 테스트 206개
+swift test                  # 테스트 223개
 ./Tools/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```

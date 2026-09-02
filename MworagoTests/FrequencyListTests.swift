@@ -77,3 +77,38 @@ struct FrequencyListTests {
         #expect(list.rankByWriting("痛い") == nil)
     }
 }
+
+@Suite("빈도표의 외래어")
+struct FrequencyKatakanaTests {
+
+    /// 빈도를 센 쪽은 외래어를 `표기=가타카나 · 읽기=히라가나` 로 싣는데 사전은 읽기까지
+    /// 가타카나로 싣는다. 글자가 어긋나 조회가 빗나가면 가타카나 낱말이 통째로 0점이 된다.
+    static let tsv = """
+        term\treading\tfrequency\tcount
+        ブラシ\tぶらし\t6667\t194
+        コート\tこおと\t2977\t536
+        """
+
+    @Test("사전이 든 가타카나 읽기로도 찾는다")
+    func 가타카나읽기() {
+        let list = FrequencyList(tsv: Self.tsv)
+        // 사전은 ブラシ 의 읽기를 ブラシ 로 싣는다. 표기가 없는 낱말이라 읽기로 찾는데,
+        // 빈도표의 읽기 칸은 히라가나(ぶらし)다. 그 사이가 이어져야 한다.
+        //
+        // 표기 칸은 접지 않는다 — 그쪽은 한자가 오는 자리이고, 사전과 빈도표가
+        // 외래어를 똑같이 가타카나로 적으므로 이미 맞는다.
+        #expect(list.score(writing: nil, reading: "ブラシ") > 0)
+    }
+
+    @Test("장음을 달리 적어도 만난다")
+    func 장음() {
+        let list = FrequencyList(tsv: Self.tsv)
+        // 빈도표는 こおと 로, 사전은 コート 로 적는다. 같은 낱말이다.
+        #expect(list.score(writing: nil, reading: "コート") > 0)
+    }
+
+    @Test("없는 낱말은 그대로 0점")
+    func 없는것() {
+        #expect(FrequencyList(tsv: Self.tsv).score(writing: nil, reading: "すし") == 0)
+    }
+}

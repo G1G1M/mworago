@@ -94,8 +94,41 @@ public enum Ranker {
                 }
             }
         }
+
+        // **짝이 없으면 표기만으로 찾은 점수라도 쓴다.**
+        //
+        // 빈도를 센 쪽이 `何時` 를 `いつ`(368회)와 `なんどき`(100회)로만 세었다.
+        // `なんじ` 항목이 없어서 何時(なんじ)가 0점이 되고, 목록에 실린 고어
+        // 汝(なんじ)가 43점으로 이겼다 — "이마난지데스카"가 "지금 당신입니까"로 나왔다.
+        //
+        // **이 판단은 여기서만 할 수 있다.** 빈도 목록은 그 읽기가 정말 그 낱말의 읽기인지
+        // 모르지만, 우리는 사전 항목을 손에 쥐고 있다. 사전이 `なんじ` 를 何時 의 읽기로
+        // 싣고 있으니, 何時 가 흔하다는 사실을 이 항목이 물려받아도 된다.
+        //
+        // 그래도 **정확히 짝이 맞은 것보다는 낮다.** 빈도가 세지 않은 읽기라는 것은
+        // 그 읽기가 덜 쓰인다는 뜻이기도 하다.
+        if best == 0 {
+            for writing in entry.usableWritings {
+                best = max(best, list.scoreByWriting(writing.text) * Self.writingOnlyWeight)
+            }
+        }
         return best
     }
+
+    /// 표기만으로 물려받은 점수에 실어 줄 무게. 값은 재서 골랐다.
+    static let writingOnlyWeight = 0.6
+
+    /// 일상에서 쓰지 않는 말에 매길 벌점.
+    ///
+    /// **사전이 이미 알려 준 사실인데 듣지 않고 있었다.** 사용역 태그를 읽어 두기만 하고
+    /// 순위에는 쓰지 않아서, 애니 자막에 흔한 고어·시어가 현대어를 밀어냈다 —
+    /// `なんじ` 에서 시어 `汝`(그대)가 `何時`(몇 시)를 눌러 "이마난지데스카"가
+    /// "지금 당신입니까"로 나왔다.
+    ///
+    /// **모든 꼬리표를 깎지는 않는다.** 존경어·겸양어·구어는 일상에서 쓰는 말이고,
+    /// 애니를 보다 찾아온 사람에게는 오히려 그쪽이 답이다. 옛말과 시어만 깎는다.
+    static let datedTags: Set<String> = ["arch", "obs", "poet"]
+    static let datedPenalty = 25.0
 
     public static func search(_ hangul: String,
                               in index: some DictionaryLookup,
@@ -126,6 +159,11 @@ public enum Ranker {
                         score += weights.domainWeight * domain
                     } else {
                         score += jmdictWeight * Double(hit.priority)
+                    }
+                    // 옛말·시어는 사전이 그렇게 적어 두었다. 애니에 흔하다고 현대어를
+                    // 밀어내면 안 된다 — 빈도는 "얼마나 나오는가"만 알고 "지금 쓰는 말인가"는 모른다.
+                    if hit.entry.usageTags.contains(where: Self.datedTags.contains) {
+                        score -= Self.datedPenalty
                     }
                     score -= weights.rankPenalty * Double(candidate.rank)
                     score -= weights.longVowelPenalty * Double(candidate.longVowelsAdded)
