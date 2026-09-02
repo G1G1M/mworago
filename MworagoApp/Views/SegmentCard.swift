@@ -35,16 +35,38 @@ struct SegmentCard: View {
     /// **접어 두고 누르면 편다.** 기본은 세 층이고, 더 볼 사람만 한 번 더 누른다.
     @State private var expanded = false
 
+    @Environment(TranslationDesk.self) private var desk
+
     private var top: SearchResult? { segment.results.first }
     /// 1위와 같은 낱말은 걸러진 채로 온다 — 大丈夫 가 두 번 보이지 않도록.
     private var alternates: [SearchResult] { segment.alternates() }
+
+    /// 화면에 보일 뜻.
+    ///
+    /// **사전에 한국어 뜻이 있으면 그것이 먼저다.** 미리 구워 둔 것이라 근거가 분명하다.
+    /// 없는 낱말만 영어 뜻을 옮겨서 보여 준다 — 굽기가 22,610 개까지 닿았고 그 밖은
+    /// 아직 영어로 남아 있다. `activity · active` 를 그대로 보여 주느니 옮겨서 보여 준다.
+    private func korean(of entry: DictEntry) -> String {
+        guard entry.koreanGloss == nil else { return entry.displayGloss }
+        return desk.english[entry.displayGloss] ?? entry.displayGloss
+    }
+
+    /// 이 카드에 영어로 남아 있는 뜻들. 대안 후보까지 한 번에 보낸다 —
+    /// 펼쳐 볼 때 하나씩 물으면 그때마다 기다림이 보인다.
+    private var untranslated: [String] {
+        (segment.results.prefix(1) + alternates)
+            .filter { $0.entry.koreanGloss == nil }
+            .map(\.entry.displayGloss)
+            .filter { !$0.isEmpty }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let top {
                 headline(top)
-                if !top.entry.displayGloss.isEmpty {
-                    Text(top.entry.displayGloss)
+                let gloss = korean(of: top.entry)
+                if !gloss.isEmpty {
+                    Text(gloss)
                         .font(Theme.korean(14))
                         .foregroundStyle(Theme.grey1)
                 }
@@ -67,6 +89,9 @@ struct SegmentCard: View {
                 .frame(width: 3)
                 .opacity(isSelected ? 1 : 0)
         }
+        // 영어로 남은 뜻을 옮겨 달라고 보낸다. 이미 옮긴 것은 그 자리에서 걸러지므로
+        // 같은 낱말이 다시 나와도 묻지 않는다.
+        .task(id: segment.hangul) { desk.english.ask(untranslated) }
     }
 
     // MARK: 첫 번째 답
@@ -146,7 +171,7 @@ struct SegmentCard: View {
         let word = CollectedWord(headword: result.headword,
                                  reading: result.reading,
                                  hangul: segment.hangul,
-                                 gloss: result.entry.displayGloss,
+                                 gloss: korean(of: result.entry),
                                  partOfSpeech: result.entry.wordClass.displayName)
         let held = collection.contains(word)
         return Button {
@@ -197,7 +222,7 @@ struct SegmentCard: View {
     private var alternateList: some View {
         VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(alternates.enumerated()), id: \.offset) { _, result in
-                Text(result.entry.koreanGloss ?? result.entry.glosses.first ?? "")
+                Text(korean(of: result.entry))
                     .font(Theme.korean(12))
                     .foregroundStyle(Theme.grey2)
                     .lineLimit(1)

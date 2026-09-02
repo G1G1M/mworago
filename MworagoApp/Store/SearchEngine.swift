@@ -16,6 +16,10 @@ final class SearchEngine {
 
     private var store: DictionaryStore?
     private var frequency: FrequencyList?
+    /// 조각을 찾아본 결과. **글자를 칠 때마다 다시 찾지 않으려고** 들고 있는다.
+    private let cache = SearchCache()
+    /// 돌고 있는 검색. 다음 글자가 들어오면 이것부터 물린다.
+    private var searching: Task<Void, Never>?
     /// 한자의 한국 독음. 쓸 만한 한일 사전이 없어 뜻이 영어로 남은 사이를 메우는 단서다.
 
     init() {
@@ -37,13 +41,42 @@ final class SearchEngine {
     }
 
     /// 입력을 낱말로 나누고 각각을 찾는다. 띄어 쓰지 않아도 사전이 알아서 끊는다.
+    ///
+    /// **찾는 일은 화면 밖에서 한다.** 글자를 칠 때마다 이 자리에서 곧바로 찾고 있었는데,
+    /// 열다섯 글자짜리 문장에서 한 글자에 1.6초가 걸렸다 — 그동안 화면이 멈춘다.
+    /// 조각을 재어 두고(`cache`) 후보 자리를 줄여 그 시간을 크게 낮췄지만,
+    /// 긴 입력의 첫 계산은 여전히 무거우므로 손이 멈추지 않도록 밖으로 내보낸다.
     func search(_ input: String) {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 다음 글자가 들어왔으면 앞 글자의 답은 이미 쓸모가 없다.
+        searching?.cancel()
         guard let store, !trimmed.isEmpty else {
             segments = []
             return
         }
-        segments = Segmenter.segment(trimmed, in: store, frequency: frequency)
+        let frequency = self.frequency
+        let cache = self.cache
+        searching = Task { [weak self] in
+            let found = await Task.detached(priority: .userInitiated) {
+                Segmenter.segment(trimmed, in: store, frequency: frequency, cache: cache)
+            }.value
+            guard !Task.isCancelled else { return }
+            self?.segments = found
+        }
+    }
+
+    /// 곧바로 찾아 결과까지 채운다.
+    ///
+    /// 화면 밖에서 결과가 그 자리에서 필요한 자리에만 쓴다 — 실행 인자로 화면을 세워
+    /// 스크린샷을 찍을 때가 그렇다. 사람이 치는 길에서는 쓰지 않는다.
+    func searchNow(_ input: String) {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        searching?.cancel()
+        guard let store, !trimmed.isEmpty else {
+            segments = []
+            return
+        }
+        segments = Segmenter.segment(trimmed, in: store, frequency: frequency, cache: cache)
     }
 
     enum LoadError: Error, CustomStringConvertible {

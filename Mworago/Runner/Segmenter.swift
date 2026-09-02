@@ -62,6 +62,11 @@ public enum Segmenter {
     /// 제한이 없으면 긴 입력에서 후보가 제곱으로 불어난다.
     private static let maxPieceLength = 10
 
+    /// 조사로 볼 조각의 최대 길이(음절). `가`·`오`·`니`처럼 한두 자다.
+    private static let particleLength = 2
+    /// 조사에게 돌려주는 조각 비용의 기본값. 값은 재서 고른다.
+    public static let defaultParticleBonus = 140.0
+
     /// 사전에 없는 조각에 매기는 점수. **음절 하나당**이다.
     ///
     /// 조각 비용보다 커야 한다. 그러지 않으면 "나누느니 모르는 채로 두자"가 이겨서
@@ -93,7 +98,31 @@ public enum Segmenter {
     ///
     /// **135 는 배포판이 쓰지 않는 빈도 목록(JPDB)으로 고른 값이었다.** 배포판이 싣는
     /// JESC 로 다시 훑으니 140 이었다. 자료가 다르면 최적값도 달라진다.
-    public static let defaultSegmentCost = 140.0
+    ///
+    /// **점수가 달라지면 여기도 함께 옮겨야 한다.** 빈도표의 가타카나 낱말 14,630 개가
+    /// 조회 키가 어긋나 0점이던 것을 고치자(`FrequencyList.rank`) 조각들의 점수가
+    /// 전반적으로 올라, 조각 하나에 물리는 값도 그만큼 내려가야 균형이 맞는다.
+    /// 다시 훑으니 130 이었다(완전일치 40.8% → 44.2% · 경계 F1 0.907).
+    ///
+    /// 그때 범위도 함께 옮겼다. 옛 범위(135~205)의 **하한에서 최적이 나온 것**은
+    /// 범위 밖에 더 좋은 값이 있다는 신호였다. 90~160 으로 다시 훑어 130 을 얻었고,
+    /// 이번에는 최적이 범위 안쪽에 있다.
+    ///
+    /// **그런데 스윕이 고른 130 을 쓰지 않는다.** 130 은 `何時`(몇 시)를 `何`+`時` 로
+    /// 쪼갠다 — 화면의 카드가 "무엇"과 "때"로 갈려 뜻을 잃는다. 스윕이 보는 것은
+    /// Tanaka 의 경계뿐이고, 카드에 무엇이 뜨는지는 세지 않는다.
+    ///
+    ///     비용 130   틀린 문장 67 · 낱말 깨짐 17 · 今 何 時 です か
+    ///     비용 135   틀린 문장 68 · 낱말 깨짐 20 · 今 何時 です か
+    ///     비용 140   틀린 문장 71 · 낱말 깨짐 21 · 今 何時 です か
+    ///
+    /// 135 는 140 보다 나으면서 `何時` 를 지킨다. 130 이 더 가져가는 세 건과
+    /// **사용자가 실제로 만난 낱말 하나**를 맞바꾸지 않는다.
+    ///
+    /// 何時 가 위태로운 진짜 이유는 조각 비용이 아니라 빈도 목록이다 —
+    /// 그 목록에 `何時·なんじ` 항목이 없어 표기로 물려받은 점수(28점)로 서 있다.
+    /// 그쪽이 메워지면 130 을 다시 볼 수 있다.
+    public static let defaultSegmentCost = 135.0
 
     /// 분절이 쓰는 가중치. 낱말 검색과 한 가지가 다르다 — **활용을 되돌린 것에 무는 벌점**.
     ///
@@ -111,17 +140,23 @@ public enum Segmenter {
         return weights
     }()
 
+    /// `cache` 를 주면 조각을 찾아본 결과를 호출 사이에도 들고 있는다.
+    /// 글자를 칠 때마다 다시 찾는 화면에서는 이것이 있고 없고가 크게 갈린다.
     public static func segment(_ input: String,
                                in index: some DictionaryLookup,
                                frequency: FrequencyList? = nil,
                                weights: Ranker.Weights = defaultWeights,
                                segmentCost: Double = defaultSegmentCost,
-                               unknownScore: Double = defaultUnknownScore) -> [Segment] {
+                               unknownScore: Double = defaultUnknownScore,
+                               particleBonus: Double = defaultParticleBonus,
+                               cache: SearchCache? = nil) -> [Segment] {
         var segments: [Segment] = []
         // 사람이 띄어 썼다면 그 뜻을 존중한다. 어절 안쪽만 사전을 보고 나눈다.
         for word in input.split(whereSeparator: \.isWhitespace) {
             segments += segmentWord(String(word), in: index, frequency: frequency,
-                                    weights: weights, segmentCost: segmentCost, unknownScore: unknownScore)
+                                    weights: weights, segmentCost: segmentCost,
+                                    unknownScore: unknownScore, particleBonus: particleBonus,
+                                    cache: cache)
         }
         return segments
     }
@@ -131,16 +166,19 @@ public enum Segmenter {
                                     frequency: FrequencyList?,
                                     weights: Ranker.Weights,
                                     segmentCost: Double,
-                                    unknownScore: Double) -> [Segment] {
+                                    unknownScore: Double,
+                                    particleBonus: Double,
+                                    cache: SearchCache?) -> [Segment] {
         let syllables = Array(word)
         guard !syllables.isEmpty else { return [] }
 
-        var cache: [String: [SearchResult]] = [:]
+        // 밖에서 받은 것이 있으면 그것을 쓴다. 없으면 이 한 번을 위한 것을 만든다 —
+        // 한 문장 안에서도 같은 조각을 여러 번 재보므로 그때도 값어치가 있다.
+        let store = cache ?? SearchCache()
         func lookup(_ piece: String) -> [SearchResult] {
-            if let cached = cache[piece] { return cached }
-            let found = Ranker.search(piece, in: index, frequency: frequency, weights: weights)
-            cache[piece] = found
-            return found
+            store.result(for: piece) {
+                Ranker.search(piece, in: index, frequency: frequency, weights: weights)
+            }
         }
 
         // best[i] = 앞에서부터 i음절까지를 나눈 최선의 방법

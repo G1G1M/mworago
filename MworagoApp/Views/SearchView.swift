@@ -1,4 +1,5 @@
 import SwiftUI
+@preconcurrency import Translation
 import MworagoCore
 
 /// 입력 바가 실제로 놓인 자리.
@@ -25,8 +26,13 @@ struct SearchView: View {
     /// 다른 탭에서 넘어온 검색어. 모은 것이나 도감에서 낱말을 누르면 여기로 들어온다.
     /// 받아서 처리한 뒤 비운다 — 남겨 두면 이 탭으로 돌아올 때마다 다시 검색된다.
     var incoming: Binding<String?>? = nil
-
     @State private var engine = SearchEngine()
+    /// 옮긴 말을 모아 두는 곳. 화면 여럿이 같은 것을 본다.
+    @State private var desk = TranslationDesk()
+    /// 번역기 설정. **한 번만 만든다** — 문장마다 새로 만들면 그때마다 세션이 다시 열려
+    /// 실기기에서 눈에 띄게 걸린다. 세션 여는 일이 번역보다 무겁다.
+    @State private var fromJapanese: TranslationSession.Configuration?
+    @State private var fromEnglish: TranslationSession.Configuration?
     /// 실행 인자로 검색어를 넣을 수 있다 (`--query=다이죠부`).
     /// 시뮬레이터에 한글을 타이핑하지 않고도 화면을 확인할 수 있어 스크린샷과 점검에 쓴다.
     @State private var input = ProcessInfo.processInfo.arguments
@@ -67,19 +73,43 @@ struct SearchView: View {
                 // 빈자리 둘이 **형제로 나란히** 있어야 반반 나눠 갖고, 그래야 글과 바가
                 // 한 덩어리로 화면 한가운데 선다. 한쪽만 안쪽에 숨기면 그쪽이 더 먹어
                 // 덩어리가 위로 치우친다.
+                // 위쪽은 **답이 있을 때만** 닫는다. 손이 얹혔다고 여기까지 닫으면
+                // 덩어리가 화면 꼭대기로 붙어, 바가 바닥이 아니라 위로 올라간다.
                 Spacer(minLength: 0)
                     .frame(maxHeight: hasResults ? 0 : .infinity)
                 content
                 inputBar
+                // 아래쪽은 손이 얹히는 순간 닫는다. 그래야 글과 바가 한 덩어리로
+                // 바닥까지 내려가 앉는다 — 글은 바에 붙은 채로 따라 내려간다.
                 Spacer(minLength: 0)
-                    .frame(maxHeight: hasResults ? 0 : .infinity)
+                    .frame(maxHeight: barAtBottom ? 0 : .infinity)
             }
             // 첫 글자를 치는 순간 바가 가운데에서 바닥으로 옮겨 간다. 그 자리바꿈을
             // 그냥 두면 한 프레임 만에 튀어, 치던 손이 따라가지 못한다.
             //
             // 키보드가 함께 올라오는 자리라 **키보드보다 느리면 안 된다** —
             // 0.28초는 키보드가 다 올라오기 전에 끝나는 길이다.
-            .animation(.snappy(duration: 0.28), value: hasResults)
+            .animation(.snappy(duration: 0.28), value: barAtBottom)
+        }
+        .environment(desk)
+        // **세션은 언어쌍마다 하나씩, 앱이 사는 동안 그대로 둔다.** 열어 놓고 옮길 것을
+        // 흘려 넣는다. 번역을 못 하는 기기에서는 설정을 만들지 않으므로 세션도 열리지
+        // 않는다 — 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
+        .task {
+            let korean = Locale.Language(identifier: "ko")
+            let availability = LanguageAvailability()
+            for (identifier, keep) in [("ja", { fromJapanese = $0 }), ("en", { fromEnglish = $0 })]
+                    as [(String, (TranslationSession.Configuration) -> Void)] {
+                let language = Locale.Language(identifier: identifier)
+                guard await availability.status(from: language, to: korean) != .unsupported else { continue }
+                keep(TranslationSession.Configuration(source: language, target: korean))
+            }
+        }
+        .translationTask(fromJapanese) { session in
+            await Self.serve(session, desk.japanese)
+        }
+        .translationTask(fromEnglish) { session in
+            await Self.serve(session, desk.english)
         }
         .onChange(of: incoming?.wrappedValue) { _, new in
             guard let new, !new.isEmpty else { return }
@@ -92,7 +122,7 @@ struct SearchView: View {
             // `--collect` 는 검색 결과를 전부 담는다. 담기와 모은 것 화면을
             // 손으로 두드리지 않고 확인하기 위한 것이다.
             if ProcessInfo.processInfo.arguments.contains("--collect"), let collection {
-                engine.search(input)
+                engine.searchNow(input)
                 for segment in engine.segments {
                     guard let top = segment.results.first else { continue }
                     collection.add(CollectedWord(headword: top.headword,
@@ -142,9 +172,46 @@ struct SearchView: View {
 
     // MARK: 결과
 
-    /// 돌려줄 답이 있는가. 입력 바가 바닥에 뜰지 글에 붙을지를 이것이 가른다.
+    /// 돌려줄 답이 있는가.
     private var hasResults: Bool {
         engine.failure == nil && !input.isEmpty && !engine.segments.isEmpty
+    }
+
+    /// 입력 바가 바닥에 서는가.
+    ///
+    /// **손이 얹히는 순간 내려간다.** 답이 있을 때만 내려가게 두었더니, 바를 눌러도
+    /// 키보드만 올라오고 바는 가운데 그대로였다 — 치기 시작해서 첫 글자가 답을 낼 때에야
+    /// 뒤늦게 내려앉는다. 누른 자리와 글자가 찍히는 자리가 달라지는 셈이다.
+    ///
+    /// **첫 글자의 부담도 덜어 준다.** 답이 있을 때만 내려가게 두면 첫 글자를 치는 순간
+    /// 바가 옮겨 가는 그림과 화면 재배치가 첫 검색과 한꺼번에 일어난다.
+    /// 누를 때 자리를 미리 잡아 두면 그 순간에는 찾는 일만 남는다.
+    ///
+    /// 포커스가 풀리면 도로 올라온다. 다만 글자가 남아 있으면 `hasResults` 가 참이라
+    /// 바닥에 그대로 서 있는다 — 답을 보고 있는 중에 바가 움직이면 안 된다.
+    private var barAtBottom: Bool { hasResults || inputFocused }
+
+    /// 세션 하나를 붙들고, 줄에 들어오는 것을 옮겨 담는다.
+    ///
+    /// 줄이 닫히기 전까지 돌아오지 않는다. 그래야 세션이 살아 있고, 다음 문장을 물을 때
+    /// 다시 열지 않아도 된다 — 그 다시 열기가 곧 실기기에서 느껴지던 걸림이었다.
+    private nonisolated static func serve(_ session: TranslationSession, _ store: Translations) async {
+        for await batch in store.requests {
+            let asked = batch.map { TranslationSession.Request(sourceText: $0) }
+            var responses = try? await session.translations(from: asked)
+            if responses == nil {
+                // **한 번은 더 물어본다.** 언어팩을 아직 내려받는 중이면 첫 물음이 빈손으로
+                // 돌아온다. 그 한 번 때문에 문장이 영영 안 뜨는 것은 사용자가 알 길이 없다.
+                try? await Task.sleep(for: .milliseconds(400))
+                responses = try? await session.translations(from: asked)
+            }
+            guard let responses else {
+                await MainActor.run { store.forget(batch) }
+                continue
+            }
+            let pairs = responses.map { (source: $0.sourceText, target: $0.targetText) }
+            await MainActor.run { store.receive(pairs) }
+        }
     }
 
     @ViewBuilder
@@ -182,10 +249,10 @@ struct SearchView: View {
                     // 바로 아래 카드와 같은 말을 두 번 하게 된다 (아타마가이타이 → 頭が痛い 는
                     // 사전에 통째로 실려 있어 한 조각으로 나온다).
                     if engine.segments.count > 1 {
+                        // 문장 뜻은 헤더 **안**에 셋째 층으로 들어 있다. 되살린 문장과
+                        // 그것을 옮긴 말은 한 덩어리라, 사이에 덩어리를 닫는 여백이
+                        // 끼면 안 된다.
                         SentenceHeader(segments: engine.segments, selected: $selected)
-                        // 문장 뜻은 헤더에 붙여 둔다. 되살린 문장 바로 아래가 그 문장을
-                        // 옮긴 말의 자리다 — 카드 사이에 끼면 낱말 뜻처럼 보인다.
-                        SentenceMeaning(segments: engine.segments)
                         Divider().overlay(Theme.grey3)
                     }
 
