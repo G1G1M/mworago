@@ -61,9 +61,9 @@ struct SearchView: View {
         ZStack {
             // **빈 곳을 누르면 키보드를 내린다.**
             //
-            // 스크롤로 내리는 길은 이미 있었지만(`scrollDismissesKeyboard`), 답을 보려고
-            // 화면을 툭 누르는 사람에게는 그 길이 없었다. 키보드가 답의 절반을 덮은 채
-            // 남아 있어서, 내리려면 스크롤을 해야 했다.
+            // 키보드가 답의 절반을 덮은 채 남아 있으면 내릴 길이 있어야 한다.
+            // 한때 스크롤에도 딸려 내려가게 두었는데(`scrollDismissesKeyboard`),
+            // 그쪽은 훑는 손을 걸리게 해서 닫았다. **누르는 길만 연다.**
             //
             // **바탕에만 붙인다.** 화면 전체에 붙이면 카드의 갈피표·소리 단추가 눌리는
             // 자리까지 함께 먹는다. 바탕은 카드가 없는 곳이므로 겹칠 것이 없다.
@@ -282,7 +282,13 @@ struct SearchView: View {
                 .frame(maxWidth: Self.contentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
-            .scrollDismissesKeyboard(.interactively)
+            // **스크롤로는 내리지 않는다.**
+            //
+            // `.interactively` 는 손가락을 따라 키보드를 조금씩 밀어 내린다. 그 사이
+            // 화면이 매 프레임 다시 서는데, 목록이 길수록 그 값이 커져 훑는 손이 걸린다.
+            // 내리는 길은 바탕을 누르는 쪽으로 이미 나 있으므로 여기서는 닫아 둔다 —
+            // 답을 훑는 일이 키보드를 내리는 일보다 자주 있다.
+            .scrollDismissesKeyboard(.never)
             // 문장에서 조각을 누르면 그 낱말로 데려간다. 긴 문장에서 카드가 화면 밖에 있으면
             // 눌러도 아무 일이 없어 보이기 때문이다.
             .onChange(of: selected) { _, new in
