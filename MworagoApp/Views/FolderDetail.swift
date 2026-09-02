@@ -43,9 +43,22 @@ struct FolderDetail: View {
     /// 뒤로 나갔다 다시 들어올 때마다 목록이 펼쳐지면 안 된다.
     private static var openedFromArguments = false
     @State private var removing = false
-    /// 지우는 손이 얹혔는가. 책장 첫 화면과 같은 문법이다 —
-    /// 미는 몸짓 대신 편집 자리를 두고, 지울 셈일 때만 단추를 보인다.
-    @State private var editing = false
+    /// 고르는 손이 얹혔는가.
+    ///
+    /// **지우기만 되던 자리를 고르기로 넓혔다.** 담아 둔 것을 손보는 일은 지우는 것보다
+    /// 옮기는 것이 잦은데(한 편을 몰아 담고 나서 갈래를 나눈다), 옮기기는 낱말 상세를
+    /// 하나씩 열어야만 되는 일이었다. 골라 두고 한꺼번에 옮긴다.
+    ///
+    /// 미는 몸짓 대신 고르는 자리를 둔다 — 목록이 `LazyVStack` 이라 직접 만들면
+    /// 훑는 손(세로)과 미는 손(가로)이 같은 자리에서 다툰다.
+    @State private var selecting = false
+    /// 고른 낱말들. 낱말 자체가 아니라 `id` 를 담는다 — 옮기고 나면 낱말의 값이
+    /// 바뀌는데, 값으로 들고 있으면 옮긴 뒤에 같은 것을 못 알아본다.
+    @State private var selection: Set<String> = []
+    /// 고른 것을 어디로 옮길지 묻는 판.
+    @State private var moving = false
+    /// 고른 것을 지울지 묻는 자리. 되돌릴 수 없으므로 시스템 알림으로 묻는다.
+    @State private var removingWords = false
 
     var body: some View {
         ZStack {
@@ -56,17 +69,13 @@ struct FolderDetail: View {
                     if words.isEmpty { emptyWords }
                     ForEach(words) { word in
                         HStack(spacing: 0) {
-                            if editing {
-                                Button { onRemoveWord(word) } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 21))
-                                        .foregroundStyle(.red)
-                                        .padding(.leading, Theme.gutter)
-                                        .padding(.vertical, 8)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("지우기")
+                            if selecting {
+                                let picked = selection.contains(word.id)
+                                Image(systemName: picked ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 21))
+                                    .foregroundStyle(picked ? Theme.ink : Theme.grey3)
+                                    .padding(.leading, Theme.gutter)
+                                    .accessibilityHidden(true)   // 줄 전체가 이미 고르는 단추다
                             }
                             row(word)
                         }
@@ -101,7 +110,15 @@ struct FolderDetail: View {
         .onAppear {
             guard !Self.openedFromArguments else { return }
             Self.openedFromArguments = true
-            if ProcessInfo.processInfo.arguments.contains("--menu") { menuOpen = true }
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("--menu") { menuOpen = true }
+            // `--picking` 은 고르는 중(전부 고른 채)으로, `--moving` 은 그 위에
+            // 옮기는 판까지 펼친 채로 띄운다.
+            if arguments.contains("--picking") || arguments.contains("--moving") {
+                selecting = true
+                selection = Set(words.map(\.id))
+                moving = arguments.contains("--moving")
+            }
         }
         // 책장의 "새 묶음"과 같은 판을 쓴다. 이름을 만드는 일과 고치는 일이
         // 다른 얼굴로 뜨면 같은 일을 두 번 배워야 한다.
@@ -120,6 +137,23 @@ struct FolderDetail: View {
                 dismiss()
             }
         }
+        .dialog(isPresented: $moving) {
+            FolderChooserDialog(title: "어디로 옮길까요?",
+                                hint: "고른 낱말 \(selection.count)개가 한꺼번에 갑니다.",
+                                folderNames: folderNames,
+                                current: folder,
+                                isPresented: $moving) { destination in
+                moveSelected(to: destination)
+            }
+        }
+        // **지우는 것만 시스템 알림으로 묻는다.** 되돌릴 수 없는 일은 앱의 얼굴보다
+        // 사용자가 이미 아는 "정말요?" 얼굴이 낫다.
+        .alert("고른 낱말을 지울까요?", isPresented: $removingWords) {
+            Button("지우기", role: .destructive) { removeSelected() }
+            Button("그만두기", role: .cancel) { }
+        } message: {
+            Text("\(selection.count)개를 책장에서 뺍니다. 되돌릴 수 없어요.")
+        }
         .alert("묶음을 없앨까요?", isPresented: $removing) {
             Button("없애기", role: .destructive) {
                 if let folder { onRemoveFolder(folder) }
@@ -137,7 +171,16 @@ struct FolderDetail: View {
     }
 
     /// 이름과 개수, 그리고 이 묶음에 할 수 있는 일.
+    ///
+    /// **고르는 중에는 이 줄이 통째로 바뀐다.** 떠 있는 바를 위에 얹었더니 묶음 이름을
+    /// 가렸고, 가리지 않으려면 목록을 그만큼 밀어 내려야 했다. 고르기는 **모드**이므로
+    /// 머리줄이 그 모드의 것으로 바뀌는 편이 맞다 — 무엇을 하는 중인지가 제자리에서 보인다.
+    @ViewBuilder
     private var head: some View {
+        if selecting { selectionHead } else { titleHead }
+    }
+
+    private var titleHead: some View {
         VStack(alignment: .leading, spacing: 14) {
             // **이름과 할 일이 한 줄에 마주 선다.** 줄을 나눠 두면 이름 아래 캡슐이
             // 목록의 첫 줄처럼 읽혀서, 이 묶음에 하는 일인지 낱말에 하는 일인지 갈리지 않는다.
@@ -183,8 +226,8 @@ struct FolderDetail: View {
             Image(systemName: "ellipsis")
                 .font(.system(size: 15, weight: .medium))
                 .frame(width: 38, height: 38)
-                .background(menuOpen || editing ? Theme.ink : Theme.grey4, in: Circle())
-                .foregroundStyle(menuOpen || editing ? Theme.paper : Theme.grey1)
+                .background(menuOpen || selecting ? Theme.ink : Theme.grey4, in: Circle())
+                .foregroundStyle(menuOpen || selecting ? Theme.paper : Theme.grey1)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("이 묶음 손보기")
@@ -206,9 +249,13 @@ struct FolderDetail: View {
                 menuDivider
                 // 켜는 자리와 끄는 자리를 같게 둔다. 밖에 따로 세우지 않으므로
                 // 여기서 켜고 여기서 끈다.
-                menuRow(editing ? "지우기 마치기" : "낱말 지우기",
-                        symbol: editing ? "checkmark" : "minus.circle") {
-                    withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
+                menuRow(selecting ? "고르기 마치기" : "낱말 고르기",
+                        symbol: selecting ? "checkmark" : "checkmark.circle") {
+                    if selecting {
+                        endSelecting()
+                    } else {
+                        withAnimation(.snappy(duration: 0.18)) { selecting = true }
+                    }
                 }
             }
             if folder != nil {
@@ -274,7 +321,9 @@ struct FolderDetail: View {
     /// 한 화 분량을 훑으려고 들어온 화면이라 무엇을 담았는지 읽혀야 한다.
     /// 층의 차례는 화면 어디서나 같다 — 가나 · 한글.
     private func row(_ word: CollectedWord) -> some View {
-        Button { detail = word } label: {
+        Button {
+            if selecting { toggle(word) } else { detail = word }
+        } label: {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -299,6 +348,86 @@ struct FolderDetail: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint("자세히 봅니다")
+        .accessibilityHint(selecting ? "고르거나 풉니다" : "자세히 봅니다")
+        .accessibilityAddTraits(selecting && selection.contains(word.id) ? [.isSelected] : [])
+    }
+
+    // MARK: 고르기
+
+    private func toggle(_ word: CollectedWord) {
+        if selection.contains(word.id) {
+            selection.remove(word.id)
+        } else {
+            selection.insert(word.id)
+        }
+    }
+
+    private var allPicked: Bool {
+        !words.isEmpty && selection.count == words.count
+    }
+
+    private func endSelecting() {
+        withAnimation(.snappy(duration: 0.18)) {
+            selecting = false
+            selection = []
+        }
+    }
+
+    /// 고른 것을 한꺼번에 옮긴다. **하나씩 옮기는 길과 같은 길을 쓴다** —
+    /// 여기만 따로 저장하면 지난번 묶음을 건드리는지 같은 규칙이 두 벌이 된다.
+    private func moveSelected(to destination: String?) {
+        for word in words where selection.contains(word.id) {
+            onMoveWord(word, destination)
+        }
+        endSelecting()
+    }
+
+    private func removeSelected() {
+        for word in words where selection.contains(word.id) {
+            onRemoveWord(word)
+        }
+        endSelecting()
+    }
+
+    /// 고르는 중의 머리줄. 이름 자리에 **무엇을 고르는 중인지**가 서고,
+    /// 줄임표 자리에 그 낱말들로 할 수 있는 일이 선다.
+    private var selectionHead: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(selection.isEmpty ? "고를 낱말을 누르세요" : "\(selection.count)개 골랐어요")
+                .font(Theme.korean(17, weight: selection.isEmpty ? .regular : .semibold))
+                .foregroundStyle(selection.isEmpty ? Theme.grey2 : Theme.ink)
+                .lineLimit(1)
+
+            Spacer(minLength: 10)
+
+            headButton(allPicked ? "모두 풀기" : "모두") {
+                selection = allPicked ? [] : Set(words.map(\.id))
+            }
+            // 고른 것이 없으면 옮길 것도 지울 것도 없다. 눌러 보고 알게 하지 않는다.
+            headButton("옮기기", filled: true, disabled: selection.isEmpty) { moving = true }
+            headButton("지우기", destructive: true, disabled: selection.isEmpty) {
+                removingWords = true
+            }
+            headButton("마치기") { endSelecting() }
+        }
+        .padding(.horizontal, Theme.gutter)
+        .padding(.top, Theme.screenTop)
+        .padding(.bottom, Theme.blockGap)
+    }
+
+    /// 머리줄의 단추. 강조는 반전 하나로만 — 지금 하려던 일이 채워진다.
+    private func headButton(_ title: String, filled: Bool = false, destructive: Bool = false,
+                            disabled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Theme.korean(13.5, weight: filled ? .medium : .regular))
+                .padding(.horizontal, filled ? 14 : 6)
+                .padding(.vertical, filled ? 8 : 0)
+                .background(filled ? Theme.ink : .clear, in: Capsule())
+                .foregroundStyle(filled ? Theme.paper : (destructive ? Color.red : Theme.grey1))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.35 : 1)
     }
 }

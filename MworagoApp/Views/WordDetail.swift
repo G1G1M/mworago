@@ -23,7 +23,12 @@ struct WordDetail: View {
     var folderNames: [String] = []
 
     @Environment(\.dismiss) private var dismiss
-    /// 옮길 곳을 고르는 중인가. 담기와 **같은 모달**을 쓴다.
+    /// 옮길 곳을 고르는 중인가.
+    ///
+    /// **묶음 화면에서 여럿을 옮기는 것과 같은 판을 쓴다.** 하나를 옮기든 셋을 옮기든
+    /// 하는 일이 같은데 얼굴이 다르면 문법을 두 벌 배워야 한다. 담기(찾기에서 갈피표를
+    /// 누르는 자리)만 시트로 남는다 — 그쪽은 낱말을 손에 들고 와서 **새 묶음을 만들며**
+    /// 담는 자리라 목록이 길고, 판보다 시트가 맞다.
     @State private var moving = false
 
     var body: some View {
@@ -52,14 +57,13 @@ struct WordDetail: View {
                 }
             }
         }
-        .sheet(isPresented: $moving) {
-            FolderPicker(word: word,
-                         folderNames: folderNames,
-                         // 점은 **지금 있는 자리**를 가리킨다. 담을 때는 지난번 자리였다.
-                         lastFolder: word.folder,
-                         onPick: { onMove(word, $0) },
-                         prompt: "어디로 옮길까요?",
-                         markLabel: "지금")
+        .dialog(isPresented: $moving) {
+            FolderChooserDialog(title: "어디로 옮길까요?",
+                                hint: word.reading,
+                                folderNames: folderNames,
+                                // 점은 **지금 있는 자리**를 가리킨다.
+                                current: word.folder,
+                                isPresented: $moving) { onMove(word, $0) }
         }
     }
 
