@@ -177,13 +177,14 @@ struct LibraryView: View {
                        },
                        folderNames: collection.folderNames)
         }
-        // 이름은 **담기 모달과 같은 얼굴로** 받는다. 시스템 알림은 어느 앱에서나 같은
-        // 얼굴이라 그 순간만 남의 앱이 된다 — 글자체부터 이 앱의 것이 아니다.
-        .sheet(isPresented: $naming) {
-            FolderNameSheet(title: "새 묶음",
-                            hint: "보기 전에 자리를 만들어 두면, 담을 때 그 자리를 고를 수 있어요.",
-                            placeholder: "예) 리코리스 리코일 4화",
-                            existing: collection.folderNames) { name in
+        // 이름은 **화면 한가운데 뜨는 판**으로 받는다. 아래에서 올라오는 시트는
+        // "다음 화면"의 몸짓인데, 이름 한 줄을 묻는 일은 화면을 옮기는 일이 아니다.
+        .dialog(isPresented: $naming) {
+            FolderNameDialog(title: "새 묶음",
+                             hint: "보기 전에 자리를 만들어 두면, 담을 때 그 자리를 고를 수 있어요.",
+                             placeholder: "예) 리코리스 리코일 4화",
+                             existing: collection.folderNames,
+                             isPresented: $naming) { name in
                 collection.createFolder(name)
             }
         }

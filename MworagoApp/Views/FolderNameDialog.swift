@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// 묶음 이름을 받는 자리 — **만들 때도 고칠 때도 같은 화면이다.**
+/// 묶음 이름을 받는 판 — **만들 때도 고칠 때도 같은 화면이다.**
 ///
-/// 시스템 알림으로 받고 있었다. 알림은 어느 앱에서나 같은 얼굴이라 **그 순간만 남의
-/// 앱이 된다** — 글자가 고운돋움이 아니고, 파란 글씨 단추와 굵은 제목은 이 앱 어디에도
-/// 없는 문법이다. 담기 모달과 같은 꼴로 세운다: 종이 바닥 · 알약 단추 ·
-/// **검게 채워지는 것은 지금 누를 것 하나.**
+/// 시스템 알림으로 받다가, 시트로 갔다가, 여기로 왔다. 알림은 **몸짓이 맞았고**
+/// (화면을 넘기는 것이 아니라 지금 화면에 묻는 일이다) **얼굴이 틀렸다**
+/// (글자도 단추도 이 앱의 것이 아니다). 그래서 몸짓만 가져오고 얼굴은 앱의 것으로 짓는다 —
+/// 종이 바닥 · 알약 단추 · **검게 채워지는 것은 지금 누를 것 하나.**
 ///
-/// **없애기는 알림에 그대로 둔다.** 그것은 되돌릴 수 없는 일이라, 앱의 얼굴보다
+/// **없애기는 시스템 알림에 그대로 둔다.** 그것은 되돌릴 수 없는 일이라, 앱의 얼굴보다
 /// 시스템이 늘 쓰는 얼굴로 묻는 편이 낫다 — 사용자가 이미 아는 "정말요?" 다.
-struct FolderNameSheet: View {
+struct FolderNameDialog: View {
     let title: String
     /// 제목 아래 한 줄. 이 자리에서 무슨 일이 일어나는지 말한다.
     let hint: String
@@ -21,9 +21,11 @@ struct FolderNameSheet: View {
     var mergesOnDuplicate = false
     var confirmLabel = "만들기"
     var initialName = ""
+    /// 이 판이 떠 있는가. **`@Environment(\.dismiss)` 를 쓰지 않는다** —
+    /// 이것은 시트가 아니라 화면 위에 덧그린 판이라, 그 길로 닫으면 판이 아니라
+    /// **이 판을 띄운 화면**이 닫힌다.
+    @Binding var isPresented: Bool
     var onConfirm: (String) -> Void
-
-    @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @FocusState private var focused: Bool
 
@@ -35,27 +37,14 @@ struct FolderNameSheet: View {
     private var blocked: Bool { trimmed.isEmpty || (duplicate && !mergesOnDuplicate) }
 
     var body: some View {
-        // **담기 모달과 같은 껍데기다.** 안쪽 덩어리에만 종이를 깔면 시트가 그보다 클 때
-        // 위아래로 남의 바닥이 드러나, 종이 카드가 회색 카드 안에 든 것처럼 보인다.
-        // 스크롤 뷰가 시트를 꽉 채우고 그 위에 종이를 깐다.
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                head
-                field
-                buttons
-            }
-            .frame(maxWidth: Theme.readWidth, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 6)
-            .padding(.bottom, Theme.screenBottom)
+        // 판의 폭과 바닥은 `Dialog` 가 정한다. 여기서는 그 안에 무엇이 서는지만 적는다 —
+        // 그래야 이름 받는 판과 할 일을 고르는 판이 같은 크기로 뜬다.
+        VStack(alignment: .leading, spacing: 0) {
+            head
+            field
+            buttons
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .background(Theme.paper)
-        .presentationDragIndicator(.visible)
-        // **시트를 내용에 맞춘다.** 기본 폼 시트는 이름 한 줄 받는 자리에 화면 절반을
-        // 내주어, 칠 것은 한 줄인데 빈 종이가 그 몇 배로 남는다.
-        // detent 를 함께 걸지 않는다 — 높이를 정해 버리면 `fitted` 가 진다.
-        .presentationSizing(.fitted)
+        .padding(.vertical, 20)
         .onAppear {
             name = initialName
             focused = true
@@ -71,8 +60,7 @@ struct FolderNameSheet: View {
                 .font(Theme.korean(12))
                 .foregroundStyle(Theme.grey2)
         }
-        .padding(.horizontal, Theme.gutter)
-        .padding(.top, 10)
+        .padding(.horizontal, 20)
         .padding(.bottom, 14)
     }
 
@@ -99,7 +87,7 @@ struct FolderNameSheet: View {
                     .foregroundStyle(Theme.grey2)
             }
         }
-        .padding(.horizontal, Theme.gutter)
+        .padding(.horizontal, 20)
     }
 
     /// 두 단추.
@@ -121,7 +109,7 @@ struct FolderNameSheet: View {
             .disabled(blocked)
             .opacity(blocked ? 0.4 : 1)
 
-            Button { dismiss() } label: {
+            Button { isPresented = false } label: {
                 Text("그만두기")
                     .font(Theme.korean(16))
                     .frame(maxWidth: .infinity)
@@ -131,13 +119,13 @@ struct FolderNameSheet: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, Theme.gutter)
+        .padding(.horizontal, 20)
         .padding(.top, 16)
     }
 
     private func confirm() {
         guard !blocked else { return }
         onConfirm(trimmed)
-        dismiss()
+        isPresented = false
     }
 }

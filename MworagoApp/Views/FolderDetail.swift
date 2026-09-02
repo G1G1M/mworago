@@ -37,8 +37,11 @@ struct FolderDetail: View {
     /// 펼쳐 보고 있는 낱말. 목록에서와 같은 상세 시트를 쓴다.
     @State private var detail: CollectedWord?
     @State private var renaming = false
-    /// 이름을 바꾸고 나왔는가. 시트가 닫히는 것을 본 뒤에 이 화면을 나가려고 든다.
-    @State private var renamed = false
+    /// 이 묶음에 할 수 있는 일들이 펼쳐져 있는가.
+    @State private var menuOpen = false
+    /// 실행 인자로 열라던 것을 이미 열었는가. 뷰보다 오래 사는 곳에 둔다 —
+    /// 뒤로 나갔다 다시 들어올 때마다 목록이 펼쳐지면 안 된다.
+    private static var openedFromArguments = false
     @State private var removing = false
     /// 지우는 손이 얹혔는가. 책장 첫 화면과 같은 문법이다 —
     /// 미는 몸짓 대신 편집 자리를 두고, 지울 셈일 때만 단추를 보인다.
@@ -93,25 +96,28 @@ struct FolderDetail: View {
                        },
                        folderNames: folderNames)
         }
-        // 책장의 "새 묶음"과 같은 자리를 쓴다. 이름을 만드는 일과 고치는 일이
+        // `--menu` 로 할 수 있는 일 목록을 펼친 채 띄운다. `--folder=` · `--detail` 과
+        // 같은 취지 — 시뮬레이터는 손으로 두드릴 수 없어 이 목록을 눈으로 볼 길이 없다.
+        .onAppear {
+            guard !Self.openedFromArguments else { return }
+            Self.openedFromArguments = true
+            if ProcessInfo.processInfo.arguments.contains("--menu") { menuOpen = true }
+        }
+        // 책장의 "새 묶음"과 같은 판을 쓴다. 이름을 만드는 일과 고치는 일이
         // 다른 얼굴로 뜨면 같은 일을 두 번 배워야 한다.
-        .sheet(isPresented: $renaming, onDismiss: {
-            // **시트가 다 닫힌 뒤에 이 화면을 나간다.** 이름이 바뀌면 이 화면이
-            // 가리키던 묶음이 없는데, 같은 순간에 둘을 닫으면 닫히던 시트가 갈 곳을 잃는다.
-            if renamed {
-                renamed = false
-                dismiss()
-            }
-        }) {
-            FolderNameSheet(title: "이름 바꾸기",
-                            hint: "이 묶음에 담긴 낱말이 다 따라갑니다.",
-                            placeholder: title,
-                            existing: folderNames.filter { $0 != folder },
-                            mergesOnDuplicate: true,
-                            confirmLabel: "바꾸기",
-                            initialName: title) { newName in
+        .dialog(isPresented: $renaming) {
+            FolderNameDialog(title: "이름 바꾸기",
+                             hint: "이 묶음에 담긴 낱말이 다 따라갑니다.",
+                             placeholder: title,
+                             existing: folderNames.filter { $0 != folder },
+                             mergesOnDuplicate: true,
+                             confirmLabel: "바꾸기",
+                             initialName: title,
+                             isPresented: $renaming) { newName in
                 if let folder { onRename(folder, newName) }
-                renamed = true
+                // 이름이 바뀌면 이 화면이 가리키던 묶음이 없다. 판은 화면 위에 덧그린
+                // 것이라 화면과 함께 사라지므로, 시트 때처럼 닫히기를 기다릴 것이 없다.
+                dismiss()
             }
         }
         .alert("묶음을 없앨까요?", isPresented: $removing) {
@@ -136,75 +142,111 @@ struct FolderDetail: View {
             // **이름과 할 일이 한 줄에 마주 선다.** 줄을 나눠 두면 이름 아래 캡슐이
             // 목록의 첫 줄처럼 읽혀서, 이 묶음에 하는 일인지 낱말에 하는 일인지 갈리지 않는다.
             // 이름은 왼쪽 끝, 할 일은 오른쪽 끝 — 그 사이가 비어 있어 둘이 다른 일임이 보인다.
-            HStack(alignment: .firstTextBaseline, spacing: 9) {
-                Text(title)
-                    .font(Theme.korean(22, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                // 개수는 담긴 것이 있을 때만 적는다. `0개` 는 아래 안내가 이미 하는 말이고,
-                // 이름 옆에 붙으면 빈 자리를 세어 보라는 말처럼 읽힌다.
-                if !words.isEmpty {
-                    Text("\(words.count)개")
-                        .font(Theme.korean(13))
-                        .foregroundStyle(Theme.grey3)
+            HStack(alignment: .center, spacing: 9) {
+                // 이름과 개수는 서로 밑줄을 맞추고, 동그란 단추는 그 줄에 가운데로 선다.
+                HStack(alignment: .firstTextBaseline, spacing: 9) {
+                    Text(title)
+                        .font(Theme.korean(22, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    // 개수는 담긴 것이 있을 때만 적는다. `0개` 는 아래 안내가 이미 하는 말이고,
+                    // 이름 옆에 붙으면 빈 자리를 세어 보라는 말처럼 읽힌다.
+                    if !words.isEmpty {
+                        Text("\(words.count)개")
+                            .font(Theme.korean(13))
+                            .foregroundStyle(Theme.grey3)
+                    }
                 }
 
                 Spacer(minLength: 12)
 
-                // **연습은 연습할 것이 있을 때만 있다.** 빈 묶음에서 눌러 봤자
-                // 아무것도 없는 연습 화면으로 건너갈 뿐이다.
-                if !words.isEmpty {
-                    Button { onPractice(words) } label: {
-                        Text("이 묶음 연습")
-                            .font(Theme.korean(13.5))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Theme.ink, in: Capsule())
-                            .foregroundStyle(Theme.paper)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("이 묶음의 낱말만 연습합니다")
-                }
-
-
-
-                // **자주 하는 일 하나만 밖에 둔다.**
+                // **할 수 있는 일은 전부 이 안에 있다.**
                 //
-                // 캡슐이 넷이면 무엇이 주된 일인지 안 보인다. 여기서 자주 하는 일은
-                // 연습이고, 지우거나 이름을 고치거나 묶음을 없애는 일은 몇 번 하지 않는다.
-                //
-                // 줄임표는 애플이 이 자리에 쓰는 기호다(메모·파일이 그렇다).
-                // 이름 옆에 서므로 글자보다 기호가 낫다 — 이름과 겨루지 않는다.
-                if !words.isEmpty || folder != nil {
-                    Menu {
-                        if !words.isEmpty {
-                            // 켜는 자리와 끄는 자리를 같게 둔다. 밖에 따로 세우지 않으므로
-                            // 여기서 켜고 여기서 끈다.
-                            Button(editing ? "지우기 마치기" : "낱말 지우기") {
-                                withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
-                            }
-                        }
-                        if folder != nil {
-                            Button("이름 바꾸기") { renaming = true }
-                            Button("묶음 없애기", role: .destructive) { removing = true }
-                        }
-                    } label: {
-                        // **옆 캡슐과 키를 맞춘다.** 심볼에 같은 글자체를 물리면 줄 높이가
-                        // 같아져 두 캡슐이 나란히 선다 — 크기를 손으로 박으면
-                        // 사용자가 글자 크기를 키웠을 때 둘만 어긋난다.
-                        Image(systemName: "ellipsis")
-                            .font(Theme.korean(13.5))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(editing ? Theme.ink : Theme.grey4, in: Capsule())
-                            .foregroundStyle(editing ? Theme.paper : Theme.grey1)
-                    }
-                    .accessibilityLabel("이 묶음 손보기")
-                }
+                // 연습만 밖에 캡슐로 세워 두었는데, 그러면 이름 옆에 크기가 다른 것이
+                // 둘 서고 "이 묶음에 무엇을 할 수 있는지"가 두 자리로 갈린다.
+                // 한 자리에서 열어 고르면 그 목록이 곧 답이다.
+                if !words.isEmpty || folder != nil { moreButton }
             }
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, Theme.screenTop)
         .padding(.bottom, Theme.blockGap)
+    }
+
+    /// 이 묶음에 할 수 있는 일을 여는 단추.
+    ///
+    /// **동그랗다.** 납작한 캡슐은 글자를 담으려고 옆으로 늘인 꼴인데 여기 담긴 것은
+    /// 점 세 개뿐이라, 가로로 늘이면 빈 자리만 넓어진다. 기호 하나에는 원이 맞다.
+    /// 줄임표는 애플이 이 자리에 쓰는 기호다(메모·파일이 그렇다) — 이름 옆에 서므로
+    /// 글자보다 기호가 낫다. 이름과 겨루지 않는다.
+    private var moreButton: some View {
+        Button { menuOpen = true } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 15, weight: .medium))
+                .frame(width: 38, height: 38)
+                .background(menuOpen || editing ? Theme.ink : Theme.grey4, in: Circle())
+                .foregroundStyle(menuOpen || editing ? Theme.paper : Theme.grey1)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("이 묶음 손보기")
+        // **목록도 앱의 얼굴로 짓는다.** 시스템 메뉴는 글자체부터 남의 것이라
+        // 그 순간만 다른 앱이 된다. 뜨는 자리(단추 옆)는 시스템에 맡기고
+        // 안에 서는 것만 이쪽에서 그린다.
+        .popover(isPresented: $menuOpen, arrowEdge: .top) {
+            menuList
+                .presentationCompactAdaptation(.popover)
+                .presentationBackground(Theme.paper)
+        }
+    }
+
+    /// 할 수 있는 일들. 자주 하는 것이 위, 되돌릴 수 없는 것이 맨 아래다.
+    private var menuList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if !words.isEmpty {
+                menuRow("이 묶음 연습", symbol: "rectangle.stack") { onPractice(words) }
+                menuDivider
+                // 켜는 자리와 끄는 자리를 같게 둔다. 밖에 따로 세우지 않으므로
+                // 여기서 켜고 여기서 끈다.
+                menuRow(editing ? "지우기 마치기" : "낱말 지우기",
+                        symbol: editing ? "checkmark" : "minus.circle") {
+                    withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
+                }
+            }
+            if folder != nil {
+                if !words.isEmpty { menuDivider }
+                menuRow("이름 바꾸기", symbol: "pencil") { renaming = true }
+                menuDivider
+                menuRow("묶음 없애기", symbol: "trash", destructive: true) { removing = true }
+            }
+        }
+        .frame(width: 208)
+    }
+
+    private var menuDivider: some View {
+        Divider().overlay(Theme.grey4).padding(.horizontal, 14)
+    }
+
+    /// 목록 한 줄. 글이 왼쪽, 기호가 오른쪽 — 애플의 메뉴와 차례가 같다.
+    private func menuRow(_ title: String, symbol: String, destructive: Bool = false,
+                         action: @escaping () -> Void) -> some View {
+        Button {
+            // **누른 뒤에 목록이 닫힌다.** 열어 둔 채로 다음 화면을 띄우면
+            // 판과 목록이 함께 떠 있는 순간이 생긴다.
+            menuOpen = false
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                Text(title)
+                    .font(Theme.korean(15))
+                Spacer(minLength: 8)
+                Image(systemName: symbol)
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundStyle(destructive ? Color.red : Theme.ink)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// 담긴 것이 없을 때. **자리는 있고 아직 아무것도 넣지 않았을 뿐이다** —

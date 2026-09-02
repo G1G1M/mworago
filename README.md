@@ -160,7 +160,8 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 #   --tab=library|practice|kana|settings   그 탭을 연 채로
 #   --folder[=이름]               책장의 그 묶음에 들어간 채로
 #   --detail                      첫 낱말의 상세 시트를 펼친 채로
-#   --new-folder                  책장의 "새 묶음" 시트를 펼친 채로
+#   --new-folder                  책장의 "새 묶음" 판을 펼친 채로
+#   --menu                        묶음 화면의 할 일 목록을 펼친 채로
 #   --revealed                    연습 카드를 뒤집은 채로
 #   --no-splash                   스플래시 건너뛰기
 ```
