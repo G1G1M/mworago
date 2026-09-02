@@ -85,6 +85,12 @@ struct LibraryView: View {
 
     private var days: [CollectedWord.Day] { CollectedWord.byDay(collection.words) }
 
+    /// **묶음만 남아 있어도 책장은 비어 있지 않다.** 담긴 것이 없어도 만들어 둔 자리가
+    /// 있으면 그것을 보여야 한다 — 안 그러면 방금 만든 묶음이 빈 화면 뒤로 사라진다.
+    private var isEmpty: Bool {
+        collection.words.isEmpty && collection.folderNames.isEmpty
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             root
@@ -135,7 +141,7 @@ struct LibraryView: View {
             //
             // 헤더가 빠지면 빈 글이 **화면 전체의 한가운데**에 선다. 연습의 빈 화면과
             // 같은 자리다 — 탭을 오갈 때 같은 말이 위아래로 흔들리지 않는다.
-            if collection.words.isEmpty {
+            if isEmpty {
                 empty
             } else {
                 VStack(alignment: .leading, spacing: 0) {
@@ -164,7 +170,25 @@ struct LibraryView: View {
                        },
                        folderNames: collection.folderNames)
         }
+        .alert("새 묶음", isPresented: $naming) {
+            TextField("예) 리코리스 리코일 4화", text: $newFolderName)
+            Button("만들기") {
+                collection.createFolder(newFolderName)
+                newFolderName = ""
+            }
+            Button("그만두기", role: .cancel) { newFolderName = "" }
+        } message: {
+            Text("보기 전에 자리를 만들어 두면, 담을 때 그 자리를 고를 수 있어요.")
+        }
     }
+
+    /// 새 묶음 이름을 받는 중인가.
+    ///
+    /// **목록 안에 칸을 세우지 않는다.** 담기 모달은 고르러 온 화면이라 그 자리에서
+    /// 이름을 받아도 되지만, 여기는 훑는 목록이다 — 칸이 목록 한가운데 서면 키보드가
+    /// 올라오며 보고 있던 줄이 밀린다.
+    @State private var naming = false
+    @State private var newFolderName = ""
 
     /// 줄과 줄 사이를 가르는 선.
     ///
@@ -212,7 +236,9 @@ struct LibraryView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 switch grouping {
                 case .folders:
-                    ForEach(CollectedWord.byFolder(collection.words)) { folder in
+                    // 담긴 것이 없는 묶음도 여기 선다. 낱말에서만 거두면 마지막 낱말을
+                    // 옮기는 순간 묶음이 사라지는데, 사용자는 낱말 하나를 치웠을 뿐이다.
+                    ForEach(collection.folders) { folder in
                         // 묶음을 없애도 **낱말은 남는다** — 묶음은 담아 둔 자리일 뿐이다.
                         // 그래서 여기서는 되묻지 않는다. 이름 없는 무리는 지울 자리가 없다.
                         deletable({ if let name = folder.name { collection.removeFolder(name) } }) {
@@ -223,6 +249,9 @@ struct LibraryView: View {
                         }
                         rowDivider
                     }
+                    // **지울 셈일 때는 만드는 자리를 감춘다.** 한 화면에서 만들기와
+                    // 지우기가 나란히 서면 손이 어느 쪽인지 헷갈린다.
+                    if !editing { newFolderRow }
                 case .days:
                     // 날짜 묶음에는 지우는 단추를 두지 않는다. 날짜는 사람이 만든 자리가
                     // 아니라 담은 때가 만든 자리라, 지운다는 말이 성립하지 않는다.
@@ -256,14 +285,18 @@ struct LibraryView: View {
                 Text("책장")
                     .font(Theme.korean(24, weight: .semibold))
                     .foregroundStyle(Theme.ink)
-                Text("\(collection.words.count)")
-                    .font(Theme.korean(15))
-                    .foregroundStyle(Theme.grey2)
+                // 개수는 담긴 낱말을 센다. **`0` 은 적지 않는다** — 묶음만 만들어 둔
+                // 책장에서 알려 주는 것이 없고, 빈 자리를 세어 보라는 말처럼 읽힌다.
+                if !collection.words.isEmpty {
+                    Text("\(collection.words.count)")
+                        .font(Theme.korean(15))
+                        .foregroundStyle(Theme.grey2)
+                }
 
                 Spacer(minLength: 12)
 
-                // 담긴 것이 없으면 지울 것도 없다.
-                if !collection.words.isEmpty {
+                // 지울 것이 없으면 지우는 자리도 없다. 빈 묶음도 지울 것에 든다.
+                if !isEmpty {
                     Button {
                         withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
                     } label: {
@@ -279,6 +312,8 @@ struct LibraryView: View {
             // **"지금 담는 곳"은 여기 있었다.** 담을 때 묻지 않으려고 미리 정해 두는
             // 자리였는데, 이제 갈피표를 누르면 담기 모달이 묻는다 — 같은 것을 정하는
             // 자리가 둘이면 어느 쪽이 이기는지 사용자가 알 수 없다.
+            // 무엇으로 묶어 볼지는 **담긴 낱말이 있을 때만** 고를 수 있다.
+            // 묶음만 있는 책장에서 날짜별·모두로 넘어가면 빈 화면만 나온다.
             if !collection.words.isEmpty { dial }
         }
         .padding(.horizontal, Theme.gutter)
@@ -325,11 +360,19 @@ struct LibraryView: View {
 
                 Spacer(minLength: 12)
 
-                Text(words.prefix(2).map(\.reading).joined(separator: " · "))
-                    .font(Theme.japanese(13))
-                    .foregroundStyle(Theme.grey3)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                // 담긴 것이 없으면 흘릴 낱말도 없다. 그 자리를 비워 두면 줄이 반쯤
+                // 지워진 것처럼 보이므로, 비었다고 적는다.
+                if words.isEmpty {
+                    Text("비어 있음")
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey3)
+                } else {
+                    Text(words.prefix(2).map(\.reading).joined(separator: " · "))
+                        .font(Theme.japanese(13))
+                        .foregroundStyle(Theme.grey3)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(Theme.grey3)
@@ -340,6 +383,30 @@ struct LibraryView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("이 묶음을 엽니다")
+    }
+
+    /// 묶음을 만드는 줄. 묶음들이 선 목록의 맨 끝에 이어 붙는다.
+    ///
+    /// **담기 모달에도 만드는 길이 있지만 하는 일이 다르다.** 그쪽은 낱말을 손에 들고
+    /// 만드는 것이라 만들면 곧 담긴다. 여기서 만드는 것은 **비어 있는 자리**다 —
+    /// 다음 화를 보기 전에 이름을 세워 두고, 담을 때 그 자리를 고른다.
+    private var newFolderRow: some View {
+        Button { naming = true } label: {
+            HStack(spacing: 11) {
+                Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 16)
+                Text("새 묶음 만들기")
+                    .font(Theme.korean(16))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Theme.grey1)
+            .padding(.horizontal, Theme.gutter)
+            .padding(.vertical, 17)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("담긴 것이 없는 묶음을 미리 만듭니다")
     }
 
     /// 낱말 하나. **담을 때 보였던 뜻을 그대로 붙든다** — 뜻이 나중에 좋아지더라도

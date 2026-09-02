@@ -446,3 +446,170 @@ struct CollectedWordPartOfSpeechTests {
         #expect(collection.words.first?.partOfSpeech == nil)
     }
 }
+
+/// 낱말이 없는 묶음도 묶음이다.
+///
+/// 묶음 이름을 낱말에서 거두면 **빈 묶음이 존재할 수 없다.** 마지막 낱말을 다른 데로
+/// 옮기거나 빼는 순간 묶음이 통째로 사라지는데, 사용자는 낱말 하나를 치웠을 뿐이지
+/// 묶음을 없앤 적이 없다. 다음 화를 보기 전에 자리를 미리 만들어 두는 일도 못 한다.
+///
+/// 그래서 묶음 이름을 따로 적어 둔다. **낱말과 따로 저장한다** — 낱말은 배열로 저장되는데
+/// 그 곁에 값을 하나 끼우려면 저장 구조를 바꿔야 하고, 그러면 예전 파일을 못 읽는다.
+/// 지난번 묶음(`.folder`)이 이미 쓰는 방식이다.
+@Suite("빈 묶음")
+struct WordCollectionEmptyFolderTests {
+
+    static func 임시경로() -> String {
+        NSTemporaryDirectory() + "mworago-emptyfolder-\(UUID().uuidString).json"
+    }
+
+    static func 치우기(_ path: String) {
+        for suffix in ["", ".folder", ".folders"] {
+            try? FileManager.default.removeItem(atPath: path + suffix)
+        }
+    }
+
+    static func 낱말(_ 표기: String, _ 읽기: String) -> CollectedWord {
+        CollectedWord(headword: 표기, reading: 읽기, hangul: "요미", gloss: "뜻")
+    }
+
+    @Test("묶음을 미리 만들어 둔다 — 담긴 것이 없어도 남는다")
+    func 미리만들기() {
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+
+        var collection = WordCollection(path: path)
+        collection.createFolder("리코리스 4화")
+        #expect(collection.folderNames == ["리코리스 4화"])
+        // 앱을 껐다 켜도 그대로다. 보기 전에 만들어 두는 일이라 담기까지 시간이 뜬다.
+        #expect(WordCollection(path: path).folderNames == ["리코리스 4화"])
+    }
+
+    @Test("만드는 것과 담는 것은 다른 일이다")
+    func 만들어도안담긴다() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.createFolder("리코리스 4화")
+        #expect(collection.words.isEmpty)
+        // 지난번 묶음은 "마지막으로 담은 곳"이다. 만들기는 담은 것이 아니므로 흔들지 않는다.
+        #expect(collection.lastFolder == nil)
+    }
+
+    @Test("같은 이름을 두 번 만들어도 하나다")
+    func 같은이름() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.createFolder("3화")
+        collection.createFolder("3화")
+        collection.createFolder("  3화  ")   // 앞뒤 공백은 같은 이름이다
+        #expect(collection.folderNames == ["3화"])
+    }
+
+    @Test("공백만 적은 이름으로는 묶음이 생기지 않는다")
+    func 빈이름() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.createFolder("   ")
+        #expect(collection.folderNames.isEmpty)
+    }
+
+    @Test("낱말을 다 옮겨도 묶음은 남는다")
+    func 옮겨도남기() {
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+
+        var collection = WordCollection(path: path)
+        let word = Self.낱말("犬", "いぬ")
+        collection.add(word, to: "3화")
+        collection.move(word, to: "1화")
+        // 사용자는 낱말 하나를 옮겼을 뿐이지 묶음을 없앤 적이 없다.
+        #expect(collection.folderNames == ["1화", "3화"])
+        #expect(WordCollection(path: path).folderNames == ["1화", "3화"])
+    }
+
+    @Test("낱말을 다 빼도 묶음은 남는다 — 지난번 묶음이 아니어도")
+    func 빼도남기() {
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+
+        var collection = WordCollection(path: path)
+        let word = Self.낱말("犬", "いぬ")
+        collection.add(word, to: "3화")
+        collection.add(Self.낱말("猫", "ねこ"), to: "1화")   // 지난번 묶음이 1화로 옮겨 간다
+        collection.remove(word)
+        #expect(collection.folderNames == ["1화", "3화"])
+        #expect(WordCollection(path: path).folderNames == ["1화", "3화"])
+    }
+
+    @Test("빈 묶음도 없앨 수 있다")
+    func 빈묶음없애기() {
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+
+        var collection = WordCollection(path: path)
+        collection.createFolder("3화")
+        collection.removeFolder("3화")
+        #expect(collection.folderNames.isEmpty)
+        // 지운 것이 되살아나면 안 된다. 없앤 자리가 파일에도 남아야 한다.
+        #expect(WordCollection(path: path).folderNames.isEmpty)
+    }
+
+    @Test("빈 묶음의 이름도 바꿀 수 있다")
+    func 빈묶음이름바꾸기() {
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+
+        var collection = WordCollection(path: path)
+        collection.createFolder("4화")
+        collection.renameFolder("4화", to: "리코리스 4화")
+        #expect(collection.folderNames == ["리코리스 4화"])
+        #expect(WordCollection(path: path).folderNames == ["리코리스 4화"])
+    }
+
+    @Test("빈 묶음을 이미 있는 이름으로 바꾸면 그 묶음에 합쳐진다")
+    func 빈묶음합치기() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "いぬ"), to: "리코리스 3화")
+        collection.createFolder("3화")
+        collection.renameFolder("3화", to: "리코리스 3화")
+        #expect(collection.folderNames == ["리코리스 3화"])
+        #expect(collection.words.filter { $0.folder == "리코리스 3화" }.count == 1)
+    }
+
+    @Test("묶음으로 나눌 때 빈 묶음도 자리를 지킨다")
+    func 나눌때빈묶음() {
+        let words = [Self.낱말("犬", "いぬ").movedTo("2화"),
+                     Self.낱말("茶", "ちゃ")]
+        let folders = CollectedWord.byFolder(words, names: ["1화", "2화", "3화"])
+        // 이름 붙은 것이 먼저, 아직 안 넣은 것이 마지막이다 — 빈 묶음도 그 차례를 따른다.
+        #expect(folders.map(\.name) == ["1화", "2화", "3화", nil])
+        #expect(folders.first?.words.isEmpty == true)
+    }
+
+    @Test("이름을 적어 두기 전에 담은 것도 묶음으로 보인다")
+    func 옛파일() throws {
+        // 묶음 이름을 따로 적어 두기 전의 파일이다. 낱말이 묶음 이름을 들고 있으므로
+        // 그것을 거두어 목록에 세운다 — 쓰던 사람의 책장이 비어 보이면 안 된다.
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+        let old = #"[{"headword":"犬","reading":"いぬ","hangul":"이누","gloss":"개","folder":"리코리스 3화","collectedAt":"2026-08-31T11:00:00Z"}]"#
+        try old.write(toFile: path, atomically: true, encoding: .utf8)
+
+        var collection = WordCollection(path: path)
+        #expect(collection.folderNames == ["리코리스 3화"])
+        // 거둔 이름도 이제부터는 적어 둔다. 그 낱말을 빼도 묶음이 사라지지 않아야 한다.
+        collection.remove(collection.words[0])
+        #expect(collection.folderNames == ["리코리스 3화"])
+        #expect(WordCollection(path: path).folderNames == ["리코리스 3화"])
+    }
+
+    @Test("묶음 파일이 깨져 있어도 앱이 죽지 않는다")
+    func 깨진파일() throws {
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+        try "{ 이건 목록이 아니다".write(toFile: path + ".folders", atomically: true, encoding: .utf8)
+
+        var collection = WordCollection(path: path)
+        #expect(collection.folderNames.isEmpty)
+        // 깨진 것을 읽지 못했을 뿐이므로 새로 적는 일은 그대로 된다.
+        collection.createFolder("3화")
+        #expect(WordCollection(path: path).folderNames == ["3화"])
+    }
+}

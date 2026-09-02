@@ -31,6 +31,16 @@ final class CollectionStore {
     var folderNames: [String] { collection.folderNames }
     func move(_ word: CollectedWord, to folder: String?) { collection.move(word, to: folder) }
 
+    /// 묶음으로 나눈 것. **담긴 것이 없는 묶음도 자리를 지킨다** —
+    /// 낱말에서만 거두면 마지막 낱말을 옮기는 순간 묶음이 사라진다.
+    var folders: [CollectedWord.Folder] {
+        CollectedWord.byFolder(collection.words, names: collection.folderNames)
+    }
+
+    /// 묶음만 만든다. 담기 모달의 "만들어 담기"와 다른 일이다 —
+    /// 다음 화를 보기 전에 책장에 자리를 마련해 두는 길이다.
+    func createFolder(_ name: String) { collection.createFolder(name) }
+
     /// 묶음을 손본다. 만드는 길만 내면 오타를 낸 이름이 영영 남는다.
     func renameFolder(_ old: String, to new: String) { collection.renameFolder(old, to: new) }
     /// 이름만 없앤다. 담은 낱말은 "아직 안 넣은 것"으로 남는다.

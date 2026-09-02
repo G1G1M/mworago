@@ -84,11 +84,15 @@ public extension CollectedWord {
     }
 
     /// 묶음으로 나눈다. 이름 붙은 것이 먼저, 아직 안 넣은 것이 마지막이다.
-    static func byFolder(_ words: [CollectedWord]) -> [Folder] {
+    ///
+    /// **만들어 둔 이름을 함께 받는다.** 낱말에서만 거두면 빈 묶음이 존재할 수 없어서,
+    /// 마지막 낱말을 옮기는 순간 묶음이 통째로 사라진다 — 사용자는 낱말 하나를
+    /// 치웠을 뿐이지 묶음을 없앤 적이 없다.
+    static func byFolder(_ words: [CollectedWord], names: [String] = []) -> [Folder] {
         let grouped = Dictionary(grouping: words) { $0.folder }
-        let named = grouped.keys.compactMap { $0 }.sorted()
+        let named = Set(grouped.keys.compactMap { $0 }).union(names).sorted()
         var folders = named.map { name in
-            Folder(name: name, words: grouped[name]!.sorted { $0.collectedAt > $1.collectedAt })
+            Folder(name: name, words: (grouped[name] ?? []).sorted { $0.collectedAt > $1.collectedAt })
         }
         if let loose = grouped[nil], !loose.isEmpty {
             folders.append(Folder(name: nil, words: loose.sorted { $0.collectedAt > $1.collectedAt }))
@@ -123,6 +127,16 @@ public struct WordCollection: Sendable {
     /// 파일 이름이 `.folder` 인 것은 이 값이 "지금 담는 곳"이던 시절의 자취다.
     /// 그때 정해 둔 곳이 곧 그 사람이 마지막으로 담던 곳이라 그대로 이어받는다.
     private var folderPath: String { path + ".folder" }
+    /// 만들어 둔 묶음 이름.
+    ///
+    /// **낱말에서 거두지 않고 따로 적어 둔다.** 거두면 빈 묶음이 존재할 수 없어서,
+    /// 마지막 낱말을 옮기거나 빼는 순간 묶음이 사라진다 — 사용자는 낱말 하나를 치웠을
+    /// 뿐이다. 다음 화의 자리를 미리 만들어 두는 일도 그때는 못 한다.
+    ///
+    /// 낱말 파일과 따로 두는 것은 지난번 묶음과 같은 까닭이다 — 낱말은 배열로 저장되는데
+    /// 그 곁에 값을 하나 끼우려면 저장 구조를 바꿔야 하고, 그러면 예전 파일을 못 읽는다.
+    private var folders: Set<String> = []
+    private var foldersPath: String { path + ".folders" }
 
     public init(path: String) {
         self.path = path
@@ -130,6 +144,23 @@ public struct WordCollection: Sendable {
         self.lastFolder = (try? String(contentsOfFile: path + ".folder", encoding: .utf8))?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .nilIfEmpty
+        // 적어 둔 이름에 **낱말이 들고 있는 이름과 지난번 묶음을 더한다.** 이름을 따로
+        // 적어 두기 전에 쓰던 파일에도 묶음이 있고, 그 사람의 책장이 비어 보이면 안 된다.
+        var names = Self.loadFolders(from: path + ".folders")
+        names.formUnion(words.compactMap(\.folder))
+        if let lastFolder { names.insert(lastFolder) }
+        self.folders = names
+    }
+
+    /// 묶음만 만든다. **담는 것과는 다른 일이다** — 다음 화를 보기 전에 자리를 마련해 둔다.
+    ///
+    /// 지난번 묶음은 흔들지 않는다. 그것은 마지막으로 *담은* 곳이라, 만들어만 둔 자리가
+    /// 미리 골라져 있으면 담을 때 고른 적 없는 곳으로 낱말이 간다.
+    public mutating func createFolder(_ name: String) {
+        guard let name = name.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+              !folders.contains(name) else { return }
+        folders.insert(name)
+        saveFolders()
     }
 
     /// 방금 고른 자리를 기억해 둔다. 빈 이름은 "아무 데도 아님"이다.
@@ -153,7 +184,11 @@ public struct WordCollection: Sendable {
     /// 어제로 끌려가면 안 된다.
     public mutating func move(_ word: CollectedWord, to folder: String?) {
         guard let index = words.firstIndex(where: { $0.id == word.id }) else { return }
-        words[index] = words[index].movedTo(folder?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty)
+        let folder = folder?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        // 옮겨 간 곳이 방금 만든 묶음일 수 있다. 낱말이 들어왔다고 이름이 저절로
+        // 적히지는 않으므로 여기서 적어 둔다.
+        if let folder { folders.insert(folder) }
+        words[index] = words[index].movedTo(folder)
         save()
     }
 
@@ -169,7 +204,10 @@ public struct WordCollection: Sendable {
             words[index] = words[index].movedTo(new)
             touched = true
         }
-        guard touched || lastFolder == old else { return }
+        // 낱말이 하나도 없는 묶음도 이름을 바꿀 수 있다 — 적어 둔 이름이 그 자리를 지킨다.
+        guard touched || folders.contains(old) || lastFolder == old else { return }
+        folders.remove(old)
+        folders.insert(new)
         // 지난번 묶음도 따라간다. 안 따라가면 다음에 담을 때 없는 이름이 골라져 있고,
         // 그 이름으로 묶음이 하나 더 생긴다.
         if lastFolder == old { remember(new) }
@@ -186,19 +224,17 @@ public struct WordCollection: Sendable {
             words[index] = words[index].movedTo(nil)
             touched = true
         }
-        guard touched || lastFolder == name else { return }
+        guard touched || folders.contains(name) || lastFolder == name else { return }
+        folders.remove(name)
         if lastFolder == name { remember(nil) }
         save()
     }
 
-    /// 이름이 붙은 묶음들. 낱말에서 거둔다 — 빈 묶음은 따로 기억하지 않는다.
-    /// 지난번 묶음은 그 안이 비었더라도 보여야 하므로 함께 넣는다. 방금 담은 곳이
-    /// 목록에서 사라지면 다음에 담을 때 같은 이름을 다시 쳐야 한다.
-    public var folderNames: [String] {
-        var names = Set(words.compactMap(\.folder))
-        if let lastFolder { names.insert(lastFolder) }
-        return names.sorted()
-    }
+    /// 이름이 붙은 묶음들. **적어 둔 것이 곧 목록이다** — 담긴 것이 없어도 남는다.
+    ///
+    /// 한때는 낱말에서 거뒀다. 그때는 빈 묶음이 존재할 수 없어서, 지난번 묶음 하나만
+    /// 예외로 목록에 끼워 두는 것으로 "방금 담은 곳이 사라지는" 일만 막고 있었다.
+    public var folderNames: [String] { folders.sorted() }
 
     public func contains(_ word: CollectedWord) -> Bool {
         words.contains { $0.id == word.id }
@@ -213,6 +249,7 @@ public struct WordCollection: Sendable {
         let folder = folder?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         // 방금 담은 것이 눈앞에 있어야 한다. 스크롤해서 찾게 만들 이유가 없다.
         words.insert(word.movedTo(folder), at: 0)
+        if let folder { folders.insert(folder) }
         remember(folder)
         save()
     }
@@ -250,8 +287,27 @@ public struct WordCollection: Sendable {
 
     private func save() {
         let (encoder, _) = Self.coder()
-        guard let data = try? encoder.encode(words) else { return }
-        try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        if let data = try? encoder.encode(words) {
+            try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        }
+        saveFolders()
+    }
+
+    /// 묶음 이름을 적어 둔다. 정렬해 두는 것은 파일을 열어 봤을 때 읽히라는 뜻이고,
+    /// 같은 내용이 늘 같은 바이트가 되어 쓸데없는 저장이 눈에 띄기 때문이다.
+    private func saveFolders() {
+        guard let data = try? JSONEncoder().encode(folders.sorted()) else { return }
+        try? data.write(to: URL(fileURLWithPath: foldersPath), options: .atomic)
+    }
+
+    /// 읽지 못하면 없는 셈 친다. 이름 목록을 잃는 것은 아깝지만, 낱말은 제 파일에
+    /// 그대로 있고 그것이 들고 있는 이름은 `init` 에서 다시 거둔다.
+    private static func loadFolders(from path: String) -> Set<String> {
+        guard let data = FileManager.default.contents(atPath: path),
+              let names = try? JSONDecoder().decode([String].self, from: data) else { return [] }
+        return Set(names.compactMap {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        })
     }
 
     /// 한 칸을 읽다 실패해도 배열 전체를 버리지 않기 위한 껍데기.

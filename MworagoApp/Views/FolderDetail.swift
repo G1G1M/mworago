@@ -49,6 +49,7 @@ struct FolderDetail: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     head
+                    if words.isEmpty { emptyWords }
                     ForEach(words) { word in
                         HStack(spacing: 0) {
                             if editing {
@@ -109,7 +110,11 @@ struct FolderDetail: View {
             Button("그만두기", role: .cancel) { }
         } message: {
             // 무엇이 남는지 먼저 말한다. 담은 것이 사라진다고 오해하면 누를 수 없다.
-            Text("담은 낱말 \(words.count)개는 그대로 남고 '아직 안 넣은 것'으로 갑니다. 이름만 없어집니다.")
+            // 빈 묶음에는 남을 낱말이 없으므로 그 말을 하지 않는다 — 없는 것을 세면
+            // "낱말 0개는 그대로 남고" 처럼 읽을 수 없는 말이 된다.
+            Text(words.isEmpty
+                 ? "담긴 낱말이 없어 이름만 없어집니다."
+                 : "담은 낱말 \(words.count)개는 그대로 남고 '아직 안 넣은 것'으로 갑니다. 이름만 없어집니다.")
         }
     }
 
@@ -123,23 +128,30 @@ struct FolderDetail: View {
                 Text(title)
                     .font(Theme.korean(22, weight: .semibold))
                     .foregroundStyle(Theme.ink)
-                Text("\(words.count)개")
-                    .font(Theme.korean(13))
-                    .foregroundStyle(Theme.grey3)
+                // 개수는 담긴 것이 있을 때만 적는다. `0개` 는 아래 안내가 이미 하는 말이고,
+                // 이름 옆에 붙으면 빈 자리를 세어 보라는 말처럼 읽힌다.
+                if !words.isEmpty {
+                    Text("\(words.count)개")
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey3)
+                }
 
                 Spacer(minLength: 12)
 
-                // 연습은 늘 있고, 이름을 손보는 일은 사용자가 지은 묶음에만 있다.
-                Button { onPractice(words) } label: {
-                    Text("이 묶음 연습")
-                        .font(Theme.korean(13.5))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Theme.ink, in: Capsule())
-                        .foregroundStyle(Theme.paper)
+                // **연습은 연습할 것이 있을 때만 있다.** 빈 묶음에서 눌러 봤자
+                // 아무것도 없는 연습 화면으로 건너갈 뿐이다.
+                if !words.isEmpty {
+                    Button { onPractice(words) } label: {
+                        Text("이 묶음 연습")
+                            .font(Theme.korean(13.5))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Theme.ink, in: Capsule())
+                            .foregroundStyle(Theme.paper)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("이 묶음의 낱말만 연습합니다")
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("이 묶음의 낱말만 연습합니다")
 
 
 
@@ -184,6 +196,25 @@ struct FolderDetail: View {
         .padding(.horizontal, Theme.gutter)
         .padding(.top, Theme.screenTop)
         .padding(.bottom, Theme.blockGap)
+    }
+
+    /// 담긴 것이 없을 때. **자리는 있고 아직 아무것도 넣지 않았을 뿐이다** —
+    /// 그렇게 보이게 적는다. 잘못 들어온 화면이 아니라는 것이 먼저다.
+    ///
+    /// 책장의 빈 화면처럼 가운데 세우지 않는다. 여기는 이름이 위에 서 있는 화면이라,
+    /// 글이 이름 아래에서 이어져야 그 묶음에 대한 말로 읽힌다.
+    private var emptyWords: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(folder == nil ? "아직 담은 것이 없어요" : "이 묶음은 아직 비어 있어요")
+                .font(Theme.korean(17, weight: .medium))
+                .foregroundStyle(Theme.grey1)
+            Text(folder == nil
+                 ? "찾기에서 낱말 옆의 갈피표를 누르면 여기 모입니다."
+                 : "찾기에서 낱말 옆의 갈피표를 누르고 이 묶음을 고르면 여기 모입니다.")
+                .font(Theme.korean(14))
+                .foregroundStyle(Theme.grey2)
+        }
+        .padding(.horizontal, Theme.gutter)
     }
 
     /// 낱말 한 줄.
