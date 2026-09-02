@@ -138,21 +138,7 @@ struct FolderDetail: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("이 묶음의 낱말만 연습합니다")
 
-                // 지우는 중일 때만 밖에 선다. **켜는 자리와 끄는 자리가 다르면 안 된다** —
-                // 메뉴로 켜 놓고 끌 때 다시 메뉴를 열게 하면, 켠 것을 못 끄는 사람이 생긴다.
-                if editing {
-                    Button {
-                        withAnimation(.snappy(duration: 0.18)) { editing = false }
-                    } label: {
-                        Text("완료")
-                            .font(Theme.korean(13.5))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Theme.ink, in: Capsule())
-                            .foregroundStyle(Theme.paper)
-                    }
-                    .buttonStyle(.plain)
-                }
+
 
                 // **자주 하는 일 하나만 밖에 둔다.**
                 //
@@ -165,8 +151,10 @@ struct FolderDetail: View {
                 if !words.isEmpty || folder != nil {
                     Menu {
                         if !words.isEmpty {
-                            Button("낱말 지우기") {
-                                withAnimation(.snappy(duration: 0.18)) { editing = true }
+                            // 켜는 자리와 끄는 자리를 같게 둔다. 밖에 따로 세우지 않으므로
+                            // 여기서 켜고 여기서 끈다.
+                            Button(editing ? "지우기 마치기" : "낱말 지우기") {
+                                withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
                             }
                         }
                         if folder != nil {
@@ -177,13 +165,17 @@ struct FolderDetail: View {
                             Button("묶음 없애기", role: .destructive) { removing = true }
                         }
                     } label: {
-                        Text("손보기")
+                        // **옆 캡슐과 키를 맞춘다.** 심볼에 같은 글자체를 물리면 줄 높이가
+                        // 같아져 두 캡슐이 나란히 선다 — 크기를 손으로 박으면
+                        // 사용자가 글자 크기를 키웠을 때 둘만 어긋난다.
+                        Image(systemName: "ellipsis")
                             .font(Theme.korean(13.5))
-                            .padding(.horizontal, 14)
+                            .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Theme.grey4, in: Capsule())
-                            .foregroundStyle(Theme.grey1)
+                            .background(editing ? Theme.ink : Theme.grey4, in: Capsule())
+                            .foregroundStyle(editing ? Theme.paper : Theme.grey1)
                     }
+                    .accessibilityLabel("이 묶음 손보기")
                 }
             }
         }
