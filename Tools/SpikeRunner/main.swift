@@ -81,9 +81,11 @@ let deinflectionPenalty = flagValues("--deinf-penalty").first.flatMap(Double.ini
 // 분절은 앱과 같은 기본값에서 출발한다 — 도구가 다른 값을 쓰면 여기 숫자가 앱 숫자가 아니다.
 var tunedWeights = Segmenter.defaultWeights
 if let deinflectionPenalty { tunedWeights.deinflectionPenalty = deinflectionPenalty }
+if let jmdictWeight { tunedWeights.jmdictWeight = jmdictWeight }
 // 낱말 검색은 등재형 쪽에 무게를 두는 본래 값을 쓴다(활용 벌점 25).
 var wordWeights = Ranker.Weights()
 if let deinflectionPenalty { wordWeights.deinflectionPenalty = deinflectionPenalty }
+if let jmdictWeight { wordWeights.jmdictWeight = jmdictWeight }
 // 문장 뜻을 모델에게 물어본다. 앱이 부를 것과 같은 재료를 같은 모델에 태운다 —
 // 도구가 다른 것을 물으면 여기서 본 답이 앱의 답이 아니다.
 let translateInputs = flagValues("--translate")
@@ -93,8 +95,9 @@ let translateCaseCount = flagValues("--translate-cases").first.flatMap(Int.init)
 // 한 글자씩 늘려 가며 분절 시간을 잰다. 화면은 글자를 칠 때마다 다시 찾으므로,
 // **한 번의 검색이 아니라 치는 동안의 비용**이 사용자가 느끼는 것이다.
 let typingInput = flagValues("--typing").first
+// 빈도 목록에 없는 낱말이 기대는 층(JMdict 빈도 태그)의 무게를 훑는다.
+let jmdictWeight = flagValues("--jmdict").first.flatMap(Double.init)
 // 조사에게 돌려주는 조각 비용을 훑는다.
-let particleBonus = flagValues("--particle").first.flatMap(Double.init) ?? Segmenter.defaultParticleBonus
 // 애플 번역기(Translation 프레임워크)로도 같은 문장을 태운다.
 // 온디바이스 모델은 만들어 내는 물건이라 안전 필터가 옮기는 일까지 막는데,
 // 번역기는 옮기는 것이 본업이다. 어느 쪽이 이 앱에 맞는지는 나란히 놓고 봐야 안다.
@@ -111,7 +114,7 @@ let positional: [String] = {
             let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
-                || args[i] == "--particle" || args[i] == "--mt-cases"
+                || args[i] == "--jmdict" || args[i] == "--mt-cases"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -350,8 +353,7 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         log("조각 비용 \(cost) · 활용 벌점 \(weights.deinflectionPenalty)")
         for testCase in segmentCases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
-                                             weights: weights, segmentCost: cost,
-                                             particleBonus: particleBonus)
+                                             weights: weights, segmentCost: cost)
             let mine = segments.map(\.hangul)
             guard mine != testCase.pieces else { continue }
             wrong += 1
@@ -361,8 +363,7 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
         // 여기 있는 것은 문맥 판별로도 구제되지 않는다.
         for testCase in segmentCases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
-                                             weights: weights, segmentCost: cost,
-                                             particleBonus: particleBonus)
+                                             weights: weights, segmentCost: cost)
             guard segments.map(\.hangul) == testCase.pieces else { continue }
             for (i, segment) in segments.enumerated() where i < testCase.words.count {
                 let word = testCase.words[i]

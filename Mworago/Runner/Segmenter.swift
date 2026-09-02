@@ -62,10 +62,25 @@ public enum Segmenter {
     /// 제한이 없으면 긴 입력에서 후보가 제곱으로 불어난다.
     private static let maxPieceLength = 10
 
-    /// 조사로 볼 조각의 최대 길이(음절). `가`·`오`·`니`처럼 한두 자다.
-    private static let particleLength = 2
-    /// 조사에게 돌려주는 조각 비용의 기본값. 값은 재서 고른다.
-    public static let defaultParticleBonus = 140.0
+    /// **빈도 목록에 없는 낱말을 편들어 보았지만, 재서 넣지 않았다.**
+    ///
+    /// `ではない`(exp)는 사전에 있는데 빈도 목록에는 없어 10점이고, 쪼갠 조각
+    /// `は`·`ない` 는 각각 100점대다. 그래서 `好き ではない` 가 `好きで/は/ない` 로
+    /// 갈려 낱말이 깨진다. 외래어가 0점이던 것과 같은 병으로 보였다.
+    ///
+    /// 두 갈래로 고쳐 보았고 둘 다 손해였다.
+    ///
+    ///  - **JMdict 빈도 태그의 무게를 올리기**(1·3·6·10) — 네 값이 한 자리도 움직이지
+    ///    않았다. 그 층은 도메인 빈도가 0일 때만 쓰이는데, 조각 비용을 이기기에는
+    ///    태그 점수의 자릿수 자체가 작다.
+    ///  - **사전이 `exp` 로 실은 조각의 조각 비용을 덜 물리기** — Tanaka 경계는
+    ///    조금 나아지는데(틀린 문장 67 → 65) **낱말이 깨진 문장은 늘었다**(18 → 20).
+    ///    보너스를 키울수록 나빠진다(100 이면 22, 135 면 25). `exp` 표제항이 수만 개라
+    ///    엉뚱한 관용구로 뭉치는 쪽이 더 많다.
+    ///
+    /// **재서 손해인 길은 내지 않는다.** 이 자리는 조각 비용이나 빈도 층으로 풀 문제가
+    /// 아니라, 빈도 목록이 복합 표현을 세지 않는다는 자료 쪽 문제로 보인다.
+
 
     /// 사전에 없는 조각에 매기는 점수. **음절 하나당**이다.
     ///
@@ -148,14 +163,13 @@ public enum Segmenter {
                                weights: Ranker.Weights = defaultWeights,
                                segmentCost: Double = defaultSegmentCost,
                                unknownScore: Double = defaultUnknownScore,
-                               particleBonus: Double = defaultParticleBonus,
                                cache: SearchCache? = nil) -> [Segment] {
         var segments: [Segment] = []
         // 사람이 띄어 썼다면 그 뜻을 존중한다. 어절 안쪽만 사전을 보고 나눈다.
         for word in input.split(whereSeparator: \.isWhitespace) {
             segments += segmentWord(String(word), in: index, frequency: frequency,
                                     weights: weights, segmentCost: segmentCost,
-                                    unknownScore: unknownScore, particleBonus: particleBonus,
+                                    unknownScore: unknownScore,
                                     cache: cache)
         }
         return segments
@@ -167,7 +181,6 @@ public enum Segmenter {
                                     weights: Ranker.Weights,
                                     segmentCost: Double,
                                     unknownScore: Double,
-                                    particleBonus: Double,
                                     cache: SearchCache?) -> [Segment] {
         let syllables = Array(word)
         guard !syllables.isEmpty else { return [] }
