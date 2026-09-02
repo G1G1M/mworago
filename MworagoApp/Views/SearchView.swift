@@ -119,6 +119,15 @@ struct SearchView: View {
                 Spacer(minLength: 0)
                     .frame(maxHeight: hasResults || inputFocused ? 0 : .infinity)
             }
+            // **두 움직임이 겹쳐 한 번으로 보이게 한다.**
+            //
+            // 빈자리가 닫히는 것과 키보드가 밀어 올리는 것은 서로 다른 일이라, 그냥 두면
+            // 바가 바닥까지 **내려갔다가 다시 올라온다.** 두 걸음이 눈에 보인다.
+            //
+            // 빈자리 닫힘을 키보드와 같은 길이·같은 결로 움직이면 둘이 포개져,
+            // 바가 가운데에서 키보드 위로 **곧장 내려앉는 한 걸음**이 된다.
+            // 0.25초와 easeOut 은 시스템 키보드가 쓰는 값이다.
+            .animation(.easeOut(duration: 0.25), value: inputFocused)
         }
         .environment(desk)
         // **세션은 언어쌍마다 하나씩, 앱이 사는 동안 그대로 둔다.** 열어 놓고 옮길 것을
