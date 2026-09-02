@@ -38,3 +38,7 @@ Tools/data/korean-gloss-exaone*.tsv
 MworagoApp/Resources/Fonts/
 MworagoApp/Resources/hanja-reading.tsv
 Tools/data/*.log
+
+# Xcode 개인 설정 — 사람마다 다르고 공유할 것이 없다
+xcuserdata/
+*.xcuserdatad
