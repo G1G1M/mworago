@@ -116,6 +116,9 @@ struct FolderDetail: View {
     /// 이름과 개수, 그리고 이 묶음에 할 수 있는 일.
     private var head: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // **이름과 할 일이 한 줄에 마주 선다.** 줄을 나눠 두면 이름 아래 캡슐이
+            // 목록의 첫 줄처럼 읽혀서, 이 묶음에 하는 일인지 낱말에 하는 일인지 갈리지 않는다.
+            // 이름은 왼쪽 끝, 할 일은 오른쪽 끝 — 그 사이가 비어 있어 둘이 다른 일임이 보인다.
             HStack(alignment: .firstTextBaseline, spacing: 9) {
                 Text(title)
                     .font(Theme.korean(22, weight: .semibold))
@@ -123,10 +126,10 @@ struct FolderDetail: View {
                 Text("\(words.count)개")
                     .font(Theme.korean(13))
                     .foregroundStyle(Theme.grey3)
-            }
 
-            // 연습은 늘 있고, 이름을 손보는 일은 사용자가 지은 묶음에만 있다.
-            HStack(spacing: 8) {
+                Spacer(minLength: 12)
+
+                // 연습은 늘 있고, 이름을 손보는 일은 사용자가 지은 묶음에만 있다.
                 Button { onPractice(words) } label: {
                     Text("이 묶음 연습")
                         .font(Theme.korean(13.5))
@@ -145,9 +148,8 @@ struct FolderDetail: View {
                 // 캡슐이 넷이면 무엇이 주된 일인지 안 보인다. 여기서 자주 하는 일은
                 // 연습이고, 지우거나 이름을 고치거나 묶음을 없애는 일은 몇 번 하지 않는다.
                 //
-                // **줄임표(`⋯`) 대신 글자로 적는다.** 애플이 안 쓰는 기호는 아니지만
-                // (메모·파일이 그 자리에 쓴다), 이 화면의 다른 캡슐이 모두 한국어로
-                // 말하고 있어서 기호 하나만 끼면 그것만 딴 문법이 된다.
+                // 줄임표는 애플이 이 자리에 쓰는 기호다(메모·파일이 그렇다).
+                // 이름 옆에 서므로 글자보다 기호가 낫다 — 이름과 겨루지 않는다.
                 if !words.isEmpty || folder != nil {
                     Menu {
                         if !words.isEmpty {
