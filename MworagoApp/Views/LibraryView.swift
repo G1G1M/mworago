@@ -176,19 +176,54 @@ struct LibraryView: View {
             .padding(.horizontal, Theme.gutter)
     }
 
+    /// 지우는 손이 얹혔는가.
+    ///
+    /// **미는 몸짓 대신 편집 자리를 둔다.** 목록이 `LazyVStack` 이라 미는 몸짓을
+    /// 직접 만들면 훑는 손(세로)과 지우는 손(가로)이 같은 자리에서 다툰다.
+    /// 무엇보다 **지우는 일은 되돌릴 수 없으므로**, 지울 셈일 때만 단추가 보이는 편이
+    /// 스치듯 지워지는 것보다 낫다.
+    @State private var editing = false
+
+    /// 지울 수 있는 줄. 편집 중일 때만 단추가 앞에 선다.
+    @ViewBuilder
+    private func deletable<V: View>(_ remove: @escaping () -> Void,
+                                    @ViewBuilder _ inner: () -> V) -> some View {
+        HStack(spacing: 0) {
+            if editing {
+                Button(action: remove) {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 21))
+                        .foregroundStyle(.red)
+                        .padding(.leading, Theme.gutter)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("지우기")
+            }
+            inner()
+        }
+    }
+
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 switch grouping {
                 case .folders:
                     ForEach(CollectedWord.byFolder(collection.words)) { folder in
-                        groupRow(name: folder.name ?? "아직 안 넣은 것",
-                                 dim: folder.name == nil,
-                                 words: folder.words,
-                                 route: .folder(folder.name))
+                        // 묶음을 없애도 **낱말은 남는다** — 묶음은 담아 둔 자리일 뿐이다.
+                        // 그래서 여기서는 되묻지 않는다. 이름 없는 무리는 지울 자리가 없다.
+                        deletable({ if let name = folder.name { collection.removeFolder(name) } }) {
+                            groupRow(name: folder.name ?? "아직 안 넣은 것",
+                                     dim: folder.name == nil,
+                                     words: folder.words,
+                                     route: .folder(folder.name))
+                        }
                         rowDivider
                     }
                 case .days:
+                    // 날짜 묶음에는 지우는 단추를 두지 않는다. 날짜는 사람이 만든 자리가
+                    // 아니라 담은 때가 만든 자리라, 지운다는 말이 성립하지 않는다.
                     ForEach(days) { day in
                         groupRow(name: day.date.formatted(.dateTime.month(.wide).day().locale(Theme.locale)),
                                  dim: false,
@@ -198,7 +233,7 @@ struct LibraryView: View {
                     }
                 case .list:
                     ForEach(collection.words) { word in
-                        row(word)
+                        deletable({ collection.remove(word) }) { row(word) }
                         rowDivider
                     }
                 }
@@ -223,6 +258,19 @@ struct LibraryView: View {
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.grey2)
 
+                Spacer(minLength: 12)
+
+                // 담긴 것이 없으면 지울 것도 없다.
+                if !collection.words.isEmpty {
+                    Button {
+                        withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
+                    } label: {
+                        Text(editing ? "완료" : "편집")
+                            .font(Theme.korean(15, weight: editing ? .medium : .regular))
+                            .foregroundStyle(editing ? Theme.ink : Theme.grey2)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             // 담긴 것이 없으면 무엇으로 묶어 볼지도 없다.
             //

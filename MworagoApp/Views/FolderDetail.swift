@@ -39,6 +39,9 @@ struct FolderDetail: View {
     @State private var renaming = false
     @State private var newName = ""
     @State private var removing = false
+    /// 지우는 손이 얹혔는가. 책장 첫 화면과 같은 문법이다 —
+    /// 미는 몸짓 대신 편집 자리를 두고, 지울 셈일 때만 단추를 보인다.
+    @State private var editing = false
 
     var body: some View {
         ZStack {
@@ -47,7 +50,21 @@ struct FolderDetail: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     head
                     ForEach(words) { word in
-                        row(word)
+                        HStack(spacing: 0) {
+                            if editing {
+                                Button { onRemoveWord(word) } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 21))
+                                        .foregroundStyle(.red)
+                                        .padding(.leading, Theme.gutter)
+                                        .padding(.vertical, 8)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("지우기")
+                            }
+                            row(word)
+                        }
                         Divider().overlay(Theme.grey3)
                     }
                 }
@@ -120,6 +137,22 @@ struct FolderDetail: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("이 묶음의 낱말만 연습합니다")
+
+                // 담긴 것이 없으면 지울 것도 없다. 묶음이 아닌 자리(날짜·전체)에서도
+                // 낱말은 지울 수 있다 — 지우는 것은 낱말이지 묶음이 아니기 때문이다.
+                if !words.isEmpty {
+                    Button {
+                        withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
+                    } label: {
+                        Text(editing ? "완료" : "편집")
+                            .font(Theme.korean(13.5))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(editing ? Theme.ink : Theme.grey4, in: Capsule())
+                            .foregroundStyle(editing ? Theme.paper : Theme.grey1)
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 if folder != nil {
                     Button {
