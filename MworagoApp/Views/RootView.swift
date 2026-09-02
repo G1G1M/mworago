@@ -19,6 +19,7 @@ struct RootView: View {
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
     /// 다른 탭에서 찾기로 넘기는 검색어.
     @State private var pendingQuery: String?
+    /// 찾기 탭을 눌렀다는 신호. 찾기 화면이 받아서 입력 바에 손을 얹는다.
     /// 교재에서 하루치를 들고 연습으로 넘길 때 그 낱말들.
     @State private var practiceSubset: [CollectedWord]?
     @State private var practiceLabel: String?

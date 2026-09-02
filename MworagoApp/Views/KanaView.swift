@@ -78,7 +78,7 @@ struct KanaView: View {
     private var chart: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
-                Text("가나는 소리 글자예요.\n표를 다 외우지 않아도, 찾다 막힐 때 여기서 확인하면 됩니다.")
+                Text("가나는 소리 글자예요.\n표를 다 외우지 않아도,\n찾다 막힐 때 여기서 확인하면 됩니다.")
                     .font(Theme.korean(15))
                     .foregroundStyle(Theme.grey1)
                     .fixedSize(horizontal: false, vertical: true)

@@ -42,7 +42,7 @@ struct KanaDetail: View {
 
                     pair
 
-                    Text("소리 글자예요. 이 글자 하나에는 뜻이 없고, 모여야 낱말이 됩니다.")
+                    Text("소리 글자예요.\n이 글자 하나에는 뜻이 없고, 모여야 낱말이 됩니다.")
                         .font(Theme.korean(13))
                         .foregroundStyle(Theme.grey2)
                         .fixedSize(horizontal: false, vertical: true)

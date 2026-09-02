@@ -56,6 +56,14 @@ struct SentenceHeader: View {
             Text(parts.map(\.hangul).joined())
                 .font(Theme.korean(16))
                 .foregroundStyle(Theme.grey3)
+
+            // **셋째 층.** 카드와 같은 차례다 — 가나 · 한글 발음 · 뜻.
+            //
+            // 한때 이것이 헤더 **밖에** 형제로 서 있었다. 그러면 아래에서 덩어리를 닫으려고
+            // 둔 여백 32 가 발음과 뜻 **사이**에 끼어, 뜻이 문장에서 42 만큼 떨어진 채
+            // 구분선에는 딱 붙었다 — 문장의 뜻이 아니라 아래 카드들의 머리처럼 보였다.
+            // 안으로 들이면 그 여백이 제자리(뜻 아래)로 간다.
+            SentenceMeaning(segments: segments)
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, 24)
