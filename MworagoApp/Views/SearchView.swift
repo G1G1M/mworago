@@ -152,10 +152,13 @@ struct SearchView: View {
                 //
                 // 아직 한 번도 못 재었으면(처음 켠 앱) 0 이다. 그때 한 번은 예전처럼
                 // 올라가고, 그 높이를 기억해 다음부터 서 있는다.
+                //
+                // **이 줄에 키보드를 무시하라고 걸면 안 된다.** 비워 둔 자리는 0 이 되는데
+                // 키보드가 바를 밀어 주지도 않아, 바가 화면 바닥으로 내려가 가려진다.
+                // 빈자리가 사라지는 것과 키보드가 밀어 올리는 것이 **짝을 이뤄야** 제자리다.
                 Color.clear
                     .frame(height: inputFocused ? 0 : keyboard.remembered)
             }
-            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .environment(desk)
         // **세션은 언어쌍마다 하나씩, 앱이 사는 동안 그대로 둔다.** 열어 놓고 옮길 것을
