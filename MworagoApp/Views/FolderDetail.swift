@@ -144,7 +144,7 @@ struct FolderDetail: View {
                     Button {
                         withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
                     } label: {
-                        Text(editing ? "완료" : "편집")
+                        Text(editing ? "완료" : "지우기")
                             .font(Theme.korean(13.5))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
@@ -154,29 +154,27 @@ struct FolderDetail: View {
                     .buttonStyle(.plain)
                 }
 
+                // **묶음 자체를 손보는 일은 한 자리에 모은다.**
+                //
+                // 캡슐 넷이 나란히 서면 무엇이 주된 일인지 안 보인다. 여기서 자주 하는 일은
+                // 연습이고, 이름을 고치거나 묶음을 없애는 일은 몇 번 하지 않는다.
+                // 자주 하는 것만 밖에 두고 나머지는 안으로 넣는다.
                 if folder != nil {
-                    Button {
-                        newName = title
-                        renaming = true
+                    Menu {
+                        Button("이름 바꾸기") {
+                            newName = title
+                            renaming = true
+                        }
+                        Button("묶음 없애기", role: .destructive) { removing = true }
                     } label: {
-                        Text("이름 바꾸기")
-                            .font(Theme.korean(13.5))
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .medium))
                             .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 9)
                             .background(Theme.grey4, in: Capsule())
                             .foregroundStyle(Theme.grey1)
                     }
-                    .buttonStyle(.plain)
-
-                    Button { removing = true } label: {
-                        Text("묶음 없애기")
-                            .font(Theme.korean(13.5))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Theme.grey4, in: Capsule())
-                            .foregroundStyle(Theme.grey1)
-                    }
-                    .buttonStyle(.plain)
+                    .accessibilityLabel("묶음 손보기")
                 }
             }
         }

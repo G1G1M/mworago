@@ -182,6 +182,8 @@ struct LibraryView: View {
     /// 직접 만들면 훑는 손(세로)과 지우는 손(가로)이 같은 자리에서 다툰다.
     /// 무엇보다 **지우는 일은 되돌릴 수 없으므로**, 지울 셈일 때만 단추가 보이는 편이
     /// 스치듯 지워지는 것보다 낫다.
+    /// **이름이 약속을 넘지 않게 한다.** "편집"이라 적으면 이름 바꾸기·자리 옮기기까지
+    /// 될 것처럼 들리는데 여기서 되는 일은 지우는 것 하나다.
     @State private var editing = false
 
     /// 지울 수 있는 줄. 편집 중일 때만 단추가 앞에 선다.
@@ -265,7 +267,7 @@ struct LibraryView: View {
                     Button {
                         withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
                     } label: {
-                        Text(editing ? "완료" : "편집")
+                        Text(editing ? "완료" : "지우기")
                             .font(Theme.korean(15, weight: editing ? .medium : .regular))
                             .foregroundStyle(editing ? Theme.ink : Theme.grey2)
                     }
