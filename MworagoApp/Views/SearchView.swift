@@ -10,6 +10,39 @@ import MworagoCore
 /// 툭 튄다. 그 한 프레임이 "이것이 저것이 되었다"는 말을 통째로 무너뜨린다.
 ///
 /// 재는 대신 **묻는다.** 진짜 입력 바만이 제 자리를 안다.
+/// 키보드가 차지하던 높이를 기억해 둔다.
+///
+/// **바를 키보드가 올라올 자리에 미리 세우려는 것이다.** 그러지 않으면 손이 얹히는
+/// 순간 바가 그만큼 올라가는데, 그 움직임이 첫 글자를 치는 순간과 겹친다.
+///
+/// 높이를 숫자로 박을 수는 없다 — 기기마다, 글자판마다(한글·이모지), 예측 입력을
+/// 켰는지에 따라 다르고, 바깥 글자판을 쓰면 아예 올라오지 않는다. 그래서 **한 번
+/// 올라온 것을 재어 기억한다.** 처음 한 번은 여전히 움직이지만 그다음부터는 서 있다.
+///
+/// 기억은 기기에 남긴다. 다음에 앱을 열면 첫 번째부터 제자리다.
+@MainActor
+final class KeyboardHeight: ObservableObject {
+    @Published private(set) var remembered: CGFloat
+
+    private static let key = "keyboard-height"
+
+    init() {
+        remembered = CGFloat(UserDefaults.standard.double(forKey: Self.key))
+        NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                  frame.height > 100   // 바깥 글자판이 붙으면 손톱만 한 막대만 올라온다
+            else { return }
+            MainActor.assumeIsolated {
+                guard let self, abs(self.remembered - frame.height) > 1 else { return }
+                self.remembered = frame.height
+                UserDefaults.standard.set(Double(frame.height), forKey: Self.key)
+            }
+        }
+    }
+}
+
 struct InputBarFrame: PreferenceKey {
     static let defaultValue: CGRect? = nil
     static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
@@ -29,6 +62,8 @@ struct SearchView: View {
     @State private var engine = SearchEngine()
     /// 옮긴 말을 모아 두는 곳. 화면 여럿이 같은 것을 본다.
     @State private var desk = TranslationDesk()
+    /// 키보드가 올라올 자리. 손이 얹히기 전에도 그만큼 비워 둔다.
+    @StateObject private var keyboard = KeyboardHeight()
     /// 번역기 설정. **한 번만 만든다** — 문장마다 새로 만들면 그때마다 세션이 다시 열려
     /// 실기기에서 눈에 띄게 걸린다. 세션 여는 일이 번역보다 무겁다.
     @State private var fromJapanese: TranslationSession.Configuration?
@@ -109,7 +144,18 @@ struct SearchView: View {
                 content
                     .ignoresSafeArea(.keyboard, edges: .bottom)
                 inputBar
+                // **키보드가 설 자리를 미리 비워 둔다.**
+                //
+                // 손이 얹히면 그 자리를 키보드가 차지하므로 여기서는 0 이 된다 —
+                // 그래서 **바는 처음부터 끝까지 같은 높이에 있다.** 비워 둔 자리와
+                // 키보드가 정확히 맞바뀔 뿐이다.
+                //
+                // 아직 한 번도 못 재었으면(처음 켠 앱) 0 이다. 그때 한 번은 예전처럼
+                // 올라가고, 그 높이를 기억해 다음부터 서 있는다.
+                Color.clear
+                    .frame(height: inputFocused ? 0 : keyboard.remembered)
             }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .environment(desk)
         // **세션은 언어쌍마다 하나씩, 앱이 사는 동안 그대로 둔다.** 열어 놓고 옮길 것을
