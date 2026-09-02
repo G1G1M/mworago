@@ -389,6 +389,9 @@ struct SearchView: View {
         // 떠 있는 바지만 가장자리는 글이 시작하는 자리에 맞춘다 — 혼자 4pt 밖으로
         // 나가 있으면 아래로 스크롤할 때 바깥선이 본문과 어긋나 보인다.
         .padding(.horizontal, Theme.gutter)
-        .padding(.bottom, 14)
+        // **탭바와 겹쳐 보이지 않을 만큼 띄운다.** 14pt 로 두었더니 아이폰처럼 좁은
+        // 화면에서 입력 바와 탭 알약이 한 덩어리로 붙어 보였다 — 아이패드에서는
+        // 화면이 넓어 티가 나지 않던 자리다. 다른 화면이 바닥에 두는 값과 같게 맞춘다.
+        .padding(.bottom, Theme.screenBottom)
     }
 }
