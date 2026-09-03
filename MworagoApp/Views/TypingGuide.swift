@@ -1,4 +1,5 @@
 import SwiftUI
+import MworagoCore
 
 /// 한글을 어떻게 치면 되는지 알려 주는 쪽지.
 ///
@@ -30,7 +31,7 @@ struct TypingGuide: View {
 
     /// `--credits` 로 출처 화면을 펼친 채 띄울 수 있다.
     /// `--guide` 와 같은 뜻이다 — 시뮬레이터를 손으로 두드리지 않고 화면을 확인하려고.
-    @State private var showingCredits = ProcessInfo.processInfo.arguments.contains("--credits")
+    @State private var showingCredits = LaunchOptions.current.has("credits")
 
     /// 한 줄. 왼쪽이 무엇에 대한 이야기인지, 오른쪽이 실제로 쳐 본 것이다.
     private struct Rule: Identifiable {

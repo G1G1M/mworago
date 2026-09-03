@@ -36,15 +36,13 @@ enum OnboardingSeen {
     static let key = "onboarding-seen"
 
     /// `--onboarding` 으로 언제든 다시 띄운다. 봤는지와 무관하게 화면을 확인하려는 것이다.
-    static var forced: Bool { ProcessInfo.processInfo.arguments.contains("--onboarding") }
+    static var forced: Bool { LaunchOptions.current.has("onboarding") }
 }
 
 struct Onboarding: View {
     /// `--onboarding-page=2` 로 그 장을 펼친 채 띄운다. `--detail` · `--quiz` 와 같은
     /// 취지다 — 시뮬레이터는 손으로 밀 수 없어 뒷장을 눈으로 볼 길이 없다.
-    @State private var page = ProcessInfo.processInfo.arguments
-        .first { $0.hasPrefix("--onboarding-page=") }
-        .flatMap { Int($0.dropFirst("--onboarding-page=".count)) } ?? 0
+    @State private var page = LaunchOptions.current.int(for: "onboarding-page") ?? 0
     var onDone: () -> Void = {}
 
     /// 마지막 버튼이 차지할 자리. `다음` 과 `시작` 중 넓은 쪽에 맞춘다 —

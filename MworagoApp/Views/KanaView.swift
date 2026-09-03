@@ -20,14 +20,13 @@ struct KanaView: View {
         }
     }
 
-    @State private var mode: Mode = ProcessInfo.processInfo.arguments.contains("--quiz") ? .quiz : .chart
+    @State private var mode: Mode = LaunchOptions.current.has("quiz") ? .quiz : .chart
     /// 가타카나로 넘겨 볼 수 있다. 같은 소리의 두 글자를 나란히 두지 않는 것은,
     /// 한 번에 둘을 외우려 들면 둘 다 흐려지기 때문이다.
     @State private var katakana = false
     /// 펼쳐 보고 있는 글자. `--kana=あ` 로 띄운 채 시작할 수 있다.
-    @State private var detail: Glyph? = ProcessInfo.processInfo.arguments
-        .first { $0.hasPrefix("--kana=") }
-        .map { Glyph(kana: String($0.dropFirst("--kana=".count))) }
+    @State private var detail: Glyph? = LaunchOptions.current.value(for: "kana")
+        .map { Glyph(kana: $0) }
 
     private static let contentWidth: CGFloat = Theme.readWidth
 

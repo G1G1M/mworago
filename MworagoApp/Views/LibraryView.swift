@@ -69,22 +69,23 @@ struct LibraryView: View {
 
     /// 설정. `--settings` 로 펼친 채 띄운다.
     private var opensFirstDetail: Bool {
-        ProcessInfo.processInfo.arguments.contains("--detail")
+        LaunchOptions.current.has("detail")
     }
 
     /// `--folder=리코리스 리코일 3화` 로 그 묶음에 들어간 채 띄운다. 이름을 안 적으면
     /// 첫 묶음이다. `--detail` · `--guide` 와 같은 취지 — 시뮬레이터는 손으로 두드릴 수 없다.
     private var opensFolder: String?? {
-        guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--folder") })
+        let launch = LaunchOptions.current
+        // 이름을 적지 않은 두 가지를 같이 받는다 — `--folder` 와 `--folder=`.
+        guard let name = launch.value(for: "folder") ?? (launch.has("folder") ? "" : nil)
         else { return nil }
-        let name = arg.hasPrefix("--folder=") ? String(arg.dropFirst("--folder=".count)) : ""
         return name.isEmpty ? .some(collection.folderNames.first) : .some(name)
     }
 
     /// `--new-folder` 로 이름 받는 자리를 펼친 채 띄운다.
     /// `--detail` · `--folder=` 와 같은 취지 — 시뮬레이터는 손으로 두드릴 수 없다.
     private var opensNewFolder: Bool {
-        ProcessInfo.processInfo.arguments.contains("--new-folder")
+        LaunchOptions.current.has("new-folder")
     }
 
     private static let contentWidth: CGFloat = Theme.listWidth
@@ -176,15 +177,15 @@ struct LibraryView: View {
             // `--list-picking` 은 `모두` 목록을 전부 고른 채로, `--list-moving` 은
             // 그 위에 옮기는 판까지 펼친 채로 띄운다. 묶음 화면의 `--picking` 과
             // 이름을 나눠 둔 것은 둘이 한 화면에 겹쳐 설 수 있어서다.
-            let arguments = ProcessInfo.processInfo.arguments
-            if arguments.contains("--list-picking") || arguments.contains("--list-moving") {
+            let launch = LaunchOptions.current
+            if launch.has("list-picking") || launch.has("list-moving") {
                 grouping = .list
                 // **한 박자 뒤에 켠다.** 보기를 바꾸면 손을 떼게 해 두었으므로,
                 // 같은 자리에서 보기를 바꾸고 고르기를 켜면 방금 켠 것이 곧바로 풀린다.
                 Task { @MainActor in
                     selecting = true
                     selection = Set(collection.words.map(\.id))
-                    moving = arguments.contains("--list-moving")
+                    moving = launch.has("list-moving")
                 }
             }
         }

@@ -31,7 +31,7 @@ struct PracticeView: View {
     @State private var currentID: CollectedWord.ID?
     /// `--revealed` 로 뒤집힌 채 띄운다. `--query=` · `--detail` 과 같은 취지 —
     /// 시뮬레이터는 손으로 두드릴 수 없어 뒷면을 눈으로 볼 길이 없다.
-    @State private var revealed = ProcessInfo.processInfo.arguments.contains("--revealed")
+    @State private var revealed = LaunchOptions.current.has("revealed")
     ///
     /// **막히는 자리에 두어야 닿는다.** 가나를 못 읽어서 멈추는 순간은 여기서 생긴다 —
     /// 앞면이 소리뿐이라 읽을 수 없으면 뒤집기 말고는 할 것이 없다. 설정에 넣으면

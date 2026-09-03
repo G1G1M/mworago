@@ -192,7 +192,7 @@ struct KanaQuiz: View {
     /// **범위 셋이 각자 제 차례를 갖는다.**
     @State private var deck: [Card] = KanaQuiz.cards(scope: .hiragana, order: .random)
     @State private var at = 0
-    @State private var revealed = ProcessInfo.processInfo.arguments.contains("--revealed")
+    @State private var revealed = LaunchOptions.current.has("revealed")
 
     /// 표에 실린 소리 전부. 빈 자리(ゐ·ゑ)는 뺀다 — 표에서는 자리를 지켜야 행과 단이
     /// 맞지만, 여기서는 안 쓰는 소리를 물을 이유가 없다.

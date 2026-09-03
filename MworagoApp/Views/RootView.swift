@@ -35,7 +35,7 @@ struct RootView: View {
     /// 교재에서 하루치를 들고 연습으로 넘길 때 그 낱말들.
     @State private var practiceSubset: [CollectedWord]?
     @State private var practiceLabel: String?
-    @State private var tab: RootTab = RootTab(argument: ProcessInfo.processInfo.arguments)
+    @State private var tab: RootTab = RootTab(LaunchOptions.current)
     /// 온보딩 시안 — 실행 인자로만 뜬다.
     /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
     /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
@@ -44,7 +44,7 @@ struct RootView: View {
     @State private var showOnboarding: Bool
     /// 앱을 여는 한 장. `--no-splash` 로 건너뛴다 — 다른 화면을 찍을 때마다
     /// 1초를 기다릴 이유가 없다. `--query=` · `--tab=` 과 같은 취지다.
-    @State private var showSplash = !ProcessInfo.processInfo.arguments.contains("--no-splash")
+    @State private var showSplash = !LaunchOptions.current.has("no-splash")
     /// 진짜 입력 바가 놓인 자리. 스플래시가 마지막에 여기로 와서 앉는다.
     ///
     /// 스플래시는 탭 화면 **위에** 얹혀 있으므로, 그 아래에서 찾기 화면이 이미 자리를
@@ -77,10 +77,8 @@ struct RootView: View {
     enum RootTab: Hashable {
         case find, library, practice, kana, settings
 
-        init(argument arguments: [String]) {
-            let name = arguments.first { $0.hasPrefix("--tab=") }
-                .map { String($0.dropFirst("--tab=".count)) }
-            switch name {
+        init(_ launch: LaunchOptions) {
+            switch launch.value(for: "tab") {
             // 탭을 합치기 전 이름으로 띄우던 스크립트가 있어 옛 이름도 받는다.
             case "library", "collection", "book": self = .library
             case "practice": self = .practice

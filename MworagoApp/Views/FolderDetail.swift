@@ -119,14 +119,14 @@ struct FolderDetail: View {
         .onAppear {
             guard !Self.openedFromArguments else { return }
             Self.openedFromArguments = true
-            let arguments = ProcessInfo.processInfo.arguments
-            if arguments.contains("--menu") { menuOpen = true }
+            let launch = LaunchOptions.current
+            if launch.has("menu") { menuOpen = true }
             // `--picking` 은 고르는 중(전부 고른 채)으로, `--moving` 은 그 위에
             // 옮기는 판까지 펼친 채로 띄운다.
-            if arguments.contains("--picking") || arguments.contains("--moving") {
+            if launch.has("picking") || launch.has("moving") {
                 selecting = true
                 selection = Set(words.map(\.id))
-                moving = arguments.contains("--moving")
+                moving = launch.has("moving")
             }
         }
         // 책장의 "새 묶음"과 같은 판을 쓴다. 이름을 만드는 일과 고치는 일이

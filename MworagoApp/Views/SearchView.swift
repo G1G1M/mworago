@@ -34,22 +34,18 @@ struct SearchView: View {
     /// 실기기에서 눈에 띄게 걸린다. 세션 여는 일이 번역보다 무겁다.
     /// 실행 인자로 검색어를 넣을 수 있다 (`--query=다이죠부`).
     /// 시뮬레이터에 한글을 타이핑하지 않고도 화면을 확인할 수 있어 스크린샷과 점검에 쓴다.
-    @State private var input = ProcessInfo.processInfo.arguments
-        .first { $0.hasPrefix("--query=") }
-        .map { String($0.dropFirst("--query=".count)) } ?? ""
+    @State private var input = LaunchOptions.current.value(for: "query") ?? ""
     /// 문장에서 고른 조각. 아무것도 안 골랐을 때가 기본이고, 그때는 카드가 전부 보인다.
     ///
     /// `--select=1` 로 고른 상태를 띄울 수 있다. `--query=` 와 같은 뜻으로, 시뮬레이터를
     /// 손으로 두드리지 않고 화면을 확인하기 위한 것이다.
-    @State private var selected: Int? = ProcessInfo.processInfo.arguments
-        .first { $0.hasPrefix("--select=") }
-        .flatMap { Int($0.dropFirst("--select=".count)) }
+    @State private var selected: Int? = LaunchOptions.current.int(for: "select")
     @FocusState private var inputFocused: Bool
     /// 치는 법을 펼쳐 놓았는가. 기본은 접힌 채다.
     ///
     /// `--guide` 로 열린 채 띄울 수 있다. `--query=` · `--select=` 와 같은 뜻으로,
     /// 시뮬레이터를 손으로 두드리지 않고 화면을 확인하기 위한 것이다.
-    @State private var showingGuide = ProcessInfo.processInfo.arguments.contains("--guide")
+    @State private var showingGuide = LaunchOptions.current.has("guide")
     /// 지금 담으려는 낱말. 있으면 담기 모달이 떠 있다.
     ///
     /// **화면에 하나뿐이어야 한다.** 카드마다 시트를 달면 조각 수만큼 생기고,
@@ -146,7 +142,7 @@ struct SearchView: View {
         .onAppear {
             // `--collect` 는 검색 결과를 전부 담는다. 담기와 모은 것 화면을
             // 손으로 두드리지 않고 확인하기 위한 것이다.
-            if ProcessInfo.processInfo.arguments.contains("--collect") {
+            if LaunchOptions.current.has("collect") {
                 engine.searchNow(input)
                 for segment in engine.segments {
                     guard let top = segment.results.first else { continue }
@@ -172,10 +168,10 @@ struct SearchView: View {
             //
             // **먼저 찾아 놓고 본다.** 위의 `search` 는 손이 멎기를 기다렸다 도는 것이라
             // 이 자리에서는 아직 답이 없다 — `--collect` 가 `searchNow` 를 쓰는 것과 같다.
-            if ProcessInfo.processInfo.arguments.contains("--collecting") {
+            if LaunchOptions.current.has("collecting") {
                 engine.searchNow(input)
             }
-            if ProcessInfo.processInfo.arguments.contains("--collecting"),
+            if LaunchOptions.current.has("collecting"),
                let top = engine.segments.first?.results.first,
                let hangul = engine.segments.first?.hangul {
                 collecting = CollectedWord(headword: top.headword,
