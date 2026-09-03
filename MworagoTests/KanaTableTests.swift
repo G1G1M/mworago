@@ -112,4 +112,33 @@ struct LookupKeyTests {
     func 한자() {
         #expect(KanaTable.lookupKey("大丈夫") == "大丈夫")
     }
+
+    // MARK: 한 줄로 세운 차례 — 글자를 한 장씩 넘겨 볼 때 쓴다
+
+    @Test("표 차례 그대로 늘어선다")
+    func 차례() {
+        // 청음 첫 행부터 시작한다
+        #expect(KanaTable.ordered.prefix(5) == ["あ", "い", "う", "え", "お"])
+        #expect(KanaTable.ordered.prefix(10).suffix(5) == ["か", "き", "く", "け", "こ"])
+        // 청음이 끝나면 탁음, 그다음이 요음이다
+        let ん = KanaTable.ordered.firstIndex(of: "ん")!
+        let が = KanaTable.ordered.firstIndex(of: "が")!
+        let きゃ = KanaTable.ordered.firstIndex(of: "きゃ")!
+        #expect(ん < が)
+        #expect(が < きゃ)
+    }
+
+    @Test("빈 자리는 빠진다")
+    func 빈칸() {
+        // や행은 다섯 칸 중 셋만 글자다. 격자는 자리를 지키지만 이 줄에는 없는 자리다
+        let や = KanaTable.ordered.firstIndex(of: "や")!
+        #expect(KanaTable.ordered[や + 1] == "ゆ")
+        #expect(KanaTable.ordered[や + 2] == "よ")
+        #expect(!KanaTable.ordered.contains(""))
+    }
+
+    @Test("같은 글자가 두 번 서지 않는다")
+    func 중복없음() {
+        #expect(Set(KanaTable.ordered).count == KanaTable.ordered.count)
+    }
 }
