@@ -3,7 +3,7 @@
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-142%2F150%20%2894%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-148%2F150%20%2898%25%29-171717?style=flat-square)
 ![쿼리](https://img.shields.io/badge/%EC%BF%BC%EB%A6%AC-0.15ms-4a4a4a?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-249%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-282%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -100,35 +100,65 @@
 
 ## 구성
 
-폴더 구조는 SpringLab 을 따른다. 역할별로 나누고, 앱에 실리지 않는 것은 `Tools/` 로 뺀다.
+층을 폴더가 아니라 **SPM 타깃**으로 나눈다. 폴더로만 나누면 "무엇이 무엇을 불러도
+되는가"가 문서에 남고, 그 문서는 언젠가 어긋난다. 타깃으로 나누면 도메인에서 SQLite 를
+부르는 순간 빌드가 멎는다.
 
-코어가 SPM 패키지(`MworagoCore`)로 서 있다. 앱과 측정 도구가 **같은 로직**을 쓰므로
-스파이크에서 잰 숫자가 그대로 앱의 숫자다.
+의존은 한 방향으로만 흐른다 — `Domain ← UseCases ← Infra`. 도메인이 위를 모르므로
+사전이 SQLite 든 메모리든 검색 코드는 달라지지 않고, 실제로 앱은 구운 색인 파일을,
+시험은 메모리 색인을 꽂아 같은 코드를 돌린다.
+
+앱과 측정 도구가 **같은 로직**을 쓰므로 스파이크에서 잰 숫자가 그대로 앱의 숫자다.
 
 ```
-Mworago/                  MworagoCore — 앱·도구가 함께 쓰는 순수 로직
-  Model/
-    Hangul.swift          한글 음절 분해. U+AC00 기반 나눗셈 세 번
-    KanaTable.swift       훈령식 로마자 ↔ 가나
-    KanaToHangul.swift    반대 방향. 답이 하나라 케이스 생성에 쓴다
-    JapaneseReading.swift macOS 토크나이저로 일본어 분절 + 읽기
-    HanjaReading.swift    한자의 한국 독음 (kanjidic2)
-    WordClass.swift       품사. 옮길 수 있는 낱말인가를 여기서 가른다
-    KoreanGloss.swift     모델이 준 뜻을 화면에 올릴 만한 것으로 다듬기
-  Store/
-    JMDict.swift          JMdict XML 스트리밍 파서와 읽기 색인
-    DictionaryStore.swift 미리 구운 SQLite 색인. 여는 데 0.001초
-    FrequencyList.swift   애니 도메인 빈도 목록
-    TranslationQueue.swift 옮길 것이 서는 줄. 세션이 물러나도 줄은 다시 열린다
-  Runner/
+Sources/
+  MworagoDomain/          엔티티와 포트. Foundation 밖을 모른다
+    Kana/
+      Hangul.swift        한글 음절 분해. U+AC00 기반 나눗셈 세 번
+      KanaTable.swift     훈령식 로마자 ↔ 가나
+      KanaToHangul.swift  반대 방향. 답이 하나라 케이스 생성에 쓴다
+      JapaneseReading.swift  macOS 토크나이저로 일본어 분절 + 읽기
+      InflectedReading.swift 활용형의 읽기
+    Words/
+      DictEntry.swift     사전 표제항과 읽기 색인
+      CollectedWord.swift 담아 둔 낱말. 담을 때 화면에 있던 것을 그대로 붙든다
+      FrequencyList.swift 애니 도메인 빈도 목록
+      Lexicon.swift       검색에 드는 재료 한 벌 — 사전과 빈도
+      WordClass.swift     품사. 옮길 수 있는 낱말인가를 여기서 가른다
+      KoreanGloss.swift   모델이 준 뜻을 화면에 올릴 만한 것으로 다듬기
+      HanjaReading.swift  한자의 한국 독음 (kanjidic2)
+    Ports/                바깥에 무엇을 요구하는지
+      DictionaryLookup.swift  읽기로 표제항을 찾는 것
+      ResourceLocating.swift  자원이 어디 있는지 대답하는 것
+      PreferenceStoring.swift 작은 값을 적어 두는 것
+      Speaking.swift          소리 내어 읽는 것
+    LaunchOptions.swift   실행 인자. 화면을 손으로 두드리지 않고 세운다
+
+  MworagoUseCases/        찾고 나누고 줄 세우는 일. 도메인만 안다
     Transliterator.swift  한글 → 가나 후보 생성
     Deinflector.swift     활용형을 사전형으로 되돌리기
     Segmenter.swift       띄어 쓰지 않은 문장을 낱말로 나누기
     Sentence.swift        조각들을 도로 한 문장으로 잇기
     Ranker.swift          살아남은 후보 줄 세우기
-MworagoApp/               앱. 폴더 자리는 SpringLab 을 따른다
-  App/ · Store/ · Views/
-MworagoTests/             테스트 249개. 평면으로 두고 파일 이름으로 구분한다
+    SearchCache.swift     조각의 답을 재어 둔다. 글자마다 다시 찾지 않으려고
+    TranslationQueue.swift 옮길 것이 서는 줄. 세션이 물러나도 줄은 다시 열린다
+
+  MworagoInfra/           바깥과 닿는 것들
+    DictionaryStore.swift 미리 구운 SQLite 색인. 여는 데 0.001초
+    JMDictParser.swift    JMdict XML 스트리밍 파서
+    WordCollection.swift  담은 낱말을 파일에 적는다
+    Preferences.swift     설정을 파일 하나에 값 하나로
+    LexiconLoading.swift  재료를 여는 일. 무엇으로 여는지는 여기만 안다
+    SentenceTranslator.swift 문장 뜻을 온디바이스 모델에게 묻는다
+
+  MworagoCore/            셋을 한 이름으로 내보내는 우산
+
+MworagoApp/               앱
+  App/                    조립이 시작되는 자리
+  Composition/            무엇을 세워 어디로 내려보낼지
+  Store/                  화면이 지켜보는 것들
+  Views/                  화면
+MworagoTests/             테스트 282개. 평면으로 두고 파일 이름으로 구분한다
 Tools/
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
   Translator/             한국어 뜻을 온디바이스 모델로 미리 굽는다
@@ -140,7 +170,7 @@ docs/                     기록
 ## 실행
 
 ```sh
-swift test                  # 테스트 249개
+swift test                  # 테스트 282개
 ./Tools/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```
