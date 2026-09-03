@@ -71,6 +71,50 @@ struct RootView: View {
     }
 
     var body: some View {
+        // **온보딩과 스플래시를 `overlay` 로 얹지 않는다.**
+        //
+        // `TabView` 에 `.overlay` 로 얹었더니 그 안의 것이 **두 번 그려졌다** —
+        // 온보딩의 "건너뛰기"가 화면 위와 아래에 하나씩 섰다. 탭바를 품은 컨테이너가
+        // 오버레이를 제 몫으로 한 번 더 그리는 탓이라, 사이즈 클래스를 되돌린 뒤에도 남았다.
+        //
+        // 덮는 것은 형제로 둔다. `ZStack` 은 차례대로 쌓을 뿐이라 두 번 그릴 일이 없고,
+        // 위아래 관계(스플래시가 온보딩 위)도 적힌 차례 그대로다.
+        ZStack {
+            tabs
+
+            // 처음 열었을 때 네 장. 봤으면 다시 나오지 않는다.
+            if showOnboarding {
+                Onboarding(onDone: {
+                    OnboardingSeen.mark()
+                    withAnimation(.snappy(duration: 0.2)) { showOnboarding = false }
+                })
+                .transition(.opacity)
+            }
+
+            // **스플래시가 맨 위다.** 온보딩보다 앞에 두면 처음 여는 사람에게 온보딩이
+            // 먼저 뜨고 그 위로 스플래시가 덮인다 — 순서가 뒤집힌다.
+            if showSplash {
+                // **온보딩이 뒤따르면 알약까지만 보인다.** 변신해 놓고 그 위를 온보딩이
+                // 덮으면 아무도 못 본 변신이 되고, 이 장면이 하려는 말도 거짓이 된다.
+                Splash(target: inputBarFrame, becomesInputBar: !showOnboarding, onDone: {
+                    withAnimation(.easeOut(duration: 0.22)) { showSplash = false }
+                })
+                .transition(.opacity)
+            }
+        }
+        .onPreferenceChange(InputBarFrame.self) { frame in
+            if let frame { inputBarFrame = frame }
+        }
+        .tint(Theme.ink)
+        // **아직 여러 말로 옮기지 않았다.** 기기를 영어로 써도 화면은 한국어이므로
+        // 날짜만 영어로 뜨면 안 된다. 여러 말을 받게 되면 이 줄을 걷어낸다.
+        .environment(\.locale, Theme.locale)
+        // 설정에서 고른 밝기. `nil` 이면 기기를 따른다.
+        .preferredColorScheme(appearance.scheme)
+    }
+
+    /// 탭 다섯. `body` 에서 빼 둔 것은 덮는 것(온보딩 · 스플래시)과 형제로 세우기 위해서다.
+    private var tabs: some View {
         // iOS 18 부터의 `Tab` 을 쓴다. 예전 `.tabItem` 은 호환 경로로 가면서
         // 아이패드에서 탭바가 위아래로 **두 번** 그려졌다.
         TabView(selection: $tab) {
@@ -119,51 +163,16 @@ struct RootView: View {
                     .accessibilityLabel("설정")
             }
         }
-        // 탭바에는 **아이콘만** 둔다. 넷뿐이고 뜻이 분명한 기호라 이름이 없어도 읽히고,
-        // 글자가 빠지면 그만큼 화면이 조용해진다. 이름은 손쉬운 사용에 남겨 둔다 —
-        // 눈으로 못 읽는 사람에게까지 아이콘만 주면 그건 지운 것이 아니라 잃은 것이다.
+        // 탭바에는 **아이콘만** 둔다. 다섯뿐이고 뜻이 분명한 기호라 이름이 없어도 읽히고,
+        // 글자가 빠지면 그만큼 화면이 조용해진다. 이름은 손쉬운 사용에 남겨 두고,
+        // 온보딩 마지막 장이 한 번 짚는다 — 눈으로 못 읽는 사람에게까지 아이콘만 주면
+        // 그건 지운 것이 아니라 잃은 것이다.
         //
-        // **탭바를 아래에 둔다.** 아이패드의 상단 탭바는 시스템이 글자만 그려서
-        // (애플 사진 앱의 보관함·모음도 그렇다) 무엇을 하는 자리인지 아이콘으로 알 수 없다.
-        // 가로 사이즈 클래스를 compact 로 주면 아이폰과 같은 하단 아이콘 탭바가 된다.
-        //
-        // **다만 이것만으로는 아이패드에서 탭바가 위아래로 두 벌 그려진다.**
-        // `TabView` 를 감싼 UIKit 컨테이너는 자기 자리를 진짜 사이즈 클래스로 정하고
-        // 그 안의 SwiftUI 만 속은 값을 받아, 위(아이패드의 자리)와 아래(속은 자리)에
-        // 각각 하나씩 선다. `.tabBarOnly` 로 위쪽 것을 걷어내면 아래 한 벌만 남는다.
+        // **탭바 자리는 시스템에 맡긴다.** 아이폰은 아래, 아이패드는 위(iPadOS 26 의
+        // 떠 있는 알약)다. 한때 아이패드에서도 아래에 두려고 사이즈 클래스를 속였는데,
+        // 그 대가로 화면이 두 벌 그려졌다 — 자세한 것은 `MworagoApp.swift` 에 적어 두었다.
         // **글은 전부 한국어다.** 기기 언어가 영어면 날짜만 "August 31"로 나와
         // 화면에서 그 한 줄만 남의 말이 된다. 이 앱이 쓰는 말로 고정한다.
         .environment(\.locale, Locale(identifier: "ko_KR"))
-        // 처음 열었을 때 세 장. 봤으면 다시 나오지 않는다.
-        .overlay {
-            if showOnboarding {
-                Onboarding(onDone: {
-                    OnboardingSeen.mark()
-                    withAnimation(.snappy(duration: 0.2)) { showOnboarding = false }
-                })
-                .transition(.opacity)
-            }
-        }
-        // **스플래시가 맨 위다.** 온보딩보다 뒤에 두면 처음 여는 사람에게 온보딩이
-        // 먼저 뜨고 그 위로 스플래시가 덮인다 — 순서가 뒤집힌다.
-        .overlay {
-            if showSplash {
-                // **온보딩이 뒤따르면 알약까지만 보인다.** 변신해 놓고 그 위를 온보딩이
-                // 덮으면 아무도 못 본 변신이 되고, 이 장면이 하려는 말도 거짓이 된다.
-                Splash(target: inputBarFrame, becomesInputBar: !showOnboarding, onDone: {
-                    withAnimation(.easeOut(duration: 0.22)) { showSplash = false }
-                })
-                .transition(.opacity)
-            }
-        }
-        .onPreferenceChange(InputBarFrame.self) { frame in
-            if let frame { inputBarFrame = frame }
-        }
-        .tint(Theme.ink)
-        // **아직 여러 말로 옮기지 않았다.** 기기를 영어로 써도 화면은 한국어이므로
-        // 날짜만 영어로 뜨면 안 된다. 여러 말을 받게 되면 이 줄을 걷어낸다.
-        .environment(\.locale, Theme.locale)
-        // 설정에서 고른 밝기. `nil` 이면 기기를 따른다.
-        .preferredColorScheme(appearance.scheme)
     }
 }

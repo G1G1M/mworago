@@ -58,8 +58,12 @@ struct Splash: View {
     /// 가운데 알약. 가장 길고, 이것이 입력 바가 된다.
     private static let hero = 1
 
-    /// 자리를 못 받았을 때 쓸 어림값. 탭바 위에 14 를 띄운 곳쯤이다.
-    private static let fallbackBottomInset: CGFloat = 70
+    /// 자리를 못 받았을 때 쓸 어림값.
+    ///
+    /// 입력 바가 제 자리를 알려 주면 그것을 쓰고, 못 받았을 때만 여기로 앉는다.
+    /// 아이폰은 탭바 위, 아이패드는 화면 바닥에서 `screenBottom` 만큼 뜬 자리인데,
+    /// 둘 사이의 어디쯤으로 둔다 — 한 프레임 어긋나는 것이 아예 딴 데로 앉는 것보다 낫다.
+    private static let fallbackBottomInset: CGFloat = 56
     private static let barCorner: CGFloat = 18
     private var pillCorner: CGFloat { barHeight / 2 }
 
