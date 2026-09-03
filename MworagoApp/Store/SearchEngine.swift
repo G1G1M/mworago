@@ -6,6 +6,11 @@ import MworagoCore
 ///
 /// 무거운 일은 앱을 켤 때 한 번뿐이고, 그마저도 색인 파일이라 거의 즉시 끝난다
 /// (XML 을 파싱하던 시절에는 3.1초였다).
+///
+/// **재료를 스스로 찾지 않는다.** 예전에는 이 자리에서 `Bundle.main` 을 뒤져
+/// 사전 파일을 열었다. 그러면 이 클래스를 세우는 일이 곧 앱 번들을 세우는 일이 되어,
+/// 시험이 한 줄도 닿지 못했다. 지금은 **어디서 찾을지**만 받는다
+/// (`ResourceLocating`) — 앱은 번들을, 시험은 임시 자리를 준다.
 @Observable
 @MainActor
 final class SearchEngine {
@@ -14,30 +19,31 @@ final class SearchEngine {
     private(set) var isReady = false
     private(set) var failure: String?
 
-    private var store: DictionaryStore?
-    private var frequency: FrequencyList?
+    /// 사전 색인과 빈도표 한 벌. 열지 못했으면 `nil` 이고 `failure` 에 사정이 적힌다.
+    private let lexicon: Lexicon?
     /// 조각을 찾아본 결과. **글자를 칠 때마다 다시 찾지 않으려고** 들고 있는다.
     private let cache = SearchCache()
     /// 돌고 있는 검색. 다음 글자가 들어오면 이것부터 물린다.
     private var searching: Task<Void, Never>?
-    /// 한자의 한국 독음. 쓸 만한 한일 사전이 없어 뜻이 영어로 남은 사이를 메우는 단서다.
 
-    init() {
+    /// 앱이 쓰는 길. 번들에서 재료를 찾는다.
+    convenience init() { self.init(locating: BundleResources()) }
+
+    /// 자원 자리를 받아 연다. 시험은 임시 자리를 준다.
+    init(locating locator: some ResourceLocating) {
         do {
-            guard let dictPath = Bundle.main.path(forResource: "mworago-dict", ofType: "db") else {
-                throw LoadError.missing("mworago-dict.db")
-            }
-            store = try DictionaryStore(path: dictPath)
-
-            // 빈도는 없어도 검색은 돌아간다. 순위만 신문 기준으로 밀린다.
-            if let freqPath = Bundle.main.path(forResource: "jesc_freq", ofType: "tsv") {
-                let list = FrequencyList(contentsOfFile: freqPath)
-                frequency = list.isEmpty ? nil : list
-            }
+            lexicon = try Lexicon(locating: locator)
             isReady = true
         } catch {
+            lexicon = nil
             failure = String(describing: error)
         }
+    }
+
+    /// 이미 연 재료를 그대로 받는다. 미리보기와 시험이 파일을 거치지 않고 세울 때 쓴다.
+    init(lexicon: Lexicon) {
+        self.lexicon = lexicon
+        isReady = true
     }
 
     /// 입력을 낱말로 나누고 각각을 찾는다. 띄어 쓰지 않아도 사전이 알아서 끊는다.
@@ -50,15 +56,15 @@ final class SearchEngine {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         // 다음 글자가 들어왔으면 앞 글자의 답은 이미 쓸모가 없다.
         searching?.cancel()
-        guard let store, !trimmed.isEmpty else {
+        guard let lexicon, !trimmed.isEmpty else {
             segments = []
             return
         }
-        let frequency = self.frequency
         let cache = self.cache
         searching = Task { [weak self] in
             let found = await Task.detached(priority: .userInitiated) {
-                Segmenter.segment(trimmed, in: store, frequency: frequency, cache: cache)
+                Segmenter.segment(trimmed, in: lexicon.dictionary,
+                                  frequency: lexicon.frequency, cache: cache)
             }.value
             guard !Task.isCancelled else { return }
             self?.segments = found
@@ -75,12 +81,12 @@ final class SearchEngine {
     /// 셋 다 한 번 겪고 나면 다시 겪지 않는다. 그러니 **손이 얹히기 전에** 겪어 둔다.
     /// 화면 밖에서 낮은 우선순위로 도므로 뜨는 데 걸리적거리지 않는다.
     func prewarm() {
-        guard let store else { return }
-        let frequency = self.frequency
+        guard let lexicon else { return }
         let cache = self.cache
         Task.detached(priority: .utility) {
             // 한 글자면 충분하다. 색인·규칙표·캐시가 모두 한 번씩 지나간다.
-            _ = Segmenter.segment("아", in: store, frequency: frequency, cache: cache)
+            _ = Segmenter.segment("아", in: lexicon.dictionary,
+                                  frequency: lexicon.frequency, cache: cache)
         }
     }
 
@@ -91,19 +97,11 @@ final class SearchEngine {
     func searchNow(_ input: String) {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         searching?.cancel()
-        guard let store, !trimmed.isEmpty else {
+        guard let lexicon, !trimmed.isEmpty else {
             segments = []
             return
         }
-        segments = Segmenter.segment(trimmed, in: store, frequency: frequency, cache: cache)
-    }
-
-    enum LoadError: Error, CustomStringConvertible {
-        case missing(String)
-        var description: String {
-            switch self {
-            case .missing(let name): "번들에 \(name) 이 없다"
-            }
-        }
+        segments = Segmenter.segment(trimmed, in: lexicon.dictionary,
+                                     frequency: lexicon.frequency, cache: cache)
     }
 }
