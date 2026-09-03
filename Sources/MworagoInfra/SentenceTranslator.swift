@@ -1,6 +1,8 @@
 #if canImport(FoundationModels)
 import Foundation
 import FoundationModels
+import MworagoDomain
+import MworagoUseCases
 
 /// 모델이 돌려줄 문장 하나.
 ///

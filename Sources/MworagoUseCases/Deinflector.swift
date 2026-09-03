@@ -1,4 +1,5 @@
 import Foundation
+import MworagoDomain
 
 /// 활용형을 사전형으로 되돌린 결과.
 public struct Deinflection: Sendable, Equatable {

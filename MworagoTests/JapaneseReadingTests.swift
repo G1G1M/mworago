@@ -1,5 +1,5 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
 
 @Suite("일본어 문장 읽기")
 struct JapaneseReadingTests {

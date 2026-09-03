@@ -1,5 +1,6 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 @Suite("문장 분절")
 struct SegmenterTests {

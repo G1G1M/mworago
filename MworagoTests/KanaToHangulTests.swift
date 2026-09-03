@@ -1,5 +1,5 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
 
 @Suite("가나 → 한글 음차")
 struct KanaToHangulTests {

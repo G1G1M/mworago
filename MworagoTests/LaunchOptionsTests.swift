@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
 
 @Suite("실행 인자")
 struct LaunchOptionsTests {

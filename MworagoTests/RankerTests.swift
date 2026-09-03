@@ -1,5 +1,6 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 @Suite("검색 결과 줄 세우기")
 struct RankerTests {

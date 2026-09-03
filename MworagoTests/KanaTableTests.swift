@@ -1,5 +1,5 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
 
 @Suite("훈령식 로마자 → 가나")
 struct KanaTableTests {

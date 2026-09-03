@@ -1,5 +1,6 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 @Suite("활용 역변환")
 struct DeinflectorTests {

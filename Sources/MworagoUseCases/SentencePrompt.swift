@@ -1,4 +1,5 @@
 import Foundation
+import MworagoDomain
 
 /// 문장 뜻을 모델에 물을 때 넘길 재료.
 ///

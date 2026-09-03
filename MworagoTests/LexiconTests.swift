@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoInfra
 
 @Suite("검색 재료 한 벌")
 struct LexiconTests {

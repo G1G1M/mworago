@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 /// 1위 다음에 곁들이는 후보들.
 ///

@@ -1,5 +1,5 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
 
 /// 표제어의 읽기에서 활용형의 읽기를 만든다.
 ///

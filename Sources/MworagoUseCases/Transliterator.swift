@@ -1,4 +1,5 @@
 import Foundation
+import MworagoDomain
 
 /// 한글 음차를 가나 후보들로 되돌린다.
 ///

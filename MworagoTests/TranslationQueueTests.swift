@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 /// 옮겨 달라고 보낸 것이 서는 줄.
 ///

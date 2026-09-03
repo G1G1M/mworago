@@ -1,5 +1,5 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
 
 @Suite("한자 한국 독음")
 struct HanjaReadingTests {

@@ -1,4 +1,5 @@
 import Foundation
+import MworagoDomain
 
 /// 검색 결과 한 건.
 public struct SearchResult: Sendable {

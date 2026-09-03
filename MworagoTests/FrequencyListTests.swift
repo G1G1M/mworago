@@ -1,5 +1,6 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 @Suite("도메인 빈도")
 struct FrequencyListTests {

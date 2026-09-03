@@ -1,4 +1,5 @@
 import Foundation
+import MworagoDomain
 
 /// 조각을 찾아본 결과를 재어 두는 곳.
 ///

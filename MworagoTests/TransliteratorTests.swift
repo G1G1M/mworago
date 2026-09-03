@@ -1,5 +1,6 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 @Suite("한글 음차 → 가나 후보")
 struct TransliteratorTests {

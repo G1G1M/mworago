@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoInfra
 
 @Suite("JMdict 파싱")
 struct JMDictTests {

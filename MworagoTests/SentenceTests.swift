@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 /// 조각들을 도로 한 문장으로 잇는 일.
 ///

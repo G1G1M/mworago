@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoInfra
 
 @Suite("작은 값 적어 두기")
 struct PreferencesTests {

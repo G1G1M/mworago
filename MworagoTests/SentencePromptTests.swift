@@ -1,5 +1,6 @@
 import Testing
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoUseCases
 
 /// 문장 뜻을 모델에 물을 때 넘기는 재료.
 ///

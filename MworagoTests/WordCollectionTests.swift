@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoInfra
 
 /// 찾은 낱말을 모아 두는 곳.
 ///

@@ -1,4 +1,5 @@
 import Foundation
+import MworagoDomain
 
 /// 입력을 낱말 조각으로 나눈 결과 하나.
 public struct Segment: Sendable {

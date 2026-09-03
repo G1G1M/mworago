@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoInfra
 
 /// 품사는 화면보다 **번역**을 위해 필요하다.
 ///

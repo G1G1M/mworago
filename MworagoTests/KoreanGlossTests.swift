@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import MworagoCore
+@testable import MworagoDomain
 
 /// 모델이 옮겨 준 한국어 뜻을 화면에 올릴 만한 것으로 다듬는다.
 ///

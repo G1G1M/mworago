@@ -52,10 +52,6 @@ public struct FrequencyList: Sendable {
         self.ranksByWriting = byWriting
     }
 
-    public init(contentsOfFile path: String) {
-        self.init(tsv: (try? String(contentsOfFile: path, encoding: .utf8)) ?? "")
-    }
-
     /// 순위가 앞선 것부터 (순위, 표기, 읽기). 케이스를 뽑을 때 쓴다.
     public func sortedEntries() -> [(rank: Int, writing: String, reading: String)] {
         ranks.map { (rank: $0.value, writing: $0.key.writing, reading: $0.key.reading) }

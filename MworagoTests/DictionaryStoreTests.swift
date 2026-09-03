@@ -1,7 +1,8 @@
 import Testing
 import Foundation
 import SQLite3
-@testable import MworagoCore
+@testable import MworagoDomain
+@testable import MworagoInfra
 
 @Suite("사전 색인 파일")
 struct DictionaryStoreTests {

@@ -1,4 +1,5 @@
 import Foundation
+import MworagoDomain
 
 /// 옮겨 달라고 보낼 것이 서는 줄.
 ///
