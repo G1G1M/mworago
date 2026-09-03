@@ -164,7 +164,7 @@ public enum Ranker {
         for candidate in Transliterator.candidates(for: hangul) {
             for deinflection in Deinflector.candidates(for: candidate.kana) {
                 for hit in index.lookup(deinflection.form) {
-                    // **명사는 활용하지 않는다.**
+                    // **명사와 부사는 활용하지 않는다.**
                     //
                     // 활용을 되돌려 찾은 것이 명사로 걸리면 그것은 뜻이 맞은 것이 아니라
                     // **글자가 우연히 맞은 것**이다. `도코에`(どこへ, 어디로)가
@@ -172,9 +172,14 @@ public enum Ranker {
                     // 보고 되돌리니 `どうこう` 가 되었고, 거기에 명사 `同校` 가 걸렸다.
                     // 명사에 명령형이 붙을 리 없는데 사전이 그렇게 말한 적도 없다.
                     //
+                    // **부사를 빼먹었더니 같은 자리가 다시 열렸다.** 명사를 막자
+                    // `도코에` 가 이번에는 `如何斯う`(どうこう, 이러쿵저러쿵)로 나왔다 —
+                    // 같은 가나에 걸린 부사 항목이다. 부사도 활용하지 않는다.
+                    //
                     // `勉強` 처럼 `n·vs`(する가 붙는 명사)는 이 검사에 걸리지 않는다 —
                     // `벤쿄시타` 는 `勉強` + `する` 로 갈라져 명사 쪽에는 활용이 안 붙는다.
-                    if deinflection.rule != nil, hit.entry.wordClass == .noun { continue }
+                    if deinflection.rule != nil,
+                       hit.entry.wordClass == .noun || hit.entry.wordClass == .adverb { continue }
                     // **도메인 빈도가 아무 말도 하지 않을 때만 JMdict 를 듣는다.**
                     //
                     // 신문 빈도는 애니에서 잡음이라 스윕이 늘 jmdictWeight 0 을 골랐다.

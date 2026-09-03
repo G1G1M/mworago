@@ -25,6 +25,35 @@ struct RankerTests {
         })
     }
 
+    /// 품사까지 달아 만드는 사전. (표기, 읽기, 점수, 품사 태그)
+    static func 사전(품사: [(String, String, Int, [String])]) -> DictIndex {
+        DictIndex(entries: 품사.map { 표기, 읽기, 점수, 태그 in
+            DictEntry(readings: [DictForm(text: 읽기, priority: 점수)],
+                      writings: [DictForm(text: 표기, priority: 0)],
+                      glosses: [], partsOfSpeech: 태그)
+        })
+    }
+
+    @Test("명사와 부사에는 활용을 되돌려 붙이지 않는다")
+    func 활용하지_않는_갈래() {
+        // `도코에`(どこへ, 어디로)의 맨 위 카드에 `同校`(같은 학교)가 떴다 —
+        // 어미 `え` 를 5단 명령형으로 보고 되돌려 만든 `どうこう` 에 명사가 걸린 것이다.
+        // 명사를 막자 이번에는 같은 자리에 부사 `如何斯う`(이러쿵저러쿵)가 섰다.
+        // 둘 다 활용하지 않는 갈래이므로, 걸렸다면 뜻이 아니라 글자가 맞은 것이다.
+        let index = Self.사전(품사: [
+            ("同校", "どうこう", 100, ["n"]),
+            ("如何斯う", "どうこう", 100, ["adv"]),
+            ("問う", "とう", 100, ["v5u"]),
+        ])
+        let 결과 = Ranker.search("도코에", in: index)
+        #expect(결과.contains { $0.headword == "同校" } == false)
+        #expect(결과.contains { $0.headword == "如何斯う" } == false)
+
+        // 동사는 그대로 걸린다 — 활용하는 갈래다.
+        let 동사 = Ranker.search("토에", in: index)
+        #expect(동사.contains { $0.headword == "問う" && $0.deinflection != nil })
+    }
+
     @Test("말뭉치가 읽기를 다르게 이름 붙여도 흔한 낱말이 위로")
     func 표기로_물려받은_빈도() {
         // **실제로 났던 일이다.** 자막 말뭉치가 `私` 를 `わたくし`(19위·148,210회)로만
