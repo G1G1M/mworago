@@ -28,6 +28,7 @@ struct KanaDetail: View {
     var katakana = false
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.speaker) private var speaker
     /// 지금 보고 있는 글자.
     @State private var currentKana: String?
 
@@ -71,7 +72,7 @@ struct KanaDetail: View {
     private func page(_ kana: String) -> some View {
         VStack(alignment: .leading, spacing: 30) {
             // 큰 글자와 소리. 누르면 읽어 준다.
-            Button { Voice.speak(kana) } label: {
+            Button { speaker.speak(kana) } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(katakana ? katakanaForm(kana) : hiragana(kana))
                         .font(Theme.japanese(84, weight: .medium))
@@ -182,6 +183,8 @@ struct KanaQuiz: View {
         /// 앞면에 보이는 글자. 뒤집기 전에는 이것 하나뿐이다.
         var shown: String { katakana ? KanaTable.toKatakana(kana) : kana }
     }
+
+    @Environment(\.speaker) private var speaker
 
     @State private var scope: Scope = .hiragana
     @State private var order: Order = .random
@@ -305,7 +308,7 @@ struct KanaQuiz: View {
                 button("이전", filled: false) { previous() }
                 button(revealed ? "소리 듣기" : "뒤집기", filled: true) {
                     if revealed {
-                        Voice.speak(current.kana)
+                        speaker.speak(current.kana)
                     } else {
                         withAnimation(.snappy(duration: 0.18)) { revealed = true }
                     }
