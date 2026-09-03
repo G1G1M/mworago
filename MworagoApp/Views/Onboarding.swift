@@ -1,10 +1,15 @@
 import SwiftUI
 
-/// 처음 열었을 때 세 장.
+/// 처음 열었을 때 네 장.
 ///
 /// 앱의 이야기를 순서대로 들려준다 — **찾고, 담기고, 다시 만난다.** 탭 셋의 관계를
-/// 한 번에 말할 수 있는 것이 이 꼴뿐이라 이것으로 정했다. 대신 앱에 닿는 것이 세 번
+/// 한 번에 말할 수 있는 것이 이 꼴뿐이라 이것으로 정했다. 대신 앱에 닿는 것이 그만큼
 /// 늦어지므로 **건너뛰기를 늘 열어 둔다.**
+///
+/// 마지막 장은 이야기가 아니라 **지도**다. 탭바에서 글자를 빼고 아이콘만 남겼으므로
+/// (넷뿐이고 뜻이 분명한 기호라는 판단이었다) 어느 자리가 무엇인지 한 번은 짚어야 한다.
+/// 글자 탭과 설정은 이야기 안에 자리가 없어 여기서 함께 말한다 —
+/// 그것 때문에 장을 둘 더 늘리면 앱에 닿는 것만 늦어진다.
 ///
 /// 시안 넷을 만들어 견줬다(페이지형·포커스형·한 장·첫 성공 뒤). 포커스형은 진짜 입력
 /// 바 자리에 구멍을 뚫어야 해서 복제본이 생겼고, 첫 성공 뒤에 한 번 짚는 안은 조용하지만
@@ -46,6 +51,15 @@ struct Onboarding: View {
         max(Theme.koreanWidth("다음", size: 15), Theme.koreanWidth("시작", size: 15))
     }
 
+    /// 탭바에 선 다섯 자리. 마지막 장이 이것을 짚는다.
+    private static let tabs: [(symbol: String, name: String)] = [
+        ("magnifyingglass", "찾기"),
+        ("books.vertical", "책장"),
+        ("rectangle.stack", "연습"),
+        ("character.book.closed", "글자"),
+        ("gearshape", "설정"),
+    ]
+
     private struct Page {
         let sample: AnyView
         let title: String
@@ -83,6 +97,26 @@ struct Onboarding: View {
                  // 앞면이 한글에서 **가나**로 바뀌었다 — 한글 음차는 찾을 때 쓰는
                  // 열쇠지 익힐 것이 아니고, 자막에 뜨는 것은 `いたい` 이지 `이타이` 가 아니다.
                  detail: "가나를 보고 뜻을 떠올린 다음 뒤집어 맞춰 봐요.\n채점하지 않아요."),
+            Page(sample: AnyView(
+                // 탭바를 그대로 옮겨 그리지 않는다. **이름을 붙여 두는 것이 이 장의 일**이라
+                // 아이콘 아래에 이름을 단다 — 진짜 탭바에는 없는 것이고, 그래서 여기 있다.
+                HStack(alignment: .top, spacing: 22) {
+                    ForEach(Self.tabs, id: \.name) { tab in
+                        VStack(spacing: 8) {
+                            Image(systemName: tab.symbol)
+                                .font(.system(size: 22))
+                                .foregroundStyle(Theme.ink)
+                                .frame(height: 26)
+                            Text(tab.name)
+                                .font(Theme.korean(11))
+                                .foregroundStyle(Theme.grey2)
+                        }
+                    }
+                }),
+                 title: "나머지는 아래에 있어요",
+                 // 글자 탭이 여기 있는 까닭은 **막히는 자리가 정해져 있지 않아서**다.
+                 // 가나를 못 읽어 멈추는 일은 찾을 때도 연습할 때도 생긴다.
+                 detail: "가나를 못 읽어 멈추면 글자 탭으로 가요 — 오십음도 표와 익히기가 있습니다.\n설정에서는 밝기와 쓰는 자료를 봐요."),
         ]
     }
 

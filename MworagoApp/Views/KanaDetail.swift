@@ -205,13 +205,13 @@ struct KanaQuiz: View {
             // 문법이라 새로 배울 것이 없다.
             VStack(spacing: 10) {
                 scopeDial
-                HStack(spacing: 12) {
+                // 순서 다이얼과 초기화 사이에 세로선을 세웠다가 **걷어냈다.**
+                // `Divider` 에 여백을 먼저 주고 그 위에 색을 덮어서, 선이 아니라
+                // 여백까지 통째로 칠해진 회색 네모(49×14)가 그려졌다.
+                // 둘은 크기와 배경으로 이미 갈린다 — 하나는 채워지는 알약이고
+                // 하나는 배경이 없다. 선을 다시 세울 이유가 없다.
+                HStack(spacing: 16) {
                     orderDial
-                    // 종류가 다른 것 사이에는 선을 세운다. 자리로 갈리면 글자로
-                    // 설명하지 않아도 된다.
-                    Divider().padding(.horizontal, Theme.gutter)
-                        .overlay(Theme.grey3)
-                        .frame(height: 14)
                     Button { reset() } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.counterclockwise")
