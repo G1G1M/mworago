@@ -23,9 +23,13 @@ public final class SearchCache: @unchecked Sendable {
     /// 문장 하나가 만드는 조각은 백 개 남짓이고, 사람이 이어서 치는 문장은 서로 겹친다.
     /// 그래도 한 자리에서 오래 쓰면 늘어나기만 하므로 선을 둔다. 넘으면 통째로 비운다 —
     /// 무엇을 버릴지 고르는 일이 아끼는 것보다 비싸고, 비워도 다시 채우면 그만이다.
-    private static let limit = 4000
+    private let limit: Int
 
-    public init() {}
+    /// 화면이 쓰는 값은 기본값 그대로다. **측정기는 선을 올려 잡는다** — 문장 300개가
+    /// 만드는 조각은 기본값을 훌쩍 넘어서, 그대로 두면 훑는 내내 비우고 다시 채우기만 한다.
+    public init(limit: Int = 4000) {
+        self.limit = limit
+    }
 
     /// 찾아 둔 것이 있으면 그것을, 없으면 찾아서 담고 돌려준다.
     func result(for piece: String, find: () -> [SearchResult]) -> [SearchResult] {
@@ -41,7 +45,7 @@ public final class SearchCache: @unchecked Sendable {
         let found = find()
 
         lock.lock()
-        if store.count >= Self.limit { store.removeAll(keepingCapacity: true) }
+        if store.count >= limit { store.removeAll(keepingCapacity: true) }
         store[piece] = found
         lock.unlock()
         return found
