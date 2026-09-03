@@ -15,7 +15,7 @@ import MworagoCore
 /// 채점하지 않는다. 맞혔는지 틀렸는지 기록하기 시작하면 점수를 관리하는 앱이 되는데,
 /// 여기서 하려는 일은 **다시 마주치게 하는 것**뿐이다.
 struct PracticeView: View {
-    let collection: CollectionStore
+    @Environment(CollectionStore.self) private var collection
     /// 한자의 한국 독음. 상세 시트가 이미 한 번 읽어 둔 것을 나눠 쓴다.
     /// 교재에서 하루치만 들고 건너왔을 때 그 낱말들. 비어 있으면 모은 것 전체를 훑는다.
     ///

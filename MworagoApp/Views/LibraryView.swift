@@ -15,7 +15,7 @@ import MworagoCore
 /// 스무 편이면 훑을 수 없는 화면이 됐다. 대신 줄 오른쪽에 낱말 두어 개를 흘려 두어
 /// **이름만으로 "어느 화였지"를 짚지 않아도 되게** 한다.
 struct LibraryView: View {
-    let collection: CollectionStore
+    @Environment(CollectionStore.self) private var collection
     /// 상세에서 "찾기에서 보기"를 눌렀을 때 건너가는 길.
     ///
     /// 전에는 **낱말을 누르는 것 자체가** 이 길이었다. 모아 둔 것을 다시 만나게 하려던

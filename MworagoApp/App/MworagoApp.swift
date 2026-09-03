@@ -2,9 +2,20 @@ import SwiftUI
 
 @main
 struct MworagoApp: App {
+
+    /// 앱이 사는 동안 한 번만 선다. **화면이 아니라 여기가 조립하는 자리다** —
+    /// 예전에는 뿌리 화면이 모은 낱말을, 찾기 화면이 검색기와 옮긴 말을 각자 만들었다.
+    @State private var container = AppContainer()
+
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(preferences: container.preferences)
+                // 화면 여럿이 같은 것을 본다. 넘겨 가며 나르지 않고 환경에 얹는다 —
+                // 찾기 카드처럼 깊이 있는 자리까지 손으로 나르면 중간 화면이 제가
+                // 쓰지도 않는 것을 인자로 받게 된다.
+                .environment(container.collection)
+                .environment(container.engine)
+                .environment(container.desk)
         }
     }
 }

@@ -19,8 +19,6 @@ struct SegmentCard: View {
     /// 고른 카드는 왼쪽에 선 하나를 세워 표시한다. 문장 쪽 강조가 이미 반전이라
     /// 여기까지 반전하면 화면에 검은 덩어리가 둘이 되어 어느 쪽이 답인지 흐려진다.
     var isSelected: Bool = false
-    /// 담아 두는 곳. 없으면 갈피표를 그리지 않는다 — 미리보기와 테스트를 위해서다.
-    var collection: CollectionStore? = nil
     /// 담아 달라고 위로 알린다. **카드가 직접 담지 않는다** — 어디에 넣을지 묻는 모달은
     /// 화면에 하나여야 하는데, 카드마다 시트를 달면 조각 수만큼 생긴다.
     var onCollect: (CollectedWord) -> Void = { _ in }
@@ -35,6 +33,12 @@ struct SegmentCard: View {
     /// **접어 두고 누르면 편다.** 기본은 세 층이고, 더 볼 사람만 한 번 더 누른다.
     @State private var expanded = false
 
+    /// 담아 두는 곳. 갈피표가 이것을 쓴다.
+    ///
+    /// **넘겨받지 않고 환경에서 꺼낸다.** 예전에는 옵셔널로 받아 없으면 갈피표를
+    /// 그리지 않았는데, 그 nil 분기가 이 카드를 거쳐 찾기 화면까지 붙어 있었다.
+    /// 환경에 없으면 그 자리에서 멎으므로, 조립 루트가 빠뜨린 것을 바로 알게 된다.
+    @Environment(CollectionStore.self) private var collection
     @Environment(TranslationDesk.self) private var desk
 
     private var top: SearchResult? { segment.results.first }
@@ -115,9 +119,7 @@ struct SegmentCard: View {
 
                 Spacer(minLength: 8)
                 SpeakButton(text: result.reading)
-                if let collection {
-                    bookmark(result, in: collection)
-                }
+                bookmark(result, in: collection)
             }
 
             // **한글 발음은 늘 보인다.** 한때는 다이얼로 껐다 켰는데, 층이 가나와 한글

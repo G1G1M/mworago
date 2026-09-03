@@ -21,14 +21,17 @@ struct SearchView: View {
     /// 한 줄이 지나치게 길어지면 눈이 되돌아올 곳을 잃는다. iPad 에서 특히 그렇다.
     private static let contentWidth: CGFloat = Theme.listWidth
 
-    /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
-    var collection: CollectionStore? = nil
     /// 다른 탭에서 넘어온 검색어. 모은 것이나 도감에서 낱말을 누르면 여기로 들어온다.
     /// 받아서 처리한 뒤 비운다 — 남겨 두면 이 탭으로 돌아올 때마다 다시 검색된다.
     var incoming: Binding<String?>? = nil
-    @State private var engine = SearchEngine()
+
+    /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
+    @Environment(CollectionStore.self) private var collection
+    /// 사전을 열고 검색을 맡는다. **조립 루트가 세운다** — 예전에는 이 화면이
+    /// 직접 만들었고, 그래서 사전을 여는 일이 찾기 탭이 처음 그려질 때 일어났다.
+    @Environment(SearchEngine.self) private var engine
     /// 옮긴 말을 모아 두는 곳. 화면 여럿이 같은 것을 본다.
-    @State private var desk = TranslationDesk()
+    @Environment(TranslationDesk.self) private var desk
     /// 번역기 설정. **한 번만 만든다** — 문장마다 새로 만들면 그때마다 세션이 다시 열려
     /// 실기기에서 눈에 띄게 걸린다. 세션 여는 일이 번역보다 무겁다.
     @State private var fromJapanese: TranslationSession.Configuration?
@@ -129,7 +132,6 @@ struct SearchView: View {
             // 0.25초와 easeOut 은 시스템 키보드가 쓰는 값이다.
             .animation(.easeOut(duration: 0.25), value: inputFocused)
         }
-        .environment(desk)
         // **세션은 언어쌍마다 하나씩, 앱이 사는 동안 그대로 둔다.** 열어 놓고 옮길 것을
         // 흘려 넣는다. 번역을 못 하는 기기에서는 설정을 만들지 않으므로 세션도 열리지
         // 않는다 — 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
@@ -161,7 +163,7 @@ struct SearchView: View {
         .onAppear {
             // `--collect` 는 검색 결과를 전부 담는다. 담기와 모은 것 화면을
             // 손으로 두드리지 않고 확인하기 위한 것이다.
-            if ProcessInfo.processInfo.arguments.contains("--collect"), let collection {
+            if ProcessInfo.processInfo.arguments.contains("--collect") {
                 engine.searchNow(input)
                 for segment in engine.segments {
                     guard let top = segment.results.first else { continue }
@@ -206,13 +208,11 @@ struct SearchView: View {
         // 담기 판. **화면에 하나만 둔다** — 갈피표는 카드마다 있지만
         // 묻는 자리는 하나여야 한다.
         .dialog(item: $collecting) { word in
-            if let collection {
-                FolderPicker(word: word,
-                             folderNames: collection.folderNames,
-                             lastFolder: collection.lastFolder,
-                             onPick: { collection.add(word, to: $0) },
-                             onClose: { collecting = nil })
-            }
+            FolderPicker(word: word,
+                         folderNames: collection.folderNames,
+                         lastFolder: collection.lastFolder,
+                         onPick: { collection.add(word, to: $0) },
+                         onClose: { collecting = nil })
         }
     }
 
@@ -314,7 +314,7 @@ struct SearchView: View {
 
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
                         SegmentCard(segment: segment,
-                                    isSelected: selected == index, collection: collection,
+                                    isSelected: selected == index,
                                     onCollect: { collecting = $0 })
                             .id(index)
                         Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)

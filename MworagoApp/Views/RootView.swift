@@ -18,8 +18,6 @@ struct RootView: View {
     /// **화면이 파일을 몰라도 되게** 밖에서 받는다. 예전에는 두 값이 각자 뷰 파일 안에서
     /// `FileManager` 로 Application Support 를 찾았다.
     private let preferences: any PreferenceStoring
-
-    @State private var collection: CollectionStore
     /// 어느 탭을 열지 실행 인자로 고를 수 있다 (`--tab=collection`).
     /// `--query=` · `--select=` · `--aid=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
@@ -47,10 +45,8 @@ struct RootView: View {
 
     /// 적어 둔 것을 읽어 첫 모습을 정한다. 기본값은 앱의 자리이고, 미리보기와
     /// 화면 확인은 아무것도 남기지 않는 판을 준다.
-    init(preferences: any PreferenceStoring = FilePreferences(),
-         collection: CollectionStore = CollectionStore()) {
+    init(preferences: any PreferenceStoring = FilePreferences()) {
         self.preferences = preferences
-        _collection = State(initialValue: collection)
         _appearance = State(initialValue: Appearance.saved(in: preferences))
         _showOnboarding = State(initialValue:
             OnboardingSeen.forced || !preferences.isMarked(OnboardingSeen.key))
@@ -136,21 +132,19 @@ struct RootView: View {
         // 아이패드에서 탭바가 위아래로 **두 번** 그려졌다.
         TabView(selection: $tab) {
             Tab(value: RootTab.find) {
-                SearchView(collection: collection, incoming: $pendingQuery)
+                SearchView(incoming: $pendingQuery)
             } label: {
                 Image(systemName: "magnifyingglass")
                     .accessibilityLabel("찾기")
             }
             Tab(value: RootTab.library) {
-                LibraryView(collection: collection, onPick: goFind,
-                            onPractice: goPractice)
+                LibraryView(onPick: goFind, onPractice: goPractice)
             } label: {
                 Image(systemName: "books.vertical")
                     .accessibilityLabel("책장")
             }
             Tab(value: RootTab.practice) {
-                PracticeView(collection: collection,
-                             subset: practiceSubset,
+                PracticeView(subset: practiceSubset,
                              subsetLabel: practiceLabel,
                              onClearSubset: {
                                  practiceSubset = nil
