@@ -47,7 +47,13 @@ struct FolderNameDialog: View {
         .padding(.vertical, 20)
         .onAppear {
             name = initialName
-            focused = true
+            // **판이 먼저 앉고 나서 키보드를 올린다.** 같이 올라오면 판이 떠오르는
+            // 몸짓과 화면이 밀려 올라가는 몸짓이 한 프레임에 겹쳐, 둘 다 뜬 것이
+            // 아니라 화면이 한 번 튄 것으로 보인다.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(180))
+                focused = true
+            }
         }
     }
 
@@ -109,7 +115,7 @@ struct FolderNameDialog: View {
             .disabled(blocked)
             .opacity(blocked ? 0.4 : 1)
 
-            Button { isPresented = false } label: {
+            Button(action: close) {
                 Text("그만두기")
                     .font(Theme.korean(16))
                     .frame(maxWidth: .infinity)
@@ -126,6 +132,20 @@ struct FolderNameDialog: View {
     private func confirm() {
         guard !blocked else { return }
         onConfirm(trimmed)
-        isPresented = false
+        close()
+    }
+
+    /// 판을 닫는다.
+    ///
+    /// **키보드를 먼저 내려보내고 한 박자 뒤에 판을 없앤다.** 한 번에 처리하면 초점을
+    /// 놓았다는 것이 UIKit 에 닿기 전에 글 칸이 화면에서 사라지고, 그러면 키보드가
+    /// 미끄러져 내려가는 대신 **애니메이션 없이 툭 꺼진다** — 판이 지는 것과 화면이
+    /// 내려앉는 것이 한 프레임에 겹쳐 보이던 까닭이 이것이다.
+    private func close() {
+        focused = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(90))
+            isPresented = false
+        }
     }
 }

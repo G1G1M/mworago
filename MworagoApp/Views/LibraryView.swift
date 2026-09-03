@@ -149,6 +149,7 @@ struct LibraryView: View {
             // 같은 자리다 — 탭을 오갈 때 같은 말이 위아래로 흔들리지 않는다.
             if isEmpty {
                 empty
+                    .transition(.opacity)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     // 헤더도 목록과 같은 폭 안에 선다. 목록만 가운데 모이고 헤더가
@@ -158,8 +159,14 @@ struct LibraryView: View {
                         .frame(maxWidth: .infinity)
                     content
                 }
+                .transition(.opacity)
             }
         }
+        // **비었다가 채워지는 자리를 잇는다.** 빈 화면에서 묶음을 만들면 판이 지는
+        // 것과 동시에 화면이 통째로 갈리는데, 이어 주지 않으면 한 프레임 만에
+        // 다른 화면으로 바뀌어 판이 닫힌 것인지 화면이 넘어간 것인지 읽히지 않는다.
+        // 판이 뜨고 지는 결과 같은 것을 쓴다 — 한 몸짓의 앞뒤이기 때문이다.
+        .animation(.dialog, value: isEmpty)
         .onAppear {
             guard !Self.openedFromArguments else { return }
             Self.openedFromArguments = true
