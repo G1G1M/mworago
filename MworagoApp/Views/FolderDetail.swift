@@ -93,15 +93,23 @@ struct FolderDetail: View {
         // 책장 루트에서 내비 바를 숨긴 것과 같은 까닭이다. 바는 뒤로 가는 길로만 쓴다.
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        // **목록째 넘긴다.** 이 묶음에 든 낱말들이 그대로 시트의 차례가 되어,
+        // 펼쳐 본 자리에서 좌우로 밀면 이웃한 낱말이 온다.
         .sheet(item: $detail) { word in
-            WordDetail(word: word,
+            WordDetail(words: words,
+                       start: word.id,
                        onFind: onFind,
                        onRemove: onRemoveWord,
                        onMove: { word, folder in
                            onMoveWord(word, folder)
-                           // 옮긴 결과를 시트에 되비춘다. 넘겨받은 `words` 는 이 시트를
-                           // 열 때의 것이라, 다시 찾아도 옮기기 전 값이 나온다.
-                           detail = word.movedTo(folder)
+                           // **옮기면 시트가 닫힌다.** 옮긴 낱말은 이 묶음에서 빠졌으니
+                           // 여기 차례에도 없다 — 붙들고 있으면 목록에 없는 것을 목록의
+                           // 한 자리인 척 보이게 된다. 닫히면서 그 줄이 사라진 목록이
+                           // 드러나는 것이 옮겼다는 말을 가장 짧게 한다.
+                           //
+                           // 책장 `모두` 에서는 닫지 않는다 — 거기서는 묶음을 옮겨도
+                           // 낱말이 목록에 그대로 남는다.
+                           detail = nil
                        },
                        folderNames: folderNames)
         }

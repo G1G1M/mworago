@@ -189,13 +189,15 @@ struct LibraryView: View {
             }
         }
         .sheet(item: $detail) { word in
-            WordDetail(word: word,
+            // **목록째 넘긴다.** 펼쳐 본 낱말은 이 목록의 한 자리이고, 옆 낱말로 가는 일은
+            // 화면을 옮기는 일이 아니다 — 시트 안에서 좌우로 밀면 이웃한 낱말이 온다.
+            // 옮긴 결과를 여기서 되비출 일도 없어졌다. 시트가 `collection.words` 를
+            // 그대로 보고 있으므로 옮기는 즉시 그 낱말의 새 묶음이 시트에 뜬다.
+            WordDetail(words: collection.words,
+                       start: word.id,
                        onFind: onPick,
                        onRemove: { collection.remove($0) },
-                       onMove: { word, folder in
-                           collection.move(word, to: folder)
-                           detail = collection.words.first { $0.id == word.id }
-                       },
+                       onMove: { collection.move($0, to: $1) },
                        folderNames: collection.folderNames)
         }
         // 이름은 **화면 한가운데 뜨는 판**으로 받는다. 아래에서 올라오는 시트는

@@ -29,12 +29,6 @@ struct KanaView: View {
         .first { $0.hasPrefix("--kana=") }
         .map { Glyph(kana: String($0.dropFirst("--kana=".count))) }
 
-    /// 시트에 실어 보내려면 무엇으로 식별되는지가 있어야 한다. 글자가 곧 그것이다.
-    struct Glyph: Identifiable {
-        let kana: String
-        var id: String { kana }
-    }
-
     private static let contentWidth: CGFloat = Theme.readWidth
 
     var body: some View {

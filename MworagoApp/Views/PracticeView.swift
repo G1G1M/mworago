@@ -26,7 +26,9 @@ struct PracticeView: View {
     /// 하루치에서 빠져나와 전체로 돌아간다.
     var onClearSubset: () -> Void = {}
 
-    @State private var index = 0
+    /// 지금 보고 있는 낱말. **`id` 로 들고 있다** — 자리(번호)로 들면 하루치를 바꾸거나
+    /// 낱말을 뺐을 때 같은 번호가 딴 낱말을 가리킨다.
+    @State private var currentID: CollectedWord.ID?
     /// `--revealed` 로 뒤집힌 채 띄운다. `--query=` · `--detail` 과 같은 취지 —
     /// 시뮬레이터는 손으로 두드릴 수 없어 뒷면을 눈으로 볼 길이 없다.
     @State private var revealed = ProcessInfo.processInfo.arguments.contains("--revealed")
@@ -37,20 +39,49 @@ struct PracticeView: View {
 
     private var words: [CollectedWord] { subset ?? collection.words }
     private var current: CollectedWord? {
-        words.indices.contains(index) ? words[index] : words.first
+        words.first { $0.id == currentID } ?? words.first
+    }
+    /// 몇 번째 장인가. 보고 있던 낱말이 사라졌으면 첫 장으로 친다.
+    private var index: Int {
+        words.firstIndex { $0.id == currentID } ?? 0
     }
 
     var body: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
-            if let word = current { card(word) } else { empty }
+            if words.isEmpty {
+                empty
+            } else {
+                // **손으로 밀어도 넘어간다.** 카드 더미를 넘기는 몸짓이 단추보다 먼저
+                // 떠오르는 자리다. 단추는 그대로 둔다 — 밀 수 있다는 것은 해 봐야 알고,
+                // `이전`·`다음` 은 보이는 채로 있다.
+                Pager(items: words, current: $currentID) { word in
+                    card(word)
+                        // 카드가 화면 한가운데 선다. 페이지가 뷰포트 높이를 그대로 받고,
+                        // 그 안에서 카드는 제 크기대로 가운데 놓인다.
+                        .containerRelativeFrame(.vertical)
+                }
+            }
             if let subsetLabel { subsetBanner(subsetLabel) }
+        }
+        // 첫 장. 담긴 것이 없다가 생겼을 때도 여기서 잡힌다.
+        //
+        // **`current` 로 묻지 않는다.** 그것은 못 찾으면 첫 낱말을 내주므로 목록이
+        // 비지 않는 한 `nil` 이 아니고, 그러면 `currentID` 는 영영 비어 있게 된다 —
+        // 화면은 첫 장을 보여 주는데 넘긴 자리를 아무도 들고 있지 않은 꼴이다.
+        .onAppear {
+            if words.first(where: { $0.id == currentID }) == nil {
+                currentID = words.first?.id
+            }
         }
         // 하루치를 새로 골라 오면 처음 낱말부터 시작한다.
         .onChange(of: subsetLabel) { _, _ in
-            index = 0
+            currentID = words.first?.id
             revealed = false
         }
+        // **장이 바뀌면 도로 덮인다.** 밀어서 넘겼든 단추로 넘겼든 같다 —
+        // 다음 낱말의 답이 이미 펼쳐져 있으면 떠올려 볼 틈이 없다.
+        .onChange(of: currentID) { _, _ in revealed = false }
     }
 
     /// 지금 무엇을 연습하고 있는지. 전체가 아니라면 그 사실이 화면에 있어야 한다 —
@@ -190,20 +221,20 @@ struct PracticeView: View {
         .buttonStyle(.plain)
     }
 
-    private func next() {
-        withAnimation(.snappy(duration: 0.18)) {
-            revealed = false
-            index = words.isEmpty ? 0 : (index + 1) % words.count
-        }
-    }
+    /// 한 장 앞으로. 끝에서 누르면 처음으로 돈다.
+    private func next() { go(to: index + 1) }
 
     /// 한 장 뒤로. 첫 장에서 누르면 마지막 장으로 돌아간다 — `다음` 이 끝에서
     /// 처음으로 도는 것과 짝을 맞춘다.
-    private func previous() {
-        withAnimation(.snappy(duration: 0.18)) {
-            revealed = false
-            index = words.isEmpty ? 0 : (index - 1 + words.count) % words.count
-        }
+    private func previous() { go(to: index - 1) }
+
+    /// 단추로 넘길 때. 미는 손과 같은 자리로 가야 하므로 **보고 있는 낱말을 바꾸고**,
+    /// 페이지는 그것을 따라 미끄러진다. 뒤집힌 것을 도로 덮는 일은 `currentID` 가
+    /// 바뀔 때 한꺼번에 한다 — 밀어서 넘겼을 때와 같은 자리에서 처리해야 어긋나지 않는다.
+    private func go(to position: Int) {
+        guard !words.isEmpty else { return }
+        let wrapped = (position % words.count + words.count) % words.count
+        withAnimation(.snappy(duration: 0.18)) { currentID = words[wrapped].id }
     }
 
     /// 연습할 것이 없을 때. 화면 한가운데 서고 글줄은 왼쪽에서 시작한다 —

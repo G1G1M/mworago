@@ -10,9 +10,17 @@ import MworagoCore
 /// **길을 없애는 것이 아니라 기본 동작을 바꾼다.** 누르면 여기서 펼치고,
 /// 찾기로 가는 것은 버튼 하나로 남긴다.
 ///
+/// **낱말 하나가 아니라 목록을 받는다.** 펼쳐 본 낱말은 목록 안의 한 자리이고,
+/// 옆 낱말로 가는 일은 화면을 옮기는 일이 아니다 — 좌우로 밀면 이웃한 낱말이 온다.
+/// 열었다 닫기를 되풀이하던 왕복이 그만큼 없어진다.
+///
 /// 층의 차례는 화면 어디서나 같다 — **가나 · 한글**.
 struct WordDetail: View {
-    let word: CollectedWord
+    /// 펼쳐 볼 수 있는 낱말들. 열린 자리의 목록 그대로다 —
+    /// 책장 `모두` 에서 열었으면 모은 것 전부, 묶음에서 열었으면 그 묶음뿐이다.
+    let words: [CollectedWord]
+    /// 처음 보일 낱말.
+    let start: CollectedWord.ID
     /// 찾기로 건너간다. 없애지 않고 버튼 하나로 남겨 둔 길이다.
     var onFind: (String) -> Void = { _ in }
     /// 교재에서 뺀다.
@@ -23,6 +31,11 @@ struct WordDetail: View {
     var folderNames: [String] = []
 
     @Environment(\.dismiss) private var dismiss
+    /// 지금 보고 있는 낱말. 넘기면 따라 바뀐다.
+    ///
+    /// **`id` 로 들고 있다.** 낱말 자체를 들면 묶음을 옮긴 뒤에 값이 달라져서
+    /// 방금까지 보던 것을 못 알아본다 — 고르기가 `id` 를 담는 것과 같은 까닭이다.
+    @State private var currentID: CollectedWord.ID?
     /// 옮길 곳을 고르는 중인가.
     ///
     /// **묶음 화면에서 여럿을 옮기는 것과 같은 판을 쓴다.** 하나를 옮기든 셋을 옮기든
@@ -31,25 +44,55 @@ struct WordDetail: View {
     /// 담는 자리라 목록이 길고, 판보다 시트가 맞다.
     @State private var moving = false
 
+    init(words: [CollectedWord],
+         start: CollectedWord.ID,
+         onFind: @escaping (String) -> Void = { _ in },
+         onRemove: @escaping (CollectedWord) -> Void = { _ in },
+         onMove: @escaping (CollectedWord, String?) -> Void = { _, _ in },
+         folderNames: [String] = []) {
+        self.words = words
+        self.start = start
+        self.onFind = onFind
+        self.onRemove = onRemove
+        self.onMove = onMove
+        self.folderNames = folderNames
+        _currentID = State(initialValue: start)
+    }
+
+    /// 지금 낱말. 보고 있던 것이 목록에서 사라졌으면(옮겨 가거나 빠졌으면) 첫 낱말로 돌아간다.
+    private var current: CollectedWord? {
+        words.first { $0.id == currentID } ?? words.first
+    }
+
+    private var position: Int? {
+        currentID.flatMap { id in words.firstIndex { $0.id == id } }
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    layers
-                    gloss
-                    folderRow
-                    collectedAt
-                    actions
+            Pager(items: words, current: $currentID) { word in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 26) {
+                        layers(word)
+                        gloss(word)
+                        folderRow(word)
+                        collectedAt(word)
+                        actions(word)
+                    }
+                    .padding(.horizontal, Theme.gutter)
+                    .padding(.top, 8)
+                    .padding(.bottom, Theme.screenBottom)
+                    .frame(maxWidth: Theme.readWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, 8)
-                .padding(.bottom, Theme.screenBottom)
-                .frame(maxWidth: Theme.readWidth, alignment: .leading)
-                .frame(maxWidth: .infinity)
             }
             .background(Theme.paper)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // 몇 번째를 보고 있는지. 넘길 수 있다는 것도 이것이 말해 준다.
+                ToolbarItem(placement: .principal) {
+                    PagerPosition(index: position, total: words.count)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("닫기") { dismiss() }
                         .font(Theme.korean(16))
@@ -58,12 +101,14 @@ struct WordDetail: View {
             }
         }
         .dialog(isPresented: $moving) {
-            FolderChooserDialog(title: "어디로 옮길까요?",
-                                hint: word.reading,
-                                folderNames: folderNames,
-                                // 점은 **지금 있는 자리**를 가리킨다.
-                                current: word.folder,
-                                isPresented: $moving) { onMove(word, $0) }
+            if let word = current {
+                FolderChooserDialog(title: "어디로 옮길까요?",
+                                    hint: word.reading,
+                                    folderNames: folderNames,
+                                    // 점은 **지금 있는 자리**를 가리킨다.
+                                    current: word.folder,
+                                    isPresented: $moving) { onMove(word, $0) }
+            }
         }
     }
 
@@ -72,7 +117,7 @@ struct WordDetail: View {
     ///
     /// **소리가 가장 큰 글자 곁에 선다.** 펼쳐 보려고 연 화면이라, 눈으로 볼 것과
     /// 귀로 들을 것이 같은 자리에 있어야 한다.
-    private var layers: some View {
+    private func layers(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(word.reading)
@@ -91,7 +136,7 @@ struct WordDetail: View {
     /// **담을 때 보였던 뜻**을 그대로 붙든다. 뜻이 나중에 좋아지더라도
     /// 무엇을 보고 담았는지가 그 사람의 기억과 맞다.
     @ViewBuilder
-    private var gloss: some View {
+    private func gloss(_ word: CollectedWord) -> some View {
         if !word.gloss.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("뜻")
@@ -106,7 +151,7 @@ struct WordDetail: View {
     }
 
     /// 언제 걸렸는지. 날짜가 곧 그 화라서, 여기서도 한 번 말해 준다.
-    private var collectedAt: some View {
+    private func collectedAt(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("담은 날")
                 .font(Theme.korean(12))
@@ -117,7 +162,7 @@ struct WordDetail: View {
         }
     }
 
-    private var actions: some View {
+    private func actions(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Divider().overlay(Theme.grey3)
 
@@ -155,7 +200,7 @@ struct WordDetail: View {
     ///
     /// 담을 때 이미 물었지만, 그때 고른 것이 늘 맞는 것은 아니다 — 하루에 두 편을 봤거나
     /// 지난번 골라져 있던 것을 그대로 눌렀을 수 있다. 여기가 고쳐 넣는 자리다.
-    private var folderRow: some View {
+    private func folderRow(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("묶음")
                 .font(Theme.korean(12))

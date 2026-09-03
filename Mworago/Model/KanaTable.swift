@@ -165,6 +165,18 @@ public enum KanaTable {
         ]
     }()
 
+    /// 표를 읽는 차례로 늘어놓은 가나 전부.
+    ///
+    /// 격자는 자리가 곧 뜻이라 빈 칸(ゐ·ゑ 처럼 현대에 안 쓰는 소리)까지 붙들고 있는데,
+    /// **한 글자씩 넘겨 볼 때는 빈 자리가 없다** — 아무것도 없는 칸으로 넘어가면
+    /// 넘기던 손이 거기서 멎는다. 그래서 격자에서 글자만 걷어 한 줄로 세운다.
+    ///
+    /// 차례는 표 그대로다(청음 → 탁음·반탁음 → 요음, 각각 행을 따라 あいうえお).
+    /// 그것이 배우는 차례이므로, 넘겨 가며 보는 차례도 같아야 한다.
+    public static let ordered: [String] = charts.flatMap { chart in
+        chart.rows.flatMap { row in row.compactMap { $0 } }
+    }
+
     /// 로마자 모라 하나를 가나로. 일본어에 없는 소리면 nil.
     public static func kana(for mora: String) -> String? {
         table[mora]
