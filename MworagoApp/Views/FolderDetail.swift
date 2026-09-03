@@ -269,7 +269,7 @@ struct FolderDetail: View {
     }
 
     private var menuDivider: some View {
-        Divider().overlay(Theme.grey4).padding(.horizontal, 14)
+        Divider().overlay(Theme.grey4).padding(.horizontal, 16)
     }
 
     /// 목록 한 줄. 글이 왼쪽, 기호가 오른쪽 — 애플의 메뉴와 차례가 같다.

@@ -55,7 +55,9 @@ struct FolderChooserDialog: View {
             ForEach(folderNames, id: \.self) { name in
                 row(name: name, here: marksCurrent && name == current) { onPick(name) }
             }
-            Divider().overlay(Theme.grey4).padding(.vertical, 5)
+            Divider().overlay(Theme.grey4)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 5)
             // 묶음에서 빼기. 지우는 것이 아니라 **아직 안 넣은 것으로 되돌리는** 일이라
             // 책장에 그대로 남는다 — 이름이 그것을 말해 준다.
             row(name: "아직 안 넣은 것으로", here: marksCurrent && current == nil,

@@ -116,7 +116,9 @@ struct FolderPicker: View {
     }
 
     private var line: some View {
-        Divider().overlay(Theme.grey4).padding(.vertical, 5)
+        Divider().overlay(Theme.grey4)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 5)
     }
 
     /// 묶음 한 줄. 왼쪽 점이 **지난번에 넣은 곳**을 가리킨다.
