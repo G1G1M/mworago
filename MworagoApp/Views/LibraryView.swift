@@ -663,6 +663,25 @@ struct LibraryView: View {
             Text("묶음은 마음대로 만들고, 담은 뒤에도 옮길 수 있어요.")
                 .font(Theme.korean(13))
                 .foregroundStyle(Theme.grey3)
+
+            // **보기 전에 자리를 먼저 만들 수 있다.**
+            //
+            // 한때는 이 자리를 비워 두었다 — 처음 온 사람에게 할 일을 둘 내밀면
+            // "찾기에서 갈피표를 누르세요"가 흐려진다는 이유였다. 그런데 다음 화를 보기
+            // 전에 이름을 세워 두는 일이 이 앱의 실제 흐름이고(빈 묶음을 지원하는 까닭이
+            // 그것이다), 담긴 것이 없을 때는 그 길이 아예 없었다.
+            //
+            // 그래서 두되 **작게** 둔다. 채우지 않은 알약이라 위의 글과 겨루지 않는다.
+            Button { naming = true } label: {
+                Text("묶음 만들어 두기")
+                    .font(Theme.korean(14))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .background(Theme.grey4, in: Capsule())
+                    .foregroundStyle(Theme.grey1)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
         .padding(.horizontal, Theme.gutter)
         .frame(maxWidth: Theme.readWidth, alignment: .leading)

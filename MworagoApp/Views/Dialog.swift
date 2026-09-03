@@ -17,29 +17,54 @@ struct Dialog<Body: View>: ViewModifier {
         content
             .overlay {
                 if isPresented {
-                    ZStack {
-                        // 바탕을 눌러도 닫힌다. 알림의 규칙은 아니지만, 이 판이 묻는 것은
-                        // 되돌릴 수 없는 일이 아니라 **하다 말 수 있는 일**이다.
-                        Theme.ink.opacity(0.22)
-                            .ignoresSafeArea()
-                            .onTapGesture { close() }
-                            .transition(.opacity)
-
-                        dialogBody()
-                            .frame(width: 320)
-                            .background(Theme.paper,
-                                        in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                            // 판이 바탕에서 떠 있다는 것은 그림자가 말한다. 이 앱에서
-                            // 그림자를 쓰는 자리는 여기뿐이라, 떠 있는 것이 하나임이 보인다.
-                            .shadow(color: Theme.ink.opacity(0.18), radius: 26, y: 10)
-                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                    }
+                    DialogCard(close: { isPresented = false }, content: dialogBody)
                 }
             }
             .animation(.snappy(duration: 0.18), value: isPresented)
     }
+}
 
-    private func close() { isPresented = false }
+/// 무엇을 두고 묻는 판. 물을 것이 정해지면(갈피표를 누른 낱말) 그것과 함께 뜬다.
+struct ItemDialog<Item: Identifiable, Body: View>: ViewModifier {
+    @Binding var item: Item?
+    @ViewBuilder var dialogBody: (Item) -> Body
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if let item {
+                    DialogCard(close: { self.item = nil }) { dialogBody(item) }
+                }
+            }
+            .animation(.snappy(duration: 0.18), value: item != nil)
+    }
+}
+
+/// 판의 몸. 폭·바닥·그림자를 한 자리에서 정한다 — 이름을 받는 판과 고르는 판이
+/// 다른 크기로 뜨면 같은 자리에서 나온 것으로 보이지 않는다.
+private struct DialogCard<Body: View>: View {
+    let close: () -> Void
+    @ViewBuilder var content: () -> Body
+
+    var body: some View {
+        ZStack {
+            // 바탕을 눌러도 닫힌다. 알림의 규칙은 아니지만, 이 판이 묻는 것은
+            // 되돌릴 수 없는 일이 아니라 **하다 말 수 있는 일**이다.
+            Theme.ink.opacity(0.22)
+                .ignoresSafeArea()
+                .onTapGesture(perform: close)
+                .transition(.opacity)
+
+            content()
+                .frame(width: 320)
+                .background(Theme.paper,
+                            in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                // 판이 바탕에서 떠 있다는 것은 그림자가 말한다. 이 앱에서
+                // 그림자를 쓰는 자리는 여기뿐이라, 떠 있는 것이 하나임이 보인다.
+                .shadow(color: Theme.ink.opacity(0.18), radius: 26, y: 10)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        }
+    }
 }
 
 extension View {
@@ -48,5 +73,11 @@ extension View {
     func dialog<Body: View>(isPresented: Binding<Bool>,
                             @ViewBuilder content: @escaping () -> Body) -> some View {
         modifier(Dialog(isPresented: isPresented, dialogBody: content))
+    }
+
+    /// 무엇을 두고 묻는 판. 물을 것이 없으면(`nil`) 뜨지 않는다.
+    func dialog<Item: Identifiable, Body: View>(item: Binding<Item?>,
+                                                @ViewBuilder content: @escaping (Item) -> Body) -> some View {
+        modifier(ItemDialog(item: item, dialogBody: content))
     }
 }

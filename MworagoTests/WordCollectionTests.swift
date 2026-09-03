@@ -325,24 +325,29 @@ struct WordCollectionFolderEditTests {
         NSTemporaryDirectory() + "mworago-folderedit-\(UUID().uuidString).json"
     }
 
-    static func 낱말(_ 표기: String, _ 읽기: String) -> CollectedWord {
-        CollectedWord(headword: 표기, reading: 읽기, hangul: "요미", gloss: "뜻")
+    static func 낱말(_ 표기: String, _ 읽기: String, at 담은때: String? = nil) -> CollectedWord {
+        CollectedWord(headword: 표기, reading: 읽기, hangul: "요미", gloss: "뜻",
+                      collectedAt: 담은때.flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date())
     }
 
     @Test("이름을 바꾸면 그 묶음의 낱말이 다 따라간다")
     func 이름바꾸기() {
         let path = Self.임시경로()
+        // 담은 때를 손으로 준다. 차례가 그 때로 정해지는데, 파일에 적힐 때는 초 단위로
+        // 잘려서(`.iso8601`) 한 번에 담은 셋이 다시 읽으면 같은 때가 된다.
         var collection = WordCollection(path: path)
-        collection.add(Self.낱말("犬", "いぬ"), to: "리코리스 3화")
-        collection.add(Self.낱말("猫", "ねこ"), to: "리코리스 3화")
-        collection.add(Self.낱말("茶", "ちゃ"), to: "봇치 1화")
+        collection.add(Self.낱말("犬", "いぬ", at: "2026-09-01T10:00:00Z"), to: "리코리스 3화")
+        collection.add(Self.낱말("猫", "ねこ", at: "2026-09-01T10:00:01Z"), to: "리코리스 3화")
+        collection.add(Self.낱말("茶", "ちゃ", at: "2026-09-01T10:00:02Z"), to: "봇치 1화")
 
         collection.renameFolder("리코리스 3화", to: "리코리스 리코일 3화")
-        #expect(collection.folderNames == ["리코리스 리코일 3화", "봇치 1화"])
+        // 차례는 최근에 손댄 순이다 — 봇치 1화에 마지막으로 담았으므로 그것이 위다.
+        // 이름이 달라졌다고 자리가 올라오지는 않는다.
+        #expect(collection.folderNames == ["봇치 1화", "리코리스 리코일 3화"])
         #expect(collection.words.filter { $0.folder == "리코리스 리코일 3화" }.count == 2)
         // 다른 묶음은 건드리지 않는다.
         #expect(collection.words.filter { $0.folder == "봇치 1화" }.count == 1)
-        #expect(WordCollection(path: path).folderNames == ["리코리스 리코일 3화", "봇치 1화"])
+        #expect(WordCollection(path: path).folderNames == ["봇치 1화", "리코리스 리코일 3화"])
     }
 
     @Test("이름을 바꾸면 지난번 묶음도 따라간다")
@@ -611,5 +616,97 @@ struct WordCollectionEmptyFolderTests {
         // 깨진 것을 읽지 못했을 뿐이므로 새로 적는 일은 그대로 된다.
         collection.createFolder("3화")
         #expect(WordCollection(path: path).folderNames == ["3화"])
+    }
+}
+
+/// 묶음이 서는 차례.
+///
+/// **가나다순이면 새로 만든 묶음이 중간에 끼어든다.** 방금 만들어 놓고 어디 갔는지
+/// 찾아야 하고, 오늘 담고 있는 묶음이 스무 개 사이에 묻힌다.
+///
+/// 그래서 **최근에 손댄 것이 위로** 온다 — 만든 때와 담은 때 중 나중 것이 그 묶음의
+/// 때다. 애니 한 편을 보며 담는 동안 그 묶음이 계속 맨 위에 있고, 다음 편을 만들면
+/// 그것이 다시 맨 위다.
+@Suite("묶음 차례")
+struct WordCollectionOrderTests {
+
+    static func 임시경로() -> String {
+        NSTemporaryDirectory() + "mworago-order-\(UUID().uuidString).json"
+    }
+
+    static func 치우기(_ path: String) {
+        for suffix in ["", ".folder", ".folders"] {
+            try? FileManager.default.removeItem(atPath: path + suffix)
+        }
+    }
+
+    static func 낱말(_ 표기: String, _ 담은때: String) -> CollectedWord {
+        CollectedWord(headword: 표기, reading: "よみ", hangul: "요미", gloss: "뜻",
+                      collectedAt: ISO8601DateFormatter().date(from: 담은때)!)
+    }
+
+    @Test("새로 만든 묶음이 맨 위에 온다")
+    func 새것이위로() {
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+
+        var collection = WordCollection(path: path)
+        collection.add(Self.낱말("犬", "2026-09-01T10:00:00Z"), to: "하치 1화")
+        collection.createFolder("가나다 2화")   // 이름은 뒤지만 방금 만들었다
+        #expect(collection.folderNames == ["가나다 2화", "하치 1화"])
+        #expect(WordCollection(path: path).folderNames == ["가나다 2화", "하치 1화"])
+    }
+
+    @Test("담은 때가 나중인 묶음이 위로 온다")
+    func 최근에담은것이위로() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "2026-09-01T10:00:00Z"), to: "가 1화")
+        collection.add(Self.낱말("猫", "2026-09-03T10:00:00Z"), to: "나 2화")
+        collection.add(Self.낱말("茶", "2026-09-02T10:00:00Z"), to: "다 3화")
+        #expect(collection.folderNames == ["나 2화", "다 3화", "가 1화"])
+    }
+
+    @Test("이름을 바꿔도 그 묶음의 자리는 그대로다")
+    func 이름바꿔도자리() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "2026-09-01T10:00:00Z"), to: "하치 1화")
+        collection.createFolder("나중 것")
+        collection.renameFolder("하치 1화", to: "하치 리코일 1화")
+        // 이름이 달라졌다고 최근에 담은 것이 되지는 않는다.
+        #expect(collection.folderNames == ["나중 것", "하치 리코일 1화"])
+    }
+
+    @Test("때가 같으면 이름순이라 차례가 흔들리지 않는다")
+    func 같은때() {
+        var collection = WordCollection(path: Self.임시경로())
+        collection.add(Self.낱말("犬", "2026-09-01T10:00:00Z"), to: "나 2화")
+        collection.add(Self.낱말("猫", "2026-09-01T10:00:00Z"), to: "가 1화")
+        #expect(collection.folderNames == ["가 1화", "나 2화"])
+    }
+
+    @Test("이름만 적혀 있던 파일도 읽고, 그 뒤로는 때를 기억한다")
+    func 옛파일() throws {
+        // 때를 적어 두기 전의 목록이다. 때를 모르는 묶음은 담긴 낱말의 때로 선다.
+        let path = Self.임시경로()
+        defer { Self.치우기(path) }
+        try #"["봇치 1화","리코리스 3화"]"#
+            .write(toFile: path + ".folders", atomically: true, encoding: .utf8)
+
+        var collection = WordCollection(path: path)
+        #expect(Set(collection.folderNames) == ["봇치 1화", "리코리스 3화"])
+
+        // 새로 만든 것은 때가 있으므로 맨 위다.
+        collection.createFolder("새 4화")
+        #expect(collection.folderNames.first == "새 4화")
+        #expect(WordCollection(path: path).folderNames.first == "새 4화")
+    }
+
+    @Test("묶음으로 나눌 때 준 차례를 그대로 지킨다")
+    func 나눌때차례() {
+        let words = [Self.낱말("犬", "2026-09-01T10:00:00Z").movedTo("2화"),
+                     Self.낱말("茶", "2026-09-01T10:00:00Z")]
+        let folders = CollectedWord.byFolder(words, names: ["3화", "2화", "1화"])
+        // 차례를 정하는 것은 부르는 쪽이다 — 여기서 다시 줄 세우면 책장의 차례가 뒤집힌다.
+        #expect(folders.map(\.name) == ["3화", "2화", "1화", nil])
     }
 }

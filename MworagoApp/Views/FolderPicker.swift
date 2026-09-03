@@ -13,6 +13,10 @@ import MworagoCore
 ///
 /// **고르면 곧 담기고 닫힌다.** 확인 버튼을 따로 두면 탭이 하나 더 늘고, 그 버튼이
 /// 하는 일도 방금 누른 것과 같다.
+///
+/// **화면 가운데 뜨는 판이다.** 아래에서 올라오는 시트는 "다음 화면"의 몸짓인데,
+/// 이것은 갈피표를 누른 그 자리에서 한 가지를 묻고 곧 물러나는 일이다.
+/// 책장의 새 묶음·이름 바꾸기·옮기기가 모두 같은 판을 쓴다.
 struct FolderPicker: View {
     let word: CollectedWord
     /// 고를 수 있는 묶음들. 지난번에 넣은 곳은 낱말이 없어도 여기 들어 있다.
@@ -29,7 +33,9 @@ struct FolderPicker: View {
     /// 점이 찍힌 자리에 붙는 말. 담을 때는 `지난번`, 옮길 때는 `지금`이다.
     var markLabel: String = "지난번"
 
-    @Environment(\.dismiss) private var dismiss
+    /// 판을 닫는다. **`@Environment(\.dismiss)` 를 쓰지 않는다** — 시트가 아니라
+    /// 화면 위에 덧그린 판이라, 그 길로 닫으면 판이 아니라 뒤에 있는 화면이 닫힌다.
+    var onClose: () -> Void = {}
 
     /// 새 묶음 이름을 받는 중인가.
     ///
@@ -41,46 +47,49 @@ struct FolderPicker: View {
 
     init(word: CollectedWord, folderNames: [String], lastFolder: String?,
          onPick: @escaping (String?) -> Void,
+         onClose: @escaping () -> Void = {},
          prompt: String = "어디에 담을까요?", markLabel: String = "지난번") {
         self.word = word
         self.folderNames = folderNames
         self.lastFolder = lastFolder
         self.onPick = onPick
+        self.onClose = onClose
         self.prompt = prompt
         self.markLabel = markLabel
         _naming = State(initialValue: folderNames.isEmpty)
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                head
-                ForEach(folderNames, id: \.self) { name in
-                    row(name: name, picked: name == lastFolder) { pick(name) }
-                }
-                if !folderNames.isEmpty { line }
-                newFolder
-                line
-                // 묶음을 정하지 않고 담는다. **첫 낱말을 담으려고 폴더부터 만들게 하지
-                // 않는다.** 이렇게 담은 것은 책장의 "아직 안 넣은 것"으로 모이고,
-                // 상세에서 나중에 옮길 수 있다 — 이름이 그것을 말해 준다.
-                row(name: "나중에 정하기",
-                    picked: lastFolder == nil && !folderNames.isEmpty,
-                    dim: true) { pick(nil) }
+        VStack(alignment: .leading, spacing: 0) {
+            head
+            // **줄이 적으면 스크롤을 두지 않는다.** `ScrollView` 는 준 높이를 늘 다
+            // 차지해서, 묶음이 둘뿐인데도 판 아래가 그만큼 비어 보인다.
+            if folderNames.count > 5 {
+                ScrollView { folderRows }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(height: 232)
+            } else {
+                folderRows
             }
-            .frame(maxWidth: Theme.readWidth, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 6)
-            .padding(.bottom, Theme.screenBottom)
+            if !folderNames.isEmpty { line }
+            newFolder
+            line
+            // 묶음을 정하지 않고 담는다. **첫 낱말을 담으려고 폴더부터 만들게 하지
+            // 않는다.** 이렇게 담은 것은 책장의 "아직 안 넣은 것"으로 모이고,
+            // 상세에서 나중에 옮길 수 있다 — 이름이 그것을 말해 준다.
+            row(name: "나중에 정하기",
+                picked: lastFolder == nil && !folderNames.isEmpty,
+                dim: true) { pick(nil) }
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .background(Theme.paper)
-        .presentationDragIndicator(.visible)
-        // **시트를 내용에 맞춘다.** 아이패드의 기본 폼 시트는 네댓 줄짜리 목록에
-        // 화면 절반을 내주어, 고를 것이 셋인데 빈 자리가 그보다 넓어 보인다.
-        // 아이폰은 `presentationSizing` 이 듣지 않으므로 detent 로 같은 일을 한다.
-        .presentationSizing(.fitted)
-        .presentationDetents([.medium, .large])
+        .padding(.vertical, 20)
+    }
+
+    private var folderRows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(folderNames, id: \.self) { name in
+                row(name: name, picked: name == lastFolder) { pick(name) }
+            }
+        }
     }
 
     /// 무엇을 담는 중인지 말해 준다. 갈피표를 누른 뒤 모달이 뜨는 사이에 시선이
@@ -102,8 +111,7 @@ struct FolderPicker: View {
                 }
             }
         }
-        .padding(.horizontal, Theme.gutter)
-        .padding(.top, 10)
+        .padding(.horizontal, 20)
         .padding(.bottom, 14)
     }
 
@@ -133,7 +141,7 @@ struct FolderPicker: View {
                         .foregroundStyle(Theme.grey2)
                 }
             }
-            .padding(.horizontal, Theme.gutter)
+            .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
@@ -161,32 +169,37 @@ struct FolderPicker: View {
                     .padding(.vertical, 11)
                     .background(Theme.grey4, in: RoundedRectangle(cornerRadius: 10))
 
+                // 이름 받는 칸과 같은 폭·같은 세로 여백으로 선다 — 새 묶음 판과 같은 문법이다.
                 HStack(spacing: 10) {
-                    Button("만들어 담기") { createAndPick() }
-                        .font(Theme.korean(15))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
-                        .background(Theme.ink, in: Capsule())
-                        .foregroundStyle(Theme.paper)
-                        .buttonStyle(.plain)
-                        .disabled(trimmedName.isEmpty)
-                        .opacity(trimmedName.isEmpty ? 0.4 : 1)
+                    Button { createAndPick() } label: {
+                        Text("만들어 담기")
+                            .font(Theme.korean(16))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(Theme.ink, in: Capsule())
+                            .foregroundStyle(Theme.paper)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(trimmedName.isEmpty)
+                    .opacity(trimmedName.isEmpty ? 0.4 : 1)
 
                     if !folderNames.isEmpty {
-                        Button("그만두기") {
+                        Button {
                             naming = false
                             newName = ""
+                        } label: {
+                            Text("그만두기")
+                                .font(Theme.korean(16))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 11)
+                                .background(Theme.grey4, in: Capsule())
+                                .foregroundStyle(Theme.grey1)
                         }
-                        .font(Theme.korean(15))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
-                        .background(Theme.grey4, in: Capsule())
-                        .foregroundStyle(Theme.grey1)
                         .buttonStyle(.plain)
                     }
                 }
             }
-            .padding(.horizontal, Theme.gutter)
+            .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .onAppear { nameFocused = true }
         } else {
@@ -203,7 +216,7 @@ struct FolderPicker: View {
                     Spacer(minLength: 0)
                 }
                 .foregroundStyle(Theme.grey1)
-                .padding(.horizontal, Theme.gutter)
+                .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .contentShape(Rectangle())
             }
@@ -222,6 +235,6 @@ struct FolderPicker: View {
 
     private func pick(_ folder: String?) {
         onPick(folder)
-        dismiss()
+        onClose()
     }
 }

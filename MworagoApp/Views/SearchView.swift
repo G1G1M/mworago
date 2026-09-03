@@ -182,8 +182,14 @@ struct SearchView: View {
             // 키보드는 **칠 때** 올라오면 된다. 입력 바를 누르는 것이 그 신호다.
             if !input.isEmpty { engine.search(input) }
 
-            // `--collecting` 은 첫 조각의 담기 모달을 펼친 채 띄운다. `--detail` · `--guide` 와
-            // 같은 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 시트를 눈으로 볼 길이 없다.
+            // `--collecting` 은 첫 조각의 담기 판을 펼친 채 띄운다. `--detail` · `--guide` 와
+            // 같은 취지다 — 시뮬레이터는 손으로 두드릴 수 없어 이 판을 눈으로 볼 길이 없다.
+            //
+            // **먼저 찾아 놓고 본다.** 위의 `search` 는 손이 멎기를 기다렸다 도는 것이라
+            // 이 자리에서는 아직 답이 없다 — `--collect` 가 `searchNow` 를 쓰는 것과 같다.
+            if ProcessInfo.processInfo.arguments.contains("--collecting") {
+                engine.searchNow(input)
+            }
             if ProcessInfo.processInfo.arguments.contains("--collecting"),
                let top = engine.segments.first?.results.first,
                let hangul = engine.segments.first?.hangul {
@@ -197,15 +203,15 @@ struct SearchView: View {
             // 아이패드에서 medium 은 화면의 작은 조각이라 여섯 줄 중 둘만 보인다.
             TypingGuide()
         }
-        // 담기 모달. **화면에 하나만 둔다** — 갈피표는 카드마다 있지만
+        // 담기 판. **화면에 하나만 둔다** — 갈피표는 카드마다 있지만
         // 묻는 자리는 하나여야 한다.
-        .sheet(item: $collecting) { word in
+        .dialog(item: $collecting) { word in
             if let collection {
                 FolderPicker(word: word,
                              folderNames: collection.folderNames,
-                             lastFolder: collection.lastFolder) { folder in
-                    collection.add(word, to: folder)
-                }
+                             lastFolder: collection.lastFolder,
+                             onPick: { collection.add(word, to: $0) },
+                             onClose: { collecting = nil })
             }
         }
     }

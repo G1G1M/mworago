@@ -88,9 +88,13 @@ public extension CollectedWord {
     /// **만들어 둔 이름을 함께 받는다.** 낱말에서만 거두면 빈 묶음이 존재할 수 없어서,
     /// 마지막 낱말을 옮기는 순간 묶음이 통째로 사라진다 — 사용자는 낱말 하나를
     /// 치웠을 뿐이지 묶음을 없앤 적이 없다.
+    /// **차례는 준 대로 지킨다.** 무엇이 먼저 설지는 부르는 쪽이 정한 것이라
+    /// (책장은 최근에 손댄 순으로 준다) 여기서 다시 줄 세우면 그 차례가 뒤집힌다.
+    /// 목록에 없는 이름(낱말만 들고 있는 것)은 뒤에 이름순으로 붙인다.
     static func byFolder(_ words: [CollectedWord], names: [String] = []) -> [Folder] {
         let grouped = Dictionary(grouping: words) { $0.folder }
-        let named = Set(grouped.keys.compactMap { $0 }).union(names).sorted()
+        let extras = Set(grouped.keys.compactMap { $0 }).subtracting(names).sorted()
+        let named = names + extras
         var folders = named.map { name in
             Folder(name: name, words: (grouped[name] ?? []).sorted { $0.collectedAt > $1.collectedAt })
         }
@@ -135,7 +139,8 @@ public struct WordCollection: Sendable {
     ///
     /// 낱말 파일과 따로 두는 것은 지난번 묶음과 같은 까닭이다 — 낱말은 배열로 저장되는데
     /// 그 곁에 값을 하나 끼우려면 저장 구조를 바꿔야 하고, 그러면 예전 파일을 못 읽는다.
-    private var folders: Set<String> = []
+    /// 이름 → **만든 때.** 모르면 아주 옛날로 둔다(이름만 적어 두던 시절의 파일).
+    private var folders: [String: Date] = [:]
     private var foldersPath: String { path + ".folders" }
 
     public init(path: String) {
@@ -147,8 +152,11 @@ public struct WordCollection: Sendable {
         // 적어 둔 이름에 **낱말이 들고 있는 이름과 지난번 묶음을 더한다.** 이름을 따로
         // 적어 두기 전에 쓰던 파일에도 묶음이 있고, 그 사람의 책장이 비어 보이면 안 된다.
         var names = Self.loadFolders(from: path + ".folders")
-        names.formUnion(words.compactMap(\.folder))
-        if let lastFolder { names.insert(lastFolder) }
+        for name in words.compactMap(\.folder) where names[name] == nil {
+            // 낱말이 들고 있는 이름은 만든 때를 모른다. 담긴 낱말의 때가 대신 선다.
+            names[name] = .distantPast
+        }
+        if let lastFolder, names[lastFolder] == nil { names[lastFolder] = .distantPast }
         self.folders = names
     }
 
@@ -158,8 +166,9 @@ public struct WordCollection: Sendable {
     /// 미리 골라져 있으면 담을 때 고른 적 없는 곳으로 낱말이 간다.
     public mutating func createFolder(_ name: String) {
         guard let name = name.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-              !folders.contains(name) else { return }
-        folders.insert(name)
+              folders[name] == nil else { return }
+        // 만든 때를 적어 둔다. 방금 만든 묶음이 목록 맨 위에 서야 어디 갔는지 찾지 않는다.
+        folders[name] = Date()
         saveFolders()
     }
 
@@ -187,7 +196,7 @@ public struct WordCollection: Sendable {
         let folder = folder?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         // 옮겨 간 곳이 방금 만든 묶음일 수 있다. 낱말이 들어왔다고 이름이 저절로
         // 적히지는 않으므로 여기서 적어 둔다.
-        if let folder { folders.insert(folder) }
+        if let folder, folders[folder] == nil { folders[folder] = .distantPast }
         words[index] = words[index].movedTo(folder)
         save()
     }
@@ -205,9 +214,11 @@ public struct WordCollection: Sendable {
             touched = true
         }
         // 낱말이 하나도 없는 묶음도 이름을 바꿀 수 있다 — 적어 둔 이름이 그 자리를 지킨다.
-        guard touched || folders.contains(old) || lastFolder == old else { return }
-        folders.remove(old)
-        folders.insert(new)
+        guard touched || folders[old] != nil || lastFolder == old else { return }
+        // 자리는 그대로다. 이름이 달라졌다고 최근에 손댄 것이 되지는 않는다.
+        let when = max(folders[old] ?? .distantPast, folders[new] ?? .distantPast)
+        folders[old] = nil
+        folders[new] = when
         // 지난번 묶음도 따라간다. 안 따라가면 다음에 담을 때 없는 이름이 골라져 있고,
         // 그 이름으로 묶음이 하나 더 생긴다.
         if lastFolder == old { remember(new) }
@@ -224,8 +235,8 @@ public struct WordCollection: Sendable {
             words[index] = words[index].movedTo(nil)
             touched = true
         }
-        guard touched || folders.contains(name) || lastFolder == name else { return }
-        folders.remove(name)
+        guard touched || folders[name] != nil || lastFolder == name else { return }
+        folders[name] = nil
         if lastFolder == name { remember(nil) }
         save()
     }
@@ -234,7 +245,25 @@ public struct WordCollection: Sendable {
     ///
     /// 한때는 낱말에서 거뒀다. 그때는 빈 묶음이 존재할 수 없어서, 지난번 묶음 하나만
     /// 예외로 목록에 끼워 두는 것으로 "방금 담은 곳이 사라지는" 일만 막고 있었다.
-    public var folderNames: [String] { folders.sorted() }
+    ///
+    /// **최근에 손댄 것이 위로 온다.** 가나다순이면 방금 만든 묶음이 스무 개 사이에
+    /// 끼어들어, 만들어 놓고 어디 갔는지 찾아야 한다. 한 묶음의 "때"는 만든 때와 담은 때
+    /// 중 나중 것이다 — 한 편을 보며 담는 동안 그 묶음이 계속 맨 위에 있고,
+    /// 다음 편을 만들면 그것이 다시 맨 위다.
+    ///
+    /// 때가 같으면 이름순이다. 무엇이 먼저인지 정해 두지 않으면 화면을 다시 그릴 때마다
+    /// 차례가 흔들린다.
+    public var folderNames: [String] {
+        var when = folders
+        for word in words {
+            guard let folder = word.folder else { continue }
+            when[folder] = max(when[folder] ?? .distantPast, word.collectedAt)
+        }
+        return when.keys.sorted { left, right in
+            let a = when[left]!, b = when[right]!
+            return a == b ? left < right : a > b
+        }
+    }
 
     public func contains(_ word: CollectedWord) -> Bool {
         words.contains { $0.id == word.id }
@@ -249,7 +278,8 @@ public struct WordCollection: Sendable {
         let folder = folder?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         // 방금 담은 것이 눈앞에 있어야 한다. 스크롤해서 찾게 만들 이유가 없다.
         words.insert(word.movedTo(folder), at: 0)
-        if let folder { folders.insert(folder) }
+        // 담은 낱말의 때가 이 묶음의 때가 되므로, 만든 때는 따로 세우지 않는다.
+        if let folder, folders[folder] == nil { folders[folder] = .distantPast }
         remember(folder)
         save()
     }
@@ -296,18 +326,41 @@ public struct WordCollection: Sendable {
     /// 묶음 이름을 적어 둔다. 정렬해 두는 것은 파일을 열어 봤을 때 읽히라는 뜻이고,
     /// 같은 내용이 늘 같은 바이트가 되어 쓸데없는 저장이 눈에 띄기 때문이다.
     private func saveFolders() {
-        guard let data = try? JSONEncoder().encode(folders.sorted()) else { return }
+        let (encoder, _) = Self.coder()
+        let rows = folders.keys.sorted().map { StoredFolder(name: $0, createdAt: folders[$0]!) }
+        guard let data = try? encoder.encode(rows) else { return }
         try? data.write(to: URL(fileURLWithPath: foldersPath), options: .atomic)
+    }
+
+    /// 파일에 적히는 묶음 한 줄.
+    private struct StoredFolder: Codable {
+        let name: String
+        let createdAt: Date
     }
 
     /// 읽지 못하면 없는 셈 친다. 이름 목록을 잃는 것은 아깝지만, 낱말은 제 파일에
     /// 그대로 있고 그것이 들고 있는 이름은 `init` 에서 다시 거둔다.
-    private static func loadFolders(from path: String) -> Set<String> {
-        guard let data = FileManager.default.contents(atPath: path),
-              let names = try? JSONDecoder().decode([String].self, from: data) else { return [] }
-        return Set(names.compactMap {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        })
+    private static func loadFolders(from path: String) -> [String: Date] {
+        guard let data = FileManager.default.contents(atPath: path) else { return [:] }
+        let (_, decoder) = coder()
+        var loaded: [String: Date] = [:]
+        if let rows = try? decoder.decode([StoredFolder].self, from: data) {
+            for row in rows {
+                guard let name = row.name.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+                else { continue }
+                loaded[name] = row.createdAt
+            }
+            return loaded
+        }
+        // **이름만 적어 두던 시절의 파일.** 때를 모르므로 아주 옛날로 둔다 —
+        // 담긴 낱말이 있으면 그 때가 대신 서고, 빈 묶음이면 목록 아래에 남는다.
+        guard let names = try? decoder.decode([String].self, from: data) else { return [:] }
+        for name in names {
+            guard let name = name.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            else { continue }
+            loaded[name] = .distantPast
+        }
+        return loaded
     }
 
     /// 한 칸을 읽다 실패해도 배열 전체를 버리지 않기 위한 껍데기.
