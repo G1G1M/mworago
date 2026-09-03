@@ -238,7 +238,13 @@ public enum Segmenter {
         // 분절 가중치를 손대면 검색 전체가 흔들린다. 나눈 결과는 그대로 두고
         // 통째 뜻을 **앞에** 얹는다 — 어느 쪽이 맞는지는 보는 사람이 안다.
         guard segments.count > 1 else { return segments }
-        let whole = lookup(word)
+        // **통째 후보는 확신이 있을 때만 세운다.**
+        //
+        // 활용을 되돌려야 겨우 맞은 것은 관용구가 아니라 **글자가 우연히 맞은 것**이다.
+        // `도코에`(どこへ, 어디로)의 맨 위 카드에 `同校`(같은 학교)가 떴다 —
+        // 장음을 둘 지어내고 어미를 명령형으로 되돌려 만든 `どうこう` 였다.
+        // `잇테키마스` → `行ってきます` 처럼 진짜 관용구는 되돌릴 것 없이 그대로 맞는다.
+        let whole = lookup(word).filter { $0.deinflection == nil }
         return whole.isEmpty ? segments
                              : [Segment(hangul: word, results: whole, isWhole: true)] + segments
     }
