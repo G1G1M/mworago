@@ -134,6 +134,7 @@ struct Settings: View {
             }
             .background(Theme.paper)
             .koreanNavigationTitle("설정")
+            .scrollBounceBehavior(.basedOnSize)
         }
     }
 

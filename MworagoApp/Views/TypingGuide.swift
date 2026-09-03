@@ -103,6 +103,7 @@ struct TypingGuide: View {
                 .frame(maxWidth: Theme.readWidth, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
+            .scrollBounceBehavior(.basedOnSize)
             .background(Theme.paper)
             .navigationDestination(isPresented: $showingCredits) { Credits() }
             .koreanNavigationTitle("한글로 어떻게 치나요?")

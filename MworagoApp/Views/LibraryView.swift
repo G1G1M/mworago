@@ -410,6 +410,13 @@ struct LibraryView: View {
             .frame(maxWidth: Self.contentWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        // **밀 것이 없으면 안 밀린다.** 묶음이 둘셋뿐이라 목록이 화면을 안 채우는데도
+        // 당기면 화면이 통째로 따라 내려갔다가 튀어 올랐다 — "스크롤이 살짝 멈췄다
+        // 되돌아온다"고 읽힌 것이 이것이다. 목록이 화면보다 길 때는 그대로 튄다.
+        //
+        // 세로로 미는 화면 전부에 같은 줄을 걸었다. 한 화면만 고치면 책장에서 안 튀던
+        // 것이 설정에서 튀어, 같은 앱 안에서 규칙이 갈린다.
+        .scrollBounceBehavior(.basedOnSize)
     }
 
     /// 화면의 이름과 보기 전환.

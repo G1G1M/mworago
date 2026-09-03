@@ -89,6 +89,7 @@ struct KanaView: View {
             .frame(maxWidth: Self.contentWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        .scrollBounceBehavior(.basedOnSize)
     }
 
     /// 읽기 보조 다이얼과 같은 문법 — 평평하고, 고른 것 하나만 검게 채워진다.

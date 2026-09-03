@@ -126,5 +126,6 @@ struct Credits: View {
         }
         .background(Theme.paper)
         .koreanNavigationTitle("이 앱이 쓰는 자료")
+        .scrollBounceBehavior(.basedOnSize)
     }
 }

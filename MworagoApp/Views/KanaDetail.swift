@@ -49,6 +49,7 @@ struct KanaDetail: View {
         NavigationStack {
             Pager(items: Glyph.all, current: $currentKana) { glyph in
                 ScrollView { page(glyph.kana) }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .background(Theme.paper)
             .navigationBarTitleDisplayMode(.inline)

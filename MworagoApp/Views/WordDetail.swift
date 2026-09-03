@@ -85,6 +85,7 @@ struct WordDetail: View {
                     .frame(maxWidth: Theme.readWidth, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .background(Theme.paper)
             .navigationBarTitleDisplayMode(.inline)

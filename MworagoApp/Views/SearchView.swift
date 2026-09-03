@@ -330,6 +330,7 @@ struct SearchView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { inputFocused = false }
             }
+            .scrollBounceBehavior(.basedOnSize)
             // **스크롤로는 내리지 않는다.**
             //
             // `.interactively` 는 손가락을 따라 키보드를 조금씩 밀어 내린다. 그 사이
