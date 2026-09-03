@@ -199,6 +199,16 @@ struct LibraryView: View {
             editing = false
             if selecting { endSelecting() }
         }
+        // **비면 손을 뗀다.** 지우기를 켜 둔 채 마지막 묶음까지 지우면 목록이 통째로
+        // 빈 화면으로 갈리는데, 켜 둔 손은 `@State` 라 그대로 살아 있다. 빈 화면에는
+        // `완료` 단추가 없어(단추는 `if !isEmpty` 안에 있다) **끄는 문이 없다** —
+        // 그 자리에서 묶음을 새로 만들면 목록이 지우던 모습(빨간 `−` · 만드는 줄 없음)
+        // 그대로 돌아온다. 보기를 바꿀 때와 같은 규칙을 비는 순간에도 건다.
+        .onChange(of: isEmpty) { _, empty in
+            guard empty else { return }
+            editing = false
+            if selecting { endSelecting() }
+        }
         .dialog(isPresented: $moving) {
             let picked = pickedFolder
             FolderChooserDialog(title: "어디로 옮길까요?",
