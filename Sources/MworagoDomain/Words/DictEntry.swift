@@ -57,6 +57,9 @@ public struct DictEntry: Sendable, Equatable {
     /// 이 낱말의 큰 갈래.
     public var wordClass: WordClass { WordClass(tags: partsOfSpeech) }
 
+    /// 앞에 기댈 말이 있어야 하는 낱말인가 — 조사·조동사·계사.
+    public var isBound: Bool { WordClass.isBound(tags: partsOfSpeech) }
+
     /// 화면에 보일 뜻. 한국어가 있으면 그것이 먼저다.
     public var displayGloss: String {
         koreanGloss ?? glosses.joined(separator: " · ")

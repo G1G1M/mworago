@@ -118,27 +118,58 @@ public enum Segmenter {
     /// **점수가 달라지면 여기도 함께 옮겨야 한다.** 빈도표의 가타카나 낱말 14,630 개가
     /// 조회 키가 어긋나 0점이던 것을 고치자(`FrequencyList.rank`) 조각들의 점수가
     /// 전반적으로 올라, 조각 하나에 물리는 값도 그만큼 내려가야 균형이 맞는다.
-    /// 다시 훑으니 130 이었다(완전일치 40.8% → 44.2% · 경계 F1 0.907).
+    /// 그때 130 으로 내렸고, `何時`(몇 시)가 `何`+`時` 로 갈리는 것을 막으려고
+    /// 135 로 되돌려 두었다.
     ///
-    /// 그때 범위도 함께 옮겼다. 옛 범위(135~205)의 **하한에서 최적이 나온 것**은
-    /// 범위 밖에 더 좋은 값이 있다는 신호였다. 90~160 으로 다시 훑어 130 을 얻었고,
-    /// 이번에는 최적이 범위 안쪽에 있다.
+    /// **그 값들은 전부 망가진 표본에서 나왔다.** 분절 케이스를 Tanaka 말뭉치 앞에서
+    /// 300개 잘라 오고 있었는데 그 앞머리가 `彼は忙しい…` 한 덩어리라 **290개가 `彼` 로
+    /// 시작했다**(`SegmentCaseBuilder` 주석). 말뭉치 전체에서 균등 간격으로 집도록
+    /// 고치고 다시 훑으니 최적이 **140** 이었다.
     ///
-    /// **그런데 스윕이 고른 130 을 쓰지 않는다.** 130 은 `何時`(몇 시)를 `何`+`時` 로
-    /// 쪼갠다 — 화면의 카드가 "무엇"과 "때"로 갈려 뜻을 잃는다. 스윕이 보는 것은
-    /// Tanaka 의 경계뿐이고, 카드에 무엇이 뜨는지는 세지 않는다.
+    ///     비용 135   완전일치 45.3%   경계 F1 0.894
+    ///     비용 140   완전일치 47.7%   경계 F1 0.897   ← 최적
+    ///     비용 145   완전일치 47.0%   경계 F1 0.893
     ///
-    ///     비용 130   틀린 문장 67 · 낱말 깨짐 17 · 今 何 時 です か
-    ///     비용 135   틀린 문장 68 · 낱말 깨짐 20 · 今 何時 です か
-    ///     비용 140   틀린 문장 71 · 낱말 깨짐 21 · 今 何時 です か
+    /// 140 은 `何時` 도 지킨다(`今 何時 です か`). 135 를 지키던 까닭이 그것뿐이었으므로
+    /// 이제 훑기가 고른 값을 그대로 쓴다.
+    public static let defaultSegmentCost = 140.0
+
+    /// 어절의 첫 조각이 부착어(조사·조동사·계사)일 때 무는 벌점.
     ///
-    /// 135 는 140 보다 나으면서 `何時` 를 지킨다. 130 이 더 가져가는 세 건과
-    /// **사용자가 실제로 만난 낱말 하나**를 맞바꾸지 않는다.
+    /// **일본어 문장은 조사로 시작하지 않는다.** 조각 하나하나의 점수만 보면 이것을 모른다 —
+    /// 조사는 어느 말뭉치에서나 최상위 빈도라 첫머리에 혼자 서고도 점수 싸움에서 이긴다.
     ///
-    /// 何時 가 위태로운 진짜 이유는 조각 비용이 아니라 빈도 목록이다 —
-    /// 그 목록에 `何時·なんじ` 항목이 없어 표기로 물려받은 점수(28점)로 서 있다.
-    /// 그쪽이 메워지면 130 을 다시 볼 수 있다.
-    public static let defaultSegmentCost = 135.0
+    ///     도코에(どこへ, 어디로)
+    ///       [도][코에]   と 100.0 + こえ 66.2  = 166.2   ← 이기고 있었다
+    ///       [도코][에]   どこ 80.0 + へ  80.4  = 160.4
+    ///
+    /// 되살린 문장이 `とこえ` 라는 **말이 안 되는 문자열**이 되어 번역기에 실려 갔다.
+    /// 6점 차라 조각 비용으로는 못 뒤집는다 — 비용은 어느 갈래에나 똑같이 걸린다.
+    ///
+    /// **앞의 것이 무엇인지를 보는 규칙**이 필요한 자리이고, 그중 가장 확실한 것이
+    /// 이것이다(앞에 아무것도 없다). 조사끼리 잇따르는 것(`には`·`では`)은 실제로
+    /// 흔하므로 벌하지 않는다. 접속사는 부착어로 치지 않는다 — `でも` 는 문장을 연다.
+    ///
+    /// **이 규칙이 오래 보이지 않았던 까닭은 측정기에 있었다.** 분절 케이스를 말뭉치
+    /// 앞에서 300개 잘라 오고 있었는데 그중 290개가 `彼` 로 시작해서, 첫 조각을 두고
+    /// 다투는 문장이 표본에 없었다. 그래서 이 규칙을 걸어도 수치가 한 자리도 움직이지
+    /// 않았다(`SegmentCaseBuilder` 주석 참고).
+    ///
+    /// 값은 훑어서 골랐다(`SpikeRunner --bound-sweep`, 조각 비용 140).
+    ///
+    ///     벌점   0    완전일치 46.7%   경계 F1 0.894
+    ///     벌점  20    완전일치 47.3%   경계 F1 0.897
+    ///     벌점  40    완전일치 47.7%   경계 F1 0.897   ← 최적
+    ///     벌점  80    완전일치 47.0%   경계 F1 0.896
+    ///
+    /// 40 을 넘겨도 더 좋아지지 않는다. 뒤집을 것은 이미 뒤집혔고, 그 위는 첫 조각을
+    /// 억지로 길게 만드는 쪽으로만 움직인다.
+    ///
+    /// **이 벌점 하나로는 `도코에` 가 안 고쳐졌다.** 조사 갈래가 밀리자 이번에는
+    /// `도코에` 전체가 한 조각 `どうこう`(如何斯う, 부사)로 갔다 — 장음 둘을 지어내고
+    /// 어미를 명령형으로 되돌려 만든 것이다. `Ranker` 가 활용 복원을 명사에만 막고
+    /// 부사에는 열어 두고 있었다. 둘을 함께 막아야 `何処 へ` 가 선다.
+    public static let defaultBoundPenalty = 40.0
 
     /// 분절이 쓰는 가중치. 낱말 검색과 한 가지가 다르다 — **활용을 되돌린 것에 무는 벌점**.
     ///
@@ -164,6 +195,7 @@ public enum Segmenter {
                                weights: Ranker.Weights = defaultWeights,
                                segmentCost: Double = defaultSegmentCost,
                                unknownScore: Double = defaultUnknownScore,
+                               boundPenalty: Double = defaultBoundPenalty,
                                cache: SearchCache? = nil) -> [Segment] {
         var segments: [Segment] = []
         // 사람이 띄어 썼다면 그 뜻을 존중한다. 어절 안쪽만 사전을 보고 나눈다.
@@ -171,6 +203,7 @@ public enum Segmenter {
             segments += segmentWord(String(word), in: index, frequency: frequency,
                                     weights: weights, segmentCost: segmentCost,
                                     unknownScore: unknownScore,
+                                    boundPenalty: boundPenalty,
                                     cache: cache)
         }
         return segments
@@ -182,6 +215,7 @@ public enum Segmenter {
                                     weights: Ranker.Weights,
                                     segmentCost: Double,
                                     unknownScore: Double,
+                                    boundPenalty: Double,
                                     cache: SearchCache?) -> [Segment] {
         let syllables = Array(word)
         guard !syllables.isEmpty else { return [] }
@@ -211,7 +245,9 @@ public enum Segmenter {
                 // 길이에 비례시켜도 "정말 모르는 구간은 통째로 둔다"는 그대로다.
                 // 잘게 쪼개면 벌점 합은 같은데 조각 비용만 더 들기 때문이다.
                 let piecePenalty = unknownScore * Double(end - start)
-                let score = (results.first?.score ?? piecePenalty) - segmentCost
+                var score = (results.first?.score ?? piecePenalty) - segmentCost
+                // **어절의 첫머리에는 기댈 말이 없다.** 거기 조사가 서면 그것은 조사가 아니다.
+                if start == 0, results.first?.entry.isBound == true { score -= boundPenalty }
                 let total = previous.score + score
                 if best[end] == nil || total > best[end]!.score {
                     best[end] = (total, start)

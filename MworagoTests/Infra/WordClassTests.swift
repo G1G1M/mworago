@@ -105,6 +105,10 @@ struct WordClassTests {
     <r_ele><reb>と</reb></r_ele>
     <sense><pos>&prt;</pos><pos>&conj;</pos><pos>&n;</pos><gloss>if</gloss><gloss>when</gloss></sense>
     </entry>
+    <entry>
+    <r_ele><reb>でも</reb></r_ele>
+    <sense><pos>&conj;</pos><pos>&prt;</pos><gloss>but</gloss><gloss>however</gloss></sense>
+    </entry>
     </JMdict>
     """
 
@@ -167,6 +171,33 @@ struct WordClassTests {
         #expect(try Self.항목("お").wordClass == .affix)
         #expect(try Self.항목("だろう").wordClass.isTranslatable == false)
         #expect(try Self.항목("さん").wordClass.isTranslatable == false)
+    }
+
+    @Test("조사·조동사·계사는 앞에 기댈 말이 있어야 한다")
+    func 부착어() throws {
+        // 문장이 `は` 로 시작하는 일은 없다. 분절이 그런 답을 내면 그것은 틀린 답이다.
+        #expect(try Self.항목("の").isBound)
+        #expect(try Self.항목("と").isBound)
+        #expect(try Self.항목("だ").isBound)
+        #expect(try Self.항목("ちゃう").isBound)
+        // 자립어는 혼자 선다.
+        #expect(try Self.항목("おもう").isBound == false)
+        #expect(try Self.항목("もと").isBound == false)
+        #expect(try Self.항목("ありがとう").isBound == false)
+    }
+
+    @Test("접속사는 기능어지만 문장을 연다")
+    func 접속사() throws {
+        // でも 는 conj 를 먼저 달고 prt 를 겸한다. 기능어라고 뭉뚱그리면
+        // "그런데 …" 로 시작하는 멀쩡한 문장이 벌을 받는다.
+        #expect(try Self.항목("でも").wordClass == .function)
+        #expect(try Self.항목("でも").isBound == false)
+    }
+
+    @Test("품사를 모르는 것은 부착어로 몰지 않는다")
+    func 태그없으면자립() {
+        let entry = DictEntry(readings: [DictForm(text: "ゆき", priority: 0)], writings: [], glosses: [])
+        #expect(entry.isBound == false)
     }
 
     @Test("감탄사는 옮긴다 — 그것은 뜻이 있는 낱말이다")

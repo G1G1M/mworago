@@ -14,6 +14,15 @@ struct SegmenterTests {
         })
     }
 
+    /// 품사까지 달아 만드는 사전. (표기, 읽기, 그 읽기의 점수, 품사 태그)
+    static func 사전(_ 항목들: [(String, String, Int, [String])]) -> DictIndex {
+        DictIndex(entries: 항목들.map { 표기, 읽기, 점수, 태그 in
+            DictEntry(readings: [DictForm(text: 읽기, priority: 점수)],
+                      writings: [DictForm(text: 표기, priority: 0)],
+                      glosses: [], partsOfSpeech: 태그)
+        })
+    }
+
     static let 사전들: DictIndex = 사전([
         ("頭", "あたま", 100), ("痛い", "いたい", 100), ("遺体", "いたい", 100),
         ("止める", "やめる", 50), ("大丈夫", "だいじょうぶ", 100),
@@ -33,6 +42,46 @@ struct SegmenterTests {
         ("は", "は", 200), ("へ", "へ", 200), ("です", "です", 200),
         ("わ", "わ", 30), ("え", "え", 30), ("輪", "わ", 20),
     ])
+
+    /// 어절 첫머리의 조사를 시험할 사전.
+    ///
+    /// 실제 점수를 그대로 옮겼다 — `と` 는 조사라 최상위 빈도이고, `どこ`+`へ` 를
+    /// 합친 것보다 `と`+`こえ` 쪽이 높다. 그래서 점수만 보면 반드시 진다.
+    static let 첫머리사전: DictIndex = 사전([
+        ("何処", "どこ", 90, []),
+        ("へ", "へ", 90, ["prt"]),
+        ("と", "と", 100, ["prt", "conj", "n"]),
+        ("声", "こえ", 90, []),
+        ("私", "わたし", 100, ["pn"]),
+        ("は", "は", 200, ["prt"]),
+        ("でも", "でも", 100, ["conj", "prt"]),
+    ])
+
+    @Test("문장은 조사로 시작하지 않는다")
+    func 첫머리조사() {
+        // 벌점이 없으면 `도코에`(どこへ, 어디로)가 `と`+`こえ` 로 갈린다 —
+        // 되살린 원문이 `とこえ` 라는 말이 안 되는 문자열이 되어 번역기로 넘어간다.
+        let 벌점없이 = Segmenter.segment("도코에", in: Self.첫머리사전, boundPenalty: 0)
+        #expect(벌점없이.filter { !$0.isWhole }.map(\.hangul) == ["도", "코에"])
+
+        let 벌점주고 = Segmenter.segment("도코에", in: Self.첫머리사전, boundPenalty: 40)
+        #expect(벌점주고.filter { !$0.isWhole }.map(\.hangul) == ["도코", "에"])
+    }
+
+    @Test("앞에 낱말이 있는 조사는 벌하지 않는다")
+    func 뒤따르는조사() {
+        // 벌점은 **첫머리에만** 건다. 조사 자체를 깎으면 `私 は` 가 깨진다.
+        let 결과 = Segmenter.segment("와타시와", in: Self.첫머리사전, boundPenalty: 40)
+        #expect(결과.filter { !$0.isWhole }.map(\.hangul) == ["와타시", "와"])
+    }
+
+    @Test("접속사는 문장을 연다")
+    func 접속사첫머리() {
+        // `でも` 는 conj 를 먼저 달고 prt 를 겸한다. 기능어라고 뭉뚱그려 벌하면
+        // "그런데 …" 로 시작하는 멀쩡한 문장이 밀린다.
+        let 결과 = Segmenter.segment("데모코에", in: Self.첫머리사전, boundPenalty: 40)
+        #expect(결과.filter { !$0.isWhole }.map(\.hangul) == ["데모", "코에"])
+    }
 
     @Test("띄어 쓴 입력은 어절마다 나눈다")
     func 띄어쓰기() {

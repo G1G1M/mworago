@@ -74,6 +74,17 @@ public enum WordClass: String, Sendable {
         self = .other
     }
 
+    /// **앞에 기댈 말이 있어야 하는가.** 조사·조동사·계사는 혼자 문장을 열지 못한다 —
+    /// `は` 로 시작하는 일본어 문장은 없다.
+    ///
+    /// 기능어라고 다 그런 것은 아니다. 접속사(`conj`)는 기능어지만 문장을 연다
+    /// (`でも` · `しかし`). 그래서 갈래만 보지 않고 **먼저 쓰인 기능 태그가 무엇인지**를 본다.
+    /// `と` 는 `prt·conj·n` 이라 조사 쪽이고, `でも` 는 `conj` 가 먼저다.
+    public static func isBound(tags: [String]) -> Bool {
+        guard WordClass(tags: tags) == .function else { return false }
+        return tags.first { functionTags.contains($0) } != "conj"
+    }
+
     /// 조사(`prt`) · 조동사(`aux`·`aux-v`·`aux-adj`) · 계사(`cop`) · 접속사(`conj`).
     private static let functionTags: Set<String> = ["prt", "aux", "aux-v", "aux-adj", "cop", "conj"]
 
