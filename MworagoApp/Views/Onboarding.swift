@@ -7,7 +7,7 @@ import SwiftUI
 /// 늦어지므로 **건너뛰기를 늘 열어 둔다.**
 ///
 /// 마지막 장은 이야기가 아니라 **지도**다. 탭바에서 글자를 빼고 아이콘만 남겼으므로
-/// (넷뿐이고 뜻이 분명한 기호라는 판단이었다) 어느 자리가 무엇인지 한 번은 짚어야 한다.
+/// (다섯뿐이고 뜻이 분명한 기호라는 판단이었다) 어느 자리가 무엇인지 한 번은 짚어야 한다.
 /// 글자 탭과 설정은 이야기 안에 자리가 없어 여기서 함께 말한다 —
 /// 그것 때문에 장을 둘 더 늘리면 앱에 닿는 것만 늦어진다.
 ///
@@ -62,6 +62,15 @@ struct Onboarding: View {
 
     private struct Page {
         let sample: AnyView
+        /// 그림이 글보다 **안쪽에서** 시작하는 만큼(pt). 그만큼 왼쪽으로 당겨 세운다.
+        ///
+        /// 같은 `.leading` 에 두어도 심볼은 글자보다 오른쪽에서 시작한 것처럼 보인다 —
+        /// SF 심볼은 글리프 안에 제 여백을 갖고 있기 때문이다. 그래서 장을 넘길 때
+        /// 제목·본문은 가만히 있는데 그림만 좌우로 흔들렸다.
+        ///
+        /// 값은 **스크린샷 픽셀로 재서** 넣는다(2배 화면에서 잰 값의 절반이 pt 다).
+        /// 심볼이나 크기를 바꾸면 다시 재야 한다 — 눈대중으로는 2pt 를 못 가른다.
+        var opticalLeading: CGFloat = 0
         let title: String
         let detail: String
     }
@@ -70,19 +79,27 @@ struct Onboarding: View {
         [
             Page(sample: AnyView(
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("아타마가이타이")
+                    Text("콘니치와")
                         .font(Theme.korean(20))
                         .foregroundStyle(Theme.grey2)
-                    Text("頭が痛い")
+                    Text("こんにちは")
                         .font(Theme.japanese(40, weight: .medium))
                         .foregroundStyle(Theme.ink)
+                        // 가나도 글리프 안에 제 여백이 있다. 위의 한글 줄보다 12px(2배
+                        // 화면) 안쪽에서 시작해, 이 장에서만 두 줄의 시작이 어긋났다.
+                        // **낱말을 바꾸면 다시 재야 하는 값이다.**
+                        .padding(.leading, -6)
                 }),
-                 title: "들린 대로 치세요",
+                 // **무엇을 치라는 것인지 첫 줄에 적는다.** "들린 대로 치세요"는 이 앱이
+                 // 무엇을 하는 물건인지 이미 아는 사람에게만 통했다 — 처음 온 사람은
+                 // 무엇을 들었다는 것인지부터 막힌다. 빠진 낱말은 **일본어**다.
+                 title: "일본어를 들리는 대로 쳐보세요",
                  detail: "띄어 쓰지 않아도 됩니다.\n어디서 끊을지는 사전이 정해요."),
             Page(sample: AnyView(
                 Image(systemName: "bookmark.fill")
                     .font(.system(size: 38))
                     .foregroundStyle(Theme.ink)),
+                 opticalLeading: 4.5,   // 재 보니 글보다 9px(2배 화면) 안쪽에서 시작했다
                  title: "담으면 교재가 됩니다",
                  // 전에는 "한 화를 보며 찾은 것들은 같은 날 모이니 날짜가 곧 그 화"였다.
                  // **두 번 낡은 말이다.** 날짜는 어느 화를 봤는지 앱이 몰라서 쓰던
@@ -93,6 +110,7 @@ struct Onboarding: View {
                 Image(systemName: "waveform")
                     .font(.system(size: 38))
                     .foregroundStyle(Theme.ink)),
+                 opticalLeading: 2,   // 4px
                  title: "다시 만나요",
                  // 앞면이 한글에서 **가나**로 바뀌었다 — 한글 음차는 찾을 때 쓰는
                  // 열쇠지 익힐 것이 아니고, 자막에 뜨는 것은 `いたい` 이지 `이타이` 가 아니다.
@@ -113,7 +131,10 @@ struct Onboarding: View {
                         }
                     }
                 }),
-                 title: "나머지는 아래에 있어요",
+                 // **"아래"라고 적지 않는다.** 탭바는 아이폰에서 아래, 아이패드에서 위에
+                 // 서므로 자리를 말하면 한쪽에서 거짓말이 된다. 이 장이 하는 일은
+                 // 어느 자리가 무엇인지 짚는 것이지 어디 있는지 말하는 것이 아니다.
+                 title: "다섯 자리가 있어요",
                  // 글자 탭이 여기 있는 까닭은 **막히는 자리가 정해져 있지 않아서**다.
                  // 가나를 못 읽어 멈추는 일은 찾을 때도 연습할 때도 생긴다.
                  detail: "가나를 못 읽어 멈추면 글자 탭으로 가요 — 오십음도 표와 익히기가 있습니다.\n설정에서는 밝기와 쓰는 자료를 봐요."),
@@ -138,6 +159,9 @@ struct Onboarding: View {
                             VStack(alignment: .leading, spacing: 26) {
                                 pages[i].sample
                                     .frame(height: 96, alignment: .leading)
+                                    // 그림만 글보다 안쪽에서 시작하던 것을 당겨 세운다 —
+                                    // 까닭은 `Page.opticalLeading` 에 적어 두었다.
+                                    .padding(.leading, -pages[i].opticalLeading)
 
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text(pages[i].title)

@@ -89,7 +89,7 @@ struct TypingGuide: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Self.sectionGap) {
                     // 이 화면이 하려는 말 전부다. 규칙은 그 뒤에 오는 각주다.
-                    Text("들린 대로 치면 됩니다. 정확히 옮길 필요는 없어요.")
+                    Text("들린 대로 치면 됩니다.\n정확히 옮길 필요는 없어요.")
                         .font(Theme.korean(17))
                         .foregroundStyle(Theme.grey1)
                         .fixedSize(horizontal: false, vertical: true)
