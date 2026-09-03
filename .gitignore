@@ -33,6 +33,8 @@ MworagoApp/Resources/*.tsv
 Tools/data/korean-gloss.tsv
 # 굽는 동안 남는 것들 — 모델이 낸 날것, 정리본, 사람이 정해야 하는 목록
 Tools/data/korean-gloss-exaone*.tsv
+Tools/data/korean-gloss.clean.tsv
+Tools/data/korean-gloss.redo.tsv
 
 # 폰트는 Google Fonts(OFL)에서 받는다 (Tools/fetch-fonts.sh)
 MworagoApp/Resources/Fonts/

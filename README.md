@@ -1,9 +1,9 @@
 # 뭐라고
 
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-142%2F150%20%2894%25%29-171717?style=flat-square)
-![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-148%2F150%20%2898%25%29-171717?style=flat-square)
+![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-147%2F150%20%2898%25%29-171717?style=flat-square)
 ![쿼리](https://img.shields.io/badge/%EC%BF%BC%EB%A6%AC-0.15ms-4a4a4a?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-282%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-290%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -172,7 +172,7 @@ MworagoApp/               앱
     Kana/                 가나표
     Settings/             설정과 만든 것들
     Shared/               화면들이 나눠 쓰는 것 — 색·판·넘기기·소리·품사표
-MworagoTests/             테스트 282개. 층으로 나눈다
+MworagoTests/             테스트 290개. 층으로 나눈다
   Domain/  UseCases/  Infra/
 Tools/                    앱에 실리지 않는 것들
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
@@ -187,7 +187,7 @@ docs/                     기록
 ## 실행
 
 ```sh
-swift test                  # 테스트 282개
+swift test                  # 테스트 290개
 ./Tools/fetch/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```
@@ -243,7 +243,7 @@ swift Tools/inspect/ink-rows.swift shot.png 1150 1668   # x 범위를 좁혀 오
 > 맨 위 뱃지의 숫자는 자동으로 갱신되지 않는다. `swift run SpikeRunner` 의 결과가
 > 바뀌면 뱃지와 이 절을 함께 고쳐야 한다. 안 고치면 거짓말하는 뱃지가 된다.
 
-케이스 150개 기준 **142/150 (94%)**, 3위 안 **148/150 (98%)**, 쿼리 0.15ms.
+케이스 150개 기준 **142/150 (94%)**, 3위 안 **147/150 (98%)**, 쿼리 0.15ms.
 
 표본을 늘리자 숫자가 떨어졌다. 그 뒤 가타카나 구멍과 `uk` 태그를 고쳐 다시 올렸다.
 
@@ -301,9 +301,15 @@ swift Tools/inspect/ink-rows.swift shot.png 1150 1668   # x 범위를 좁혀 오
 | Zen Maru Gothic · 고운돋움 | 폰트 | SIL OFL 1.1 |
 
 **JPDB 는 배포판에 실을 수 없다.** 지금 M0 숫자는 그것으로 잰 것이고, 배포하려면
-JESC 나 Jiten 으로 갈아야 한다. 낱말 검색은 거의 같지만(142 대 140/150) **분절이
-훨씬 민감하다**(완전일치 42.7% 대 30.0%) — 검색은 하나만 맞히면 되지만 분절은
-문장의 모든 낱말을 찾아야 하기 때문이다. `--freq` 로 언제든 견줄 수 있다.
+JESC 나 Jiten 으로 갈아야 한다. 낱말 검색은 거의 같지만(142 대 136/150) **분절이
+훨씬 민감하다** — 검색은 하나만 맞히면 되지만 분절은 문장의 모든 낱말을 찾아야 하기
+때문이다. `--freq` 로 언제든 견줄 수 있고, **앱 성적을 볼 때는 배포판이 싣는 것으로
+재야 한다**(`--freq MworagoApp/Resources/jesc_freq.tsv`).
+
+분절 성적은 Tanaka 문장 300개 기준 완전일치 **47.7%** · 경계 F1 **0.897** 이다
+(JESC). 이 숫자는 **표본을 고친 뒤의 것**이라 예전 기록과 견줄 수 없다 —
+말뭉치 앞에서 300개를 잘라 오던 것을 전체에서 균등 간격으로 집도록 바꿨다.
+그 전에는 300개 중 290개가 `彼` 로 시작하는 한 문형이었다.
 
 ## 라이선스
 
