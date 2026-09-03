@@ -175,6 +175,8 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 #   --moving                      그 위에 "어디로 옮길까요" 판까지
 #   --revealed                    연습 카드를 뒤집은 채로
 #   --no-splash                   스플래시 건너뛰기
+#   --onboarding                  온보딩을 봤는지와 무관하게 다시 띄운다
+#   --onboarding-page=<N>         온보딩의 N 번째 장(0부터, 탭 차례대로 다섯 장)
 ```
 
 찍은 화면은 **눈으로 읽지 말고 재는 편이 낫다.** 2420px 짜리 스크린샷이 줄어들어
