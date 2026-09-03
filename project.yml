@@ -50,6 +50,15 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"      # iPhone·iPad 유니버설
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_VERSION: "6.0"
-        DEVELOPMENT_TEAM: ""
+        # 시뮬레이터와 CI 는 서명 없이 짓는다.
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGN_IDENTITY: ""
+        # **실기기는 서명해야 올라간다.** 팀을 여기 적어 두지 않으면
+        # `xcodegen generate` 를 돌릴 때마다 Xcode 에서 고른 팀이 지워지고,
+        # 그러면 다음 실행에서 서명이 안 돼 기기에 못 올린다.
+        # 무료 개인 팀이라 프로비저닝 프로파일은 7일마다 새로 받아야 한다 —
+        # 아이폰을 꽂고 Xcode 에서 한 번 실행하면 자동으로 갱신된다.
+        DEVELOPMENT_TEAM: C5P7V9S6NT
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY[sdk=iphoneos*]: Apple Development
+        CODE_SIGNING_REQUIRED[sdk=iphoneos*]: YES
