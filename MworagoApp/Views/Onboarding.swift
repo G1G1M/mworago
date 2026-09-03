@@ -25,22 +25,15 @@ import MworagoCore
 
 /// 온보딩을 봤는지.
 ///
-/// **`UserDefaults` 를 쓰지 않는다.** 그것은 사유를 밝혀야 하는 API 라, 쓰는 순간
-/// 개인정보 보고서(`PrivacyInfo.xcprivacy`)에 사유를 적어야 한다. 아무것도 모으지
-/// 않는다는 선언이 그만큼 길어지는데, 값 하나 때문에 치를 값은 아니다.
-/// 모은 낱말 파일 옆에 빈 파일 하나를 둔다 — 있으면 본 것이다.
-
+/// **적어 두는 일은 밖에서 한다**(`PreferenceStoring`). 예전에는 이 enum 이 직접
+/// Application Support 를 찾아 빈 파일을 만들었다 — 뷰 파일 안에 파일 IO 가
+/// 박혀 있었고, 같은 여섯 줄이 모습 설정과 모은 낱말 자리에도 복붙되어 있었다.
+///
+/// **값이 아니라 표시다.** 오래도록 빈 파일이었으므로 그 파일이 있으면 본 것으로
+/// 친다 — 값으로 읽으면 이미 본 사람에게 온보딩이 다시 뜬다.
 enum OnboardingSeen {
-    static func path() -> String {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        return base.appendingPathComponent("onboarding-seen").path
-    }
-
-    static var already: Bool { FileManager.default.fileExists(atPath: path()) }
-
-    static func mark() { FileManager.default.createFile(atPath: path(), contents: nil) }
+    /// 적어 둘 때 쓰는 이름. 예전에 남긴 빈 파일과 같은 이름이라 그대로 이어진다.
+    static let key = "onboarding-seen"
 
     /// `--onboarding` 으로 언제든 다시 띄운다. 봤는지와 무관하게 화면을 확인하려는 것이다.
     static var forced: Bool { ProcessInfo.processInfo.arguments.contains("--onboarding") }

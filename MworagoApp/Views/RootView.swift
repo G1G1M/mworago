@@ -13,7 +13,13 @@ import MworagoCore
 /// 탭바는 표준 컨트롤을 그대로 쓰고 색만 맞춘다. 직접 그리면 시스템이 주는 것
 /// (아이패드의 자리, 손대기 좋은 크기, 손쉬운 사용)을 전부 다시 만들어야 한다.
 struct RootView: View {
-    @State private var collection = CollectionStore()
+    /// 작은 값을 적어 두는 자리 — 모습 설정과 온보딩 표시가 쓴다.
+    ///
+    /// **화면이 파일을 몰라도 되게** 밖에서 받는다. 예전에는 두 값이 각자 뷰 파일 안에서
+    /// `FileManager` 로 Application Support 를 찾았다.
+    private let preferences: any PreferenceStoring
+
+    @State private var collection: CollectionStore
     /// 어느 탭을 열지 실행 인자로 고를 수 있다 (`--tab=collection`).
     /// `--query=` · `--select=` · `--aid=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
@@ -28,8 +34,8 @@ struct RootView: View {
     /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
     /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
     /// 앱을 밝게 볼지 어둡게 볼지 — 설정의 `모습`. 기본은 기기를 따르는 것이다.
-    @State private var appearance = Appearance.saved
-    @State private var showOnboarding = OnboardingSeen.forced || !OnboardingSeen.already
+    @State private var appearance: Appearance
+    @State private var showOnboarding: Bool
     /// 앱을 여는 한 장. `--no-splash` 로 건너뛴다 — 다른 화면을 찍을 때마다
     /// 1초를 기다릴 이유가 없다. `--query=` · `--tab=` 과 같은 취지다.
     @State private var showSplash = !ProcessInfo.processInfo.arguments.contains("--no-splash")
@@ -38,6 +44,17 @@ struct RootView: View {
     /// 스플래시는 탭 화면 **위에** 얹혀 있으므로, 그 아래에서 찾기 화면이 이미 자리를
     /// 잡아 두었다. 그 자리를 그대로 받아 쓰면 기기와 방향이 달라져도 어긋나지 않는다.
     @State private var inputBarFrame: CGRect?
+
+    /// 적어 둔 것을 읽어 첫 모습을 정한다. 기본값은 앱의 자리이고, 미리보기와
+    /// 화면 확인은 아무것도 남기지 않는 판을 준다.
+    init(preferences: any PreferenceStoring = FilePreferences(),
+         collection: CollectionStore = CollectionStore()) {
+        self.preferences = preferences
+        _collection = State(initialValue: collection)
+        _appearance = State(initialValue: Appearance.saved(in: preferences))
+        _showOnboarding = State(initialValue:
+            OnboardingSeen.forced || !preferences.isMarked(OnboardingSeen.key))
+    }
 
     /// 낱말을 들고 찾기로 건너간다.
     private func goFind(_ hangul: String) {
@@ -85,7 +102,7 @@ struct RootView: View {
             // 처음 열었을 때 다섯 장 — 탭 하나에 한 장씩. 봤으면 다시 나오지 않는다.
             if showOnboarding {
                 Onboarding(onDone: {
-                    OnboardingSeen.mark()
+                    preferences.mark(OnboardingSeen.key)
                     withAnimation(.snappy(duration: 0.2)) { showOnboarding = false }
                 })
                 .transition(.opacity)
@@ -157,7 +174,7 @@ struct RootView: View {
             // 설정은 앱의 이야기(찾고·담기고·다시 만난다) 밖이지만 **어느 화면에서나
             // 닿아야 한다.** 교재 헤더에 두었더니 왜 거기에만 있는지 말할 수 없었다.
             Tab(value: RootTab.settings) {
-                Settings(appearance: $appearance)
+                Settings(appearance: $appearance, preferences: preferences)
             } label: {
                 Image(systemName: "gearshape")
                     .accessibilityLabel("설정")

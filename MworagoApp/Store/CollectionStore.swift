@@ -46,11 +46,9 @@ final class CollectionStore {
     /// 이름만 없앤다. 담은 낱말은 "아직 안 넣은 것"으로 남는다.
     func removeFolder(_ name: String) { collection.removeFolder(name) }
 
-    /// Application Support 아래. Documents 가 아닌 것은 사용자가 파일 앱에서 볼 것이 아니어서다.
+    /// 모습 설정·온보딩 표시와 같은 자리다. 자리를 아는 일은 `AppDataDirectory` 가 맡는다 —
+    /// 예전에는 같은 여섯 줄이 여기와 저 둘에 각각 복붙되어 있었다.
     static func defaultPath() -> String {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        return base.appendingPathComponent("collected-words.json").path
+        AppDataDirectory.applicationSupport.path(for: "collected-words.json")
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import MworagoCore
 
 /// 앱을 밝게 볼지 어둡게 볼지.
 ///
@@ -10,10 +11,12 @@ import SwiftUI
 /// 그때마다 앱에서 따로 바꾸게 하면 번거롭다. 다만 이 앱은 흰검 한 벌이라
 /// 밝기가 인상을 크게 바꾸므로, 고정하고 싶은 사람에게 길은 열어 둔다.
 ///
-/// **`UserDefaults` 를 쓰지 않는다.** 그것은 사유를 밝혀야 하는 API 라, 쓰는 순간
-/// 개인정보 보고서(`PrivacyInfo.xcprivacy`)에 사유를 적어야 한다. 아무것도 모으지
-/// 않는다는 선언이 값 하나 때문에 길어질 이유가 없다 — 온보딩 "봤음" 표시와 같은
-/// 까닭으로, 모은 낱말 파일 옆에 한 글자짜리 파일을 둔다.
+/// **적어 두는 일은 이 타입이 하지 않는다.** 어디에 어떻게 남길지는 밖에서 받는다
+/// (`PreferenceStoring`). 예전에는 여기서 `FileManager` 로 Application Support 를
+/// 찾았는데, 같은 여섯 줄이 온보딩 표시·모은 낱말 자리에도 복붙되어 있었고
+/// 화면을 세우지 않고는 그 길을 밟을 수 없었다.
+///
+/// `UserDefaults` 를 쓰지 않는 까닭은 `PreferenceStoring` 에 적어 두었다.
 enum Appearance: String, CaseIterable, Identifiable {
     case system, light, dark
 
@@ -36,21 +39,20 @@ enum Appearance: String, CaseIterable, Identifiable {
         }
     }
 
-    private static func path() -> String {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        return base.appendingPathComponent("appearance").path
-    }
+    /// 적어 둘 때 쓰는 이름.
+    static let key = "appearance"
 
-    static var saved: Appearance {
-        guard let raw = try? String(contentsOfFile: path(), encoding: .utf8),
-              let value = Appearance(rawValue: raw.trimmingCharacters(in: .whitespacesAndNewlines))
+    /// 적힌 것이 없거나 읽을 수 없으면 기기를 따른다.
+    static func saved(in preferences: some PreferenceStoring) -> Appearance {
+        guard let raw = preferences.string(forKey: key),
+              let value = Appearance(rawValue: raw)
         else { return .system }
         return value
     }
 
-    func save() { try? rawValue.write(toFile: Self.path(), atomically: true, encoding: .utf8) }
+    func save(in preferences: some PreferenceStoring) {
+        preferences.set(rawValue, forKey: Self.key)
+    }
 }
 
 /// 설정.
@@ -63,6 +65,8 @@ enum Appearance: String, CaseIterable, Identifiable {
 /// 설정은 그 밖의 것이라, 나란히 세우면 흐름이 어그러진다.
 struct Settings: View {
     @Binding var appearance: Appearance
+    /// 고른 모습을 어디에 적어 둘지. 조립 루트가 준다.
+    let preferences: any PreferenceStoring
 
     // MARK: 이 화면의 간격
     //
@@ -158,7 +162,7 @@ struct Settings: View {
                 Button {
                     withAnimation(.snappy(duration: 0.18)) {
                         appearance = option
-                        option.save()
+                        option.save(in: preferences)
                     }
                 } label: {
                     Text(option.label)
