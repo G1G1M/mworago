@@ -481,42 +481,16 @@ struct LibraryView: View {
         }
     }
 
-    /// 고르는 중의 머리줄. 묶음 화면의 그것과 같은 꼴이다.
+    /// 고르는 중의 머리줄. 묶음 화면과 **같은 것**을 쓴다 — `SelectionHead`.
     private var selectionHead: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Text(selection.isEmpty ? "고를 낱말을 누르세요" : "\(selection.count)개 골랐어요")
-                .font(Theme.korean(17, weight: selection.isEmpty ? .regular : .semibold))
-                .foregroundStyle(selection.isEmpty ? Theme.grey2 : Theme.ink)
-                .lineLimit(1)
-
-            Spacer(minLength: 10)
-
-            headButton(allPicked ? "모두 풀기" : "모두") {
-                selection = allPicked ? [] : Set(collection.words.map(\.id))
-            }
-            // 고른 것이 없으면 옮길 것도 지울 것도 없다. 눌러 보고 알게 하지 않는다.
-            headButton("옮기기", filled: true, disabled: selection.isEmpty) { moving = true }
-            headButton("지우기", destructive: true, disabled: selection.isEmpty) {
-                removingWords = true
-            }
-            headButton("마치기") { endSelecting() }
-        }
-    }
-
-    /// 머리줄의 단추. 강조는 반전 하나로만 — 지금 하려던 일이 채워진다.
-    private func headButton(_ title: String, filled: Bool = false, destructive: Bool = false,
-                            disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(Theme.korean(13.5, weight: filled ? .medium : .regular))
-                .padding(.horizontal, filled ? 14 : 6)
-                .padding(.vertical, filled ? 8 : 0)
-                .background(filled ? Theme.ink : .clear, in: Capsule())
-                .foregroundStyle(filled ? Theme.paper : (destructive ? Color.red : Theme.grey1))
-        }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .opacity(disabled ? 0.35 : 1)
+        SelectionHead(count: selection.count,
+                      allPicked: allPicked,
+                      onToggleAll: {
+                          selection = allPicked ? [] : Set(collection.words.map(\.id))
+                      },
+                      onMove: { moving = true },
+                      onRemove: { removingWords = true },
+                      onDone: { endSelecting() })
     }
 
     /// 읽기 보조 다이얼과 같은 문법이다 — 평평하고, 고른 것 하나만 검게 채워진다.
