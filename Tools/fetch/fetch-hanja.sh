@@ -4,7 +4,7 @@
 # 쓸 만한 한일 사전이 없어 뜻이 영어로 남았다. 그 사이를 메우는 단서다.
 # 約束→약속 처럼 뜻까지 통하는 것이 많고, 大丈夫→대장부 처럼 안 통해도 기억 고리가 된다.
 set -e
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 curl -L -o /tmp/kanjidic2.gz "http://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz"
 gunzip -c /tmp/kanjidic2.gz > /tmp/kanjidic2.xml
 python3 - <<'PY'

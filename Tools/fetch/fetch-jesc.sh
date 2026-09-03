@@ -7,7 +7,7 @@
 # 자막에는 읽기가 없지만 JapaneseReading(CFStringTokenizer)이 만들어 준다.
 # 그래서 이 코퍼스로 도메인 빈도를 직접 셀 수 있다 — JPDB 와 달리 재배포 조건이 분명하다.
 set -e
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 curl -L -o Tools/data/jesc-split.tar.gz "https://nlp.stanford.edu/projects/jesc/data/split.tar.gz"
 tar -xzf Tools/data/jesc-split.tar.gz -C Tools/data/
 ls -lh Tools/data/split/

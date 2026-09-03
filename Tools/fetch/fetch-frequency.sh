@@ -9,7 +9,7 @@
 # 앱에 실을 때는 CC BY-SA 4.0으로 배포되는 Jiten 쪽으로 바꿔야 한다.
 #   https://jiten.moe/frequency-dictionaries  (애니 3,709편 기준, CSV)
 set -e
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 curl -L -o Tools/data/jpdb_freq.csv \
   "https://raw.githubusercontent.com/Kuuuube/yomitan-dictionaries/main/data/jpdb_v2.2_freq_list_2024-10-13.csv"
 ls -lh Tools/data/jpdb_freq.csv

@@ -109,8 +109,28 @@ public enum Ranker {
         // 그래도 **정확히 짝이 맞은 것보다는 낮다.** 빈도가 세지 않은 읽기라는 것은
         // 그 읽기가 덜 쓰인다는 뜻이기도 하다.
         if best == 0 {
+            // **사전이 흔하다고 표시한 읽기에는 벌점을 물리지 않는다.**
+            //
+            // 벌점의 근거는 "말뭉치가 이 읽기를 안 셌다면 덜 쓰이는 읽기일 것"이다.
+            // 그런데 안 센 것이 아니라 **다른 이름으로 센** 자리가 있다 —
+            // 자막 말뭉치는 `私` 를 `わたくし`(19위·148,210회)로만 싣고 `わたし` 항목을
+            // 두지 않았다. 그 바람에 `私` 가 56.6점으로 깎여 `渡し`(도선, 1103위·1,622회)
+            // 의 59.1점에 졌고, `와타시와칸코쿠진데쓰` 가 `渡しは韓国人です` 로 되살아나
+            // "전달은 한국인입니다"가 되었다. **91배 흔한 낱말이 규칙에 져서 밀렸다.**
+            //
+            // 사전은 이 사실을 이미 알고 있다. JMdict 가 `私` 의 표기와 `わたし` 읽기에
+            // 둘 다 우선 표시를 달아 두었다. 말뭉치가 이름을 잘못 붙였을 뿐 흔한 읽기라는
+            // 것은 사전이 보증하므로, 그때는 물려받은 점수를 깎지 않는다.
+            //
+            // 사전이 아무 표시도 안 단 읽기는 벌점을 그대로 문다 — 그쪽은 원래 근거가
+            // 살아 있다(`何時` 의 `なんじ` 처럼).
+            let forms = Set(readingForms.map(\.form))
+            let dictionaryCallsItCommon = entry.readings.contains {
+                forms.contains($0.text) && $0.priority > 0
+            }
+            let weight = dictionaryCallsItCommon ? 1.0 : Self.writingOnlyWeight
             for writing in entry.usableWritings {
-                best = max(best, list.scoreByWriting(writing.text) * Self.writingOnlyWeight)
+                best = max(best, list.scoreByWriting(writing.text) * weight)
             }
         }
         return best

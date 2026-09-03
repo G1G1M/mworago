@@ -135,21 +135,28 @@ Sources/
     LaunchOptions.swift   실행 인자. 화면을 손으로 두드리지 않고 세운다
 
   MworagoUseCases/        찾고 나누고 줄 세우는 일. 도메인만 안다
-    Transliterator.swift  한글 → 가나 후보 생성
-    Deinflector.swift     활용형을 사전형으로 되돌리기
-    Segmenter.swift       띄어 쓰지 않은 문장을 낱말로 나누기
-    Sentence.swift        조각들을 도로 한 문장으로 잇기
-    Ranker.swift          살아남은 후보 줄 세우기
-    SearchCache.swift     조각의 답을 재어 둔다. 글자마다 다시 찾지 않으려고
-    TranslationQueue.swift 옮길 것이 서는 줄. 세션이 물러나도 줄은 다시 열린다
+    Search/               한 줄을 받아 낱말 후보까지
+      Transliterator.swift  한글 → 가나 후보 생성
+      Deinflector.swift     활용형을 사전형으로 되돌리기
+      Segmenter.swift       띄어 쓰지 않은 문장을 낱말로 나누기
+      Ranker.swift          살아남은 후보 줄 세우기
+      SearchCache.swift     조각의 답을 재어 둔다. 글자마다 다시 찾지 않으려고
+    Sentence/             조각을 도로 문장으로, 그리고 그 뜻
+      Sentence.swift        조각들을 도로 한 문장으로 잇기
+      SentencePrompt.swift  뜻을 물을 때 무엇을 어떻게 물을지
+      TranslationQueue.swift 옮길 것이 서는 줄. 세션이 물러나도 줄은 다시 열린다
 
   MworagoInfra/           바깥과 닿는 것들
-    DictionaryStore.swift 미리 구운 SQLite 색인. 여는 데 0.001초
-    JMDictParser.swift    JMdict XML 스트리밍 파서
-    WordCollection.swift  담은 낱말을 파일에 적는다
-    Preferences.swift     설정을 파일 하나에 값 하나로
-    LexiconLoading.swift  재료를 여는 일. 무엇으로 여는지는 여기만 안다
-    SentenceTranslator.swift 문장 뜻을 온디바이스 모델에게 묻는다
+    Dictionary/           사전과 빈도를 여는 일
+      DictionaryStore.swift 미리 구운 SQLite 색인. 여는 데 0.001초
+      JMDictParser.swift    JMdict XML 스트리밍 파서
+      LexiconLoading.swift  재료를 여는 일. 무엇으로 여는지는 여기만 안다
+      FrequencyListFile.swift 빈도 목록 파일에서 읽기
+    Storage/              기기에 남는 것
+      WordCollection.swift  담은 낱말을 파일에 적는다
+      Preferences.swift     설정을 파일 하나에 값 하나로
+    Translation/          온디바이스 모델에 닿는 자리
+      SentenceTranslator.swift 문장 뜻을 모델에게 묻는다
 
   MworagoCore/            셋을 한 이름으로 내보내는 우산
 
@@ -157,12 +164,22 @@ MworagoApp/               앱
   App/                    조립이 시작되는 자리
   Composition/            무엇을 세워 어디로 내려보낼지
   Store/                  화면이 지켜보는 것들
-  Views/                  화면
-MworagoTests/             테스트 282개. 평면으로 두고 파일 이름으로 구분한다
-Tools/
+  Views/                  화면. **탭이 곧 폴더다**
+    Root/                 탭 셋과 그 앞의 두 장 — 스플래시·온보딩
+    Find/                 찾기. 입력 바, 조각 카드, 문장 머리와 뜻
+    Library/              책장. 묶음, 낱말 상세, 여러 개 고르기
+    Practice/             연습
+    Kana/                 가나표
+    Settings/             설정과 만든 것들
+    Shared/               화면들이 나눠 쓰는 것 — 색·판·넘기기·소리·품사표
+MworagoTests/             테스트 282개. 층으로 나눈다
+  Domain/  UseCases/  Infra/
+Tools/                    앱에 실리지 않는 것들
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
   Translator/             한국어 뜻을 온디바이스 모델로 미리 굽는다
-  fetch-*.sh              사전·빈도·폰트 내려받기
+  fetch/                  사전·빈도·폰트·예문 내려받기
+  bake/                   받은 것을 앱이 실을 모양으로 굽는다
+  inspect/                찍은 화면을 재는 것들
   data/                   원본과 측정 케이스 (큰 것은 레포에 없다)
 docs/                     기록
 ```
@@ -171,7 +188,7 @@ docs/                     기록
 
 ```sh
 swift test                  # 테스트 282개
-./Tools/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
+./Tools/fetch/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```
 
@@ -179,7 +196,7 @@ swift run SpikeRunner       # 측정
 레포에 두지 않는다.
 
 ```sh
-./Tools/setup-app-resources.sh   # 색인·빈도·폰트를 굽고 번들 폴더에 넣는다
+./Tools/bake/setup-app-resources.sh   # 색인·빈도·폰트를 굽고 번들 폴더에 넣는다
 xcodegen generate
 xcodebuild -project Mworago.xcodeproj -scheme Mworago \
   -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M5)' build
@@ -215,7 +232,7 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 했다. 글자가 있는 가로줄만 뽑아 보면 몇 벌인지 다툴 일이 없다.
 
 ```sh
-swift Tools/ink-rows.swift shot.png 1150 1668   # x 범위를 좁혀 오른쪽 끝만
+swift Tools/inspect/ink-rows.swift shot.png 1150 1668   # x 범위를 좁혀 오른쪽 끝만
 ```
 
 **색인 스키마를 바꾸면 `schemaVersion` 을 올리고 다시 구울 것.** 안 그러면 앱이
@@ -270,7 +287,7 @@ swift Tools/ink-rows.swift shot.png 1150 1668   # x 범위를 좁혀 오른쪽 �
 
 ## 쓰는 자료
 
-전부 `Tools/fetch-*.sh` 로 받아 쓰고 레포에 넣지 않는다.
+전부 `Tools/fetch/` 의 스크립트로 받아 쓰고 레포에 넣지 않는다.
 **CC BY-SA 는 재배포 시 출처 표시가 의무**라 앱 설정 화면에도 명시한다.
 
 | 무엇 | 어디에 쓰나 | 라이선스 |

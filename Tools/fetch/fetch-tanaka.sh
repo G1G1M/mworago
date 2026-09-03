@@ -6,7 +6,7 @@
 #   B: 彼(かれ)[01] は 本(ほん) を 読む
 # 분절 정답을 내가 지어내지 않아도 되는 이유다.
 set -e
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 curl -L -o Tools/data/examples.utf.gz "http://ftp.edrdg.org/pub/Nihongo/examples.utf.gz"
 gunzip -kf Tools/data/examples.utf.gz
 ls -lh Tools/data/examples.utf

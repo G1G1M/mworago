@@ -9,10 +9,10 @@
 // 것과 같은 취지다 — 눈대중으로 못 가르는 것은 재서 가른다.
 //
 // 쓰는 법:
-//   swift Tools/ink-rows.swift <스크린샷.png> [xMin] [xMax]
+//   swift Tools/inspect/ink-rows.swift <스크린샷.png> [xMin] [xMax]
 //
 // 오른쪽 끝에 선 것(건너뛰기·다음)만 보려면 x 범위를 좁힌다:
-//   swift Tools/ink-rows.swift shot.png 1150 1668
+//   swift Tools/inspect/ink-rows.swift shot.png 1150 1668
 //
 // 나오는 것: 어두운 픽셀이 이어진 가로줄 구간. 같은 글자가 두 번 그려졌다면
 // 같은 높이의 구간이 두 번 나온다. 한 번만 나오면 한 벌이다.
@@ -22,7 +22,7 @@ let args = CommandLine.arguments
 guard args.count >= 2,
       let image = NSImage(contentsOfFile: args[1]),
       let bitmap = image.representations.first as? NSBitmapImageRep else {
-    print("쓰는 법: swift Tools/ink-rows.swift <스크린샷.png> [xMin] [xMax]")
+    print("쓰는 법: swift Tools/inspect/ink-rows.swift <스크린샷.png> [xMin] [xMax]")
     exit(1)
 }
 

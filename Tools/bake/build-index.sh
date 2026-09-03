@@ -7,6 +7,6 @@
 #
 #   XML 파싱   3.1초  →  색인 열기  0.001초
 set -e
-cd "$(dirname "$0")/.."
-[ -f Tools/data/JMdict_e ] || ./Tools/fetch-jmdict.sh
+cd "$(dirname "$0")/../.."
+[ -f Tools/data/JMdict_e ] || ./Tools/fetch/fetch-jmdict.sh
 swift run SpikeRunner --build-index Tools/data/mworago-dict.db

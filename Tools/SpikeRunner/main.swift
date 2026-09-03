@@ -142,7 +142,7 @@ if let useIndexPath, buildIndexPath == nil {
     log("사전 읽는 중… \(dictPath)")
     let loadStart = Date()
     guard let dictData = FileManager.default.contents(atPath: dictPath) else {
-        FileHandle.standardError.write(Data("사전 파일 없음. Tools/fetch-jmdict.sh 를 먼저 실행\n".utf8))
+        FileHandle.standardError.write(Data("사전 파일 없음. Tools/fetch/fetch-jmdict.sh 를 먼저 실행\n".utf8))
         exit(1)
     }
     let parsed = try JMDictParser.parse(data: dictData)
@@ -275,7 +275,7 @@ if !explainWords.isEmpty {
 if let buildFrequencyLimit {
     let corpusPath = "Tools/data/split/train"
     guard let handle = FileHandle(forReadingAtPath: corpusPath) else {
-        FileHandle.standardError.write(Data("JESC 가 없다. Tools/fetch-jesc.sh 를 먼저 실행\n".utf8))
+        FileHandle.standardError.write(Data("JESC 가 없다. Tools/fetch/fetch-jesc.sh 를 먼저 실행\n".utf8))
         exit(1)
     }
     defer { try? handle.close() }
@@ -341,7 +341,7 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails {
     log("분절 케이스 \(segmentCases.count)개")
 
     guard !segmentCases.isEmpty else {
-        FileHandle.standardError.write(Data("케이스를 못 만들었다. Tools/fetch-tanaka.sh 를 먼저 실행\n".utf8))
+        FileHandle.standardError.write(Data("케이스를 못 만들었다. Tools/fetch/fetch-tanaka.sh 를 먼저 실행\n".utf8))
         exit(1)
     }
 
@@ -607,7 +607,7 @@ if !segmentInputs.isEmpty {
 
 if let buildCount {
     guard let frequency else {
-        FileHandle.standardError.write(Data("빈도 목록이 필요하다. Tools/fetch-frequency.sh 를 먼저 실행\n".utf8))
+        FileHandle.standardError.write(Data("빈도 목록이 필요하다. Tools/fetch/fetch-frequency.sh 를 먼저 실행\n".utf8))
         exit(1)
     }
     let existing = Set(cases.map(\.hangul))

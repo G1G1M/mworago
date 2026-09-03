@@ -2,13 +2,20 @@
 import PackageDescription
 
 // 폴더 구조는 클린 아키텍처의 층을 그대로 따른다.
-//   Sources/MworagoDomain/    엔티티와 포트. Foundation 밖을 모른다
-//   Sources/MworagoUseCases/  찾고 나누고 줄 세우는 일. 도메인만 안다
+//   Sources/MworagoDomain/    엔티티와 포트. Foundation 밖을 모른다 (Kana · Words · Ports)
+//   Sources/MworagoUseCases/  찾고 나누고 줄 세우는 일. 도메인만 안다 (Search · Sentence)
 //   Sources/MworagoInfra/     SQLite · 파일 · 모델 — 바깥과 닿는 것들
+//                             (Dictionary · Storage · Translation)
 //   Sources/MworagoCore/      셋을 한 이름으로 내보내는 우산
-//   MworagoTests/             테스트. 평면으로 두고 파일 이름으로 구분한다
-//   Tools/                    앱에 실리지 않는 것들 — 측정기, 사전 내려받기, 원본 데이터
+//   MworagoTests/             테스트. 시험하는 층으로 나눈다 (Domain · UseCases · Infra)
+//   Tools/                    앱에 실리지 않는 것들 — 측정기(SpikeRunner · Translator),
+//                             내려받기(fetch), 굽기(bake), 화면 재기(inspect), 원본(data)
 //   docs/                     기록
+//
+// **층 안을 다시 폴더로 나누는 것은 읽는 사람을 위한 것이다.** 타깃 하나에 파일 여덟이
+// 평면으로 놓이면 무엇이 무엇의 짝인지 이름으로만 짐작해야 한다. 폴더 경계는 컴파일러가
+// 지켜 주지 않으므로(같은 타깃 안이라 서로 다 보인다) 규칙이 아니라 안내다 —
+// 지켜야 하는 경계는 아래 타깃 사이의 `dependencies` 가 지킨다.
 //
 // **의존 방향을 컴파일러가 지킨다.** 층을 폴더로만 나누면 규칙이 문서에 남고,
 // 그 문서는 언젠가 어긋난다. 타깃으로 나누면 도메인에서 SQLite 를 부르는 순간

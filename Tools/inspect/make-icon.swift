@@ -1,7 +1,7 @@
 #!/usr/bin/env swift
 // 앱 아이콘을 굽는다.
 //
-//   swift Tools/make-icon.swift
+//   swift Tools/inspect/make-icon.swift
 //
 // 손으로 그린 그림 파일을 두는 대신 규칙을 코드로 둔다. 비율을 바꾸고 싶으면
 // 아래 숫자를 고쳐 다시 구우면 되고, 무엇을 왜 그렇게 정했는지가 함께 남는다.

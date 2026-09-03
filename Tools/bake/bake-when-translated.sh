@@ -5,11 +5,11 @@
 # 아니라서, 끝나는 것을 기다렸다가 다음 단계를 이어 준다 —
 # 회수 → 색인 굽기 → 앱 리소스 복사 → (앱 빌드는 사람이 한다, 시뮬레이터를 고르는 일이라).
 #
-#   nohup ./Tools/bake-when-translated.sh > Tools/data/bake.log 2>&1 &
+#   nohup ./Tools/bake/bake-when-translated.sh > Tools/data/bake.log 2>&1 &
 #
 # 번역이 이미 끝나 있으면 곧바로 이어서 한다.
 set -e
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:$PATH
 
 GLOSS=Tools/data/korean-gloss.tsv
@@ -43,7 +43,7 @@ if [ "$count" -lt "$MINIMUM" ]; then
     exit 1
 fi
 
-./Tools/build-index.sh
+./Tools/bake/build-index.sh
 cp Tools/data/mworago-dict.db MworagoApp/Resources/
 echo "색인 갱신 완료 · ${count}줄 · $(date '+%H:%M')"
 echo "남은 것: xcodegen generate && xcodebuild ... build"
