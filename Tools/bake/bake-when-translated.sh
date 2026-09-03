@@ -43,6 +43,14 @@ if [ "$count" -lt "$MINIMUM" ]; then
     exit 1
 fi
 
+# **굽기 전에 찌꺼기를 걷는다.** 모델이 프롬프트의 보기를 따라 하느라
+# "후보 → 고른 것" 을 통째로 뱉는 일이 있다(31,149줄에서 576건이었다).
+# 이 걸음이 빠져 있어 그것들이 그대로 앱에 들어갈 뻔했다.
+# 살릴 수 없는 것은 `korean-gloss.redo.tsv` 로 빠지고, 다음 굽기가 다시 집는다.
+python3 Tools/bake/clean-gloss.py Tools/data/korean-gloss.tsv \
+        Tools/data/korean-gloss.clean.tsv Tools/data/korean-gloss.redo.tsv
+mv Tools/data/korean-gloss.clean.tsv Tools/data/korean-gloss.tsv
+
 ./Tools/bake/build-index.sh
 cp Tools/data/mworago-dict.db MworagoApp/Resources/
 echo "색인 갱신 완료 · ${count}줄 · $(date '+%H:%M')"
