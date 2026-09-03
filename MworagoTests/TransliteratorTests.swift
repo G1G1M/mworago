@@ -173,4 +173,32 @@ struct OrthographyTests {
         let 후보 = Transliterator.kanaCandidates(for: "잇테랏샤이")
         #expect(후보.first == "いってらっしゃい" || 후보.contains("いってらっしゃい"))
     }
+
+    // MARK: 쓰는 대로와 읽는 대로가 다른 조사
+
+    @Test("조사는 읽는 대로 쳐도 닿는다")
+    func 조사음차() {
+        // 사전은 `は`·`へ` 로 싣고 사람은 `와`·`에` 로 친다. 그 사이가 벌어져 있었다.
+        #expect(Transliterator.kanaCandidates(for: "와").contains("は"))
+        #expect(Transliterator.kanaCandidates(for: "에").contains("へ"))
+        // `を` 는 예전부터 ㅗ 에 함께 열려 있다. 셋이 한 규칙임을 여기서 함께 지킨다.
+        #expect(Transliterator.kanaCandidates(for: "오").contains("を"))
+    }
+
+    @Test("조사 후보가 곧바로 음차한 것을 밀어내지 않는다")
+    func 조사자리() {
+        // `rank` 는 점수에서 벌점이 된다. 조사를 맨 뒤에 두면 넣으나 마나가 되고,
+        // 맨 앞에 두면 `わ`(輪·종조사)를 정직하게 친 사람이 밀린다. 바로 뒤가 자리다.
+        let 후보 = Transliterator.kanaCandidates(for: "와")
+        #expect(후보.first == "わ")
+        #expect(후보.dropFirst().first == "は")
+    }
+
+    @Test("낱말 속 `와`·`에` 까지 조사로 펼치지는 않는다")
+    func 조사는홀로설때만() {
+        // `와시` 를 `はし`(橋·箸)로도 펼치면 치지도 않은 소리를 지어내는 것이다.
+        #expect(!Transliterator.kanaCandidates(for: "와시").contains("はし"))
+        #expect(!Transliterator.kanaCandidates(for: "와타시").contains("はたし"))
+        #expect(!Transliterator.kanaCandidates(for: "에키").contains("へき"))
+    }
 }

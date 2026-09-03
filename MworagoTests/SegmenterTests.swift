@@ -20,6 +20,19 @@ struct SegmenterTests {
         ("あた", "あた", 10), ("魔", "ま", 10), ("痛", "いた", 10),
     ])
 
+    /// 조사 `は`·`へ` 를 시험할 작은 사전.
+    ///
+    /// 함정을 일부러 넣었다 — `和本` 은 실제로 사전에 있는 낱말이고, 조사 `は` 가
+    /// 없으면 `코레와혼데스` 가 `これ 和本 です` 로 끊긴다. 조사가 빠지면 조각이
+    /// 하나 사라지는 것으로 끝나지 않고 **없는 말이 만들어진다.**
+    static let 조사사전: DictIndex = 사전([
+        ("私", "わたし", 100), ("渡し", "わたし", 60),
+        ("これ", "これ", 100), ("本", "ほん", 100), ("和本", "わほん", 20),
+        ("日本", "にほん", 100), ("内", "うち", 100),
+        ("は", "は", 200), ("へ", "へ", 200), ("です", "です", 200),
+        ("わ", "わ", 30), ("え", "え", 30), ("輪", "わ", 20),
+    ])
+
     @Test("띄어 쓴 입력은 어절마다 나눈다")
     func 띄어쓰기() {
         let 결과 = Segmenter.segment("아타마 가 이타이", in: Self.사전들)
@@ -67,6 +80,33 @@ struct SegmenterTests {
     func 빈입력() {
         #expect(Segmenter.segment("", in: Self.사전들).isEmpty)
         #expect(Segmenter.segment("   ", in: Self.사전들).isEmpty)
+    }
+
+    // MARK: 쓰는 대로와 읽는 대로가 다른 조사
+
+    @Test("조사 は 를 `와` 로 쳐도 나온다")
+    func 주제조사() {
+        // 사전에는 `は` 로 실리고 사람은 `와` 로 친다. 이 사이가 벌어져 있어서
+        // `와타시와` 가 `私 わ`(종조사 "~네")로 끊겼고, 문장 뜻이 딴것이 됐다.
+        let 결과 = Segmenter.segment("와타시와", in: Self.조사사전)
+        #expect(결과.map(\.hangul) == ["와타시", "와"])
+        #expect(결과.last?.results.first?.entry.writings.first?.text == "は")
+    }
+
+    @Test("조사가 빠지면 없는 낱말이 만들어진다")
+    func 조사가없으면() {
+        // 조사 `は` 가 없으면 남은 `와` 가 뒷글자와 붙어 `和本`(일본 고서)이 된다.
+        // 조각 하나가 틀리는 것이 아니라 문장이 딴 문장이 되는 자리다.
+        let 결과 = Segmenter.segment("코레와혼데스", in: Self.조사사전)
+        #expect(결과.map(\.hangul) == ["코레", "와", "혼", "데스"])
+        #expect(!결과.contains { $0.results.first?.entry.writings.first?.text == "和本" })
+    }
+
+    @Test("조사 へ 를 `에` 로 쳐도 나온다")
+    func 방향조사() {
+        #expect(Segmenter.segment("우치에", in: Self.조사사전).map(\.hangul) == ["우치", "에"])
+        // `니혼에` 는 조사가 없을 때 `に 本営` 로 앞에서부터 어긋나던 문장이다.
+        #expect(Segmenter.segment("니혼에", in: Self.조사사전).map(\.hangul) == ["니혼", "에"])
     }
 }
 

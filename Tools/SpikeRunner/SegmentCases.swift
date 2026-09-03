@@ -55,6 +55,30 @@ enum TanakaCorpus {
         return Token(headword: headword, reading: actual, surface: surface)
     }
 
+    /// 쓰는 대로와 읽는 대로가 다른 조사.
+    ///
+    /// 일본어에서 표기와 발음이 어긋나는 낱말은 이 셋뿐이다 — `は`(와) · `へ`(에) ·
+    /// `を`(오). 앞의 둘이 문제가 된다(`を` 는 음차가 이미 `오` 로 떨어진다).
+    ///
+    /// **타나카는 조사를 표기로 적어 둔다.** 그것을 그대로 음차하면 케이스 입력이
+    /// `하`·`헤` 가 되는데, 소리로 찾는 이 앱의 사용자는 `와`·`에` 로 친다.
+    /// 그래서 케이스 300개에 실제로 들어오는 입력이 **하나도 없었다** —
+    /// 측정기가 구조적으로 못 보는 자리였고, `와타시와` 가 `私 わ` 로 깨지는 것을
+    /// 여기서 한 번도 잡지 못했다.
+    static let spokenParticles: [String: String] = ["は": "わ", "へ": "え"]
+
+    /// 그 낱말을 사람이 **소리 내어 치는** 대로의 읽기.
+    ///
+    /// 조사로 보는 조건은 **표제어 자체가 그 가나 한 글자인 것**이다. 歯(は)·屁(へ) 는
+    /// 표제어가 한자라 여기 걸리지 않고, 활용해서 표면형이 따로 붙은 것도 아니다.
+    static func spokenReading(_ token: Token) -> String {
+        guard token.surface == nil,
+              token.reading == token.headword,
+              let spoken = spokenParticles[token.headword]
+        else { return token.reading }
+        return spoken
+    }
+
     /// B 라인 하나를 낱말 열로.
     static func parseLine(_ line: String) -> [Token] {
         line.dropFirst(3)                       // "B: "
@@ -90,7 +114,9 @@ enum SegmentCaseBuilder {
             // 읽기가 전부 가나여야 음차할 수 있다
             guard tokens.allSatisfy({ $0.reading.allSatisfy(\.isKana) }) else { continue }
 
-            let pieces = tokens.map { KanaToHangul.transliterate($0.reading) }
+            // **입력은 소리다.** 정답(`readings`)은 표기 그대로 두고 입력만 읽는 대로 만든다 —
+            // 사용자가 `와` 를 치면 `は` 가 나와야 한다는 것이 이 케이스가 묻는 것이다.
+            let pieces = tokens.map { KanaToHangul.transliterate(TanakaCorpus.spokenReading($0)) }
             guard pieces.allSatisfy({ !$0.isEmpty && HangulSyllable.decompose($0) != nil }) else { continue }
 
             let hangul = pieces.joined()

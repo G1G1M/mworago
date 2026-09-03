@@ -89,6 +89,22 @@ public enum Transliterator {
     /// `코트` 를 친 사람이 コート 에 닿지 못했다. 이 자리에만 お단을 함께 연다.
     static let dentalInitials: Set<Character> = ["ㄷ", "ㄸ", "ㅌ"]
 
+    // MARK: 쓰는 대로와 읽는 대로가 다른 조사
+
+    /// 일본어에서 **표기와 발음이 어긋나는 낱말은 셋뿐**이다 — `は`(와) · `へ`(에) ·
+    /// `を`(오). 사전은 쓰는 대로 싣고, 소리로 찾는 이 앱의 사용자는 읽는 대로 친다.
+    /// 그 사이가 벌어진 자리라 규칙을 따로 둔다.
+    ///
+    /// `を` 는 이미 `medials` 의 ㅗ 에 함께 열어 두었다(주석도 거기 있다). 남은 둘이
+    /// 여기다 — 그것이 빠져 있어서 `와타시와` 가 `私 わ`(종조사 "~네")로 끊겼고,
+    /// `코레와혼데스` 는 `これ 和本 です` 라는 **아무도 하지 않은 말**이 됐다.
+    /// 조사가 사라지면 남은 `와` 가 뒷글자와 붙어 없는 낱말을 만든다.
+    ///
+    /// **음절 하나가 입력 전부일 때만 연다.** `와` 를 아무 자리에서나 は 로도 펼치면
+    /// `와시` 가 `はし`(橋·箸)를 낳는다 — 치지도 않은 소리를 지어내는 것이라 손해가 크다.
+    /// 조사는 언제나 조각 하나로 홀로 서므로 이 조건으로 닿는다.
+    static let particleSpellings: [String: String] = ["와": "は", "에": "へ"]
+
     // MARK: 음절 하나
 
     /// 음절 하나가 만들 수 있는 모라 열들. 일본어에 없는 소리는 여기서 이미 걸러진다.
@@ -236,6 +252,28 @@ public enum Transliterator {
 
     /// 후보를 단서와 함께 만든다. 순위를 매기는 쪽이 쓴다.
     public static func candidates(for hangul: String, limit: Int = 5000) -> [KanaCandidate] {
+        var result = ruleCandidates(for: hangul, limit: limit)
+
+        // 조사는 읽는 대로 온다 — 까닭은 `particleSpellings` 에 적었다.
+        //
+        // **곧바로 음차한 것 바로 뒤에 세운다.** `와` 를 `わ` 로 적은 사람과 `は` 로
+        // 적어야 할 사람은 같은 소리를 같은 확신으로 친 것이라, 뒤로 밀 이유가 없다.
+        // `rank` 는 점수에서 그대로 벌점이 되므로(`Ranker` 의 `rankPenalty`)
+        // 자리가 곧 손해다. 끼운 뒤 번호를 다시 매긴다.
+        if let spelling = particleSpellings[hangul], !result.contains(where: { $0.kana == spelling }) {
+            let slot = min(1, result.count)
+            result.insert(KanaCandidate(kana: spelling, rank: slot, longVowelsAdded: 0), at: slot)
+            result = result.enumerated().map { index, candidate in
+                KanaCandidate(kana: candidate.kana, rank: index,
+                              longVowelsAdded: candidate.longVowelsAdded,
+                              geminatesAdded: candidate.geminatesAdded)
+            }
+        }
+        return result
+    }
+
+    /// 음차 규칙만으로 만든 후보. 조사처럼 규칙 밖에 있는 것은 `candidates` 가 덧붙인다.
+    private static func ruleCandidates(for hangul: String, limit: Int = 5000) -> [KanaCandidate] {
         guard let syllables = HangulSyllable.decompose(hangul), !syllables.isEmpty else { return [] }
 
         // 음절별 후보를 이어 붙인다(데카르트 곱). 중간에 상한을 넘으면 잘라낸다.
