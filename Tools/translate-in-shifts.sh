@@ -11,6 +11,12 @@
 # 그래서 끊는 것이 안전하고, 다음 교대가 앞 교대의 실패분을 저절로 다시 집는다.
 #
 #   nohup ./Tools/translate-in-shifts.sh > Tools/data/shifts.log 2>&1 &
+#
+# 인자는 Translator 에 그대로 넘어간다. 처음 구운 뒤 범위를 넓힐 때 쓴다 —
+# 이미 끝난 것은 건너뛰므로, 넓힌 범위와 앞서 실패한 구멍을 한 번에 집는다.
+#
+#   nohup ./Tools/translate-in-shifts.sh --ollama exaone3.5:7.8b --limit 60000 \
+#       > Tools/data/shifts.log 2>&1 &
 set -e
 cd "$(dirname "$0")/.."
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:$PATH
@@ -29,7 +35,7 @@ swift build --product Translator > /dev/null
 shift_no=1
 while :; do
     before=$(lines)
-    "$BINARY" >> Tools/data/translator.log 2>&1 &
+    "$BINARY" "$@" >> Tools/data/translator.log 2>&1 &
     pid=$!
 
     waited=0

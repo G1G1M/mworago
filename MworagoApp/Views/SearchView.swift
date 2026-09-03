@@ -30,12 +30,8 @@ struct SearchView: View {
     /// 사전을 열고 검색을 맡는다. **조립 루트가 세운다** — 예전에는 이 화면이
     /// 직접 만들었고, 그래서 사전을 여는 일이 찾기 탭이 처음 그려질 때 일어났다.
     @Environment(SearchEngine.self) private var engine
-    /// 옮긴 말을 모아 두는 곳. 화면 여럿이 같은 것을 본다.
-    @Environment(TranslationDesk.self) private var desk
     /// 번역기 설정. **한 번만 만든다** — 문장마다 새로 만들면 그때마다 세션이 다시 열려
     /// 실기기에서 눈에 띄게 걸린다. 세션 여는 일이 번역보다 무겁다.
-    @State private var fromJapanese: TranslationSession.Configuration?
-    @State private var fromEnglish: TranslationSession.Configuration?
     /// 실행 인자로 검색어를 넣을 수 있다 (`--query=다이죠부`).
     /// 시뮬레이터에 한글을 타이핑하지 않고도 화면을 확인할 수 있어 스크린샷과 점검에 쓴다.
     @State private var input = ProcessInfo.processInfo.arguments
@@ -132,26 +128,13 @@ struct SearchView: View {
             // 0.25초와 easeOut 은 시스템 키보드가 쓰는 값이다.
             .animation(.easeOut(duration: 0.25), value: inputFocused)
         }
-        // **세션은 언어쌍마다 하나씩, 앱이 사는 동안 그대로 둔다.** 열어 놓고 옮길 것을
-        // 흘려 넣는다. 번역을 못 하는 기기에서는 설정을 만들지 않으므로 세션도 열리지
-        // 않는다 — 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
+        // **번역 세션은 여기 없다.** `RootView` 가 연다 — 까닭은 그쪽에 적어 두었다.
+        // 요약하면 이렇다: `.translationTask` 는 뷰가 물러나면 취소되는데, 탭을 다녀와도
+        // 설정 값이 그대로라 다시 돌지 않는다. 찾기 탭에 매어 두면 탭을 한 번 다녀온
+        // 뒤로 어떤 문장도 옮겨지지 않았다.
         .task {
             // 색인·규칙표·캐시를 손 얹히기 전에 한 번 지나가게 한다.
             engine.prewarm()
-            let korean = Locale.Language(identifier: "ko")
-            let availability = LanguageAvailability()
-            for (identifier, keep) in [("ja", { fromJapanese = $0 }), ("en", { fromEnglish = $0 })]
-                    as [(String, (TranslationSession.Configuration) -> Void)] {
-                let language = Locale.Language(identifier: identifier)
-                guard await availability.status(from: language, to: korean) != .unsupported else { continue }
-                keep(TranslationSession.Configuration(source: language, target: korean))
-            }
-        }
-        .translationTask(fromJapanese) { session in
-            await Self.serve(session, desk.japanese)
-        }
-        .translationTask(fromEnglish) { session in
-            await Self.serve(session, desk.english)
         }
         .onChange(of: incoming?.wrappedValue) { _, new in
             guard let new, !new.isEmpty else { return }
@@ -242,30 +225,6 @@ struct SearchView: View {
     /// **줄은 여기서 연다.** 이 태스크는 화면에 매여 있어서 찾기 탭을 벗어나면 취소되고,
     /// 그때 `AsyncStream` 은 되살릴 수 없이 끝난다. 줄을 하나 만들어 두고 쓰면 탭을 한 번
     /// 다녀온 뒤로 아무것도 옮겨지지 않았다 — 돌아올 때마다 새 줄을 연다.
-    private nonisolated static func serve(_ session: TranslationSession, _ store: Translations) async {
-        let requests = await store.openRequests()
-        for await batch in requests {
-            let asked = batch.map { TranslationSession.Request(sourceText: $0) }
-            var responses = try? await session.translations(from: asked)
-            if responses == nil {
-                // **한 번은 더 물어본다.** 언어팩을 아직 내려받는 중이면 첫 물음이 빈손으로
-                // 돌아온다. 그 한 번 때문에 문장이 영영 안 뜨는 것은 사용자가 알 길이 없다.
-                try? await Task.sleep(for: .milliseconds(400))
-                responses = try? await session.translations(from: asked)
-            }
-            guard let responses else {
-                // **쉬었다가 다시 싣는다.** 언어팩을 내려받는 중이면 몇 초 뒤에 되는
-                // 일이고, 쉬지 않고 물으면 되지도 않을 것에 줄이 붙들린다.
-                // 몇 번까지 보낼지는 줄이 세고, 그 뒤에는 놓아준다.
-                try? await Task.sleep(for: .seconds(2))
-                await MainActor.run { store.failed(batch) }
-                continue
-            }
-            let pairs = responses.map { (source: $0.sourceText, target: $0.targetText) }
-            await MainActor.run { store.receive(pairs) }
-        }
-    }
-
     @ViewBuilder
     private var content: some View {
         if let failure = engine.failure {

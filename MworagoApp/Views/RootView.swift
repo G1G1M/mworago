@@ -1,4 +1,5 @@
 import SwiftUI
+@preconcurrency import Translation
 import MworagoCore
 
 /// 탭 셋.
@@ -13,6 +14,13 @@ import MworagoCore
 /// 탭바는 표준 컨트롤을 그대로 쓰고 색만 맞춘다. 직접 그리면 시스템이 주는 것
 /// (아이패드의 자리, 손대기 좋은 크기, 손쉬운 사용)을 전부 다시 만들어야 한다.
 struct RootView: View {
+    /// 옮기는 자리. 세션을 여기서 열어 두려고 받는다 — 까닭은 `translationSessions` 에 적었다.
+    @Environment(TranslationDesk.self) private var desk
+    /// 언어쌍마다 하나씩. 번역을 못 하는 기기에서는 만들지 않으므로 세션도 열리지 않는다 —
+    /// 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
+    @State private var fromJapanese: TranslationSession.Configuration?
+    @State private var fromEnglish: TranslationSession.Configuration?
+
     /// 작은 값을 적어 두는 자리 — 모습 설정과 온보딩 표시가 쓴다.
     ///
     /// **화면이 파일을 몰라도 되게** 밖에서 받는다. 예전에는 두 값이 각자 뷰 파일 안에서
@@ -118,6 +126,35 @@ struct RootView: View {
         .onPreferenceChange(InputBarFrame.self) { frame in
             if let frame { inputBarFrame = frame }
         }
+        // **번역 세션을 탭 밖에 둔다.**
+        //
+        // 한때는 찾기 화면이 세션을 열었다. `.translationTask` 는 뷰가 물러나면 취소되는데,
+        // **다시 들어와도 스스로 다시 돌지 않는다** — 설정 값이 바뀔 때만 도는 자리라
+        // 탭을 다녀온 것은 설정에 아무 변화가 아니다. 그래서 찾기 탭을 한 번 벗어난 뒤로는
+        // 어떤 문장도 옮겨지지 않았다. 줄(`TranslationQueue`)을 열 때마다 새로 내도록
+        // 고쳤는데도 증상이 남은 것은 **줄을 다시 여는 사람이 없어서**였다.
+        //
+        // 여기는 탭 위가 아니라 탭 **바깥**이다. 화면이 물러날 일이 없으니 세션도 취소되지
+        // 않고, 줄은 앱이 사는 동안 이어진다.
+        //
+        // 번역을 못 하는 기기에서는 설정을 만들지 않으므로 세션도 열리지 않는다 —
+        // 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
+        .task {
+            let korean = Locale.Language(identifier: "ko")
+            let availability = LanguageAvailability()
+            for (identifier, keep) in [("ja", { fromJapanese = $0 }), ("en", { fromEnglish = $0 })]
+                    as [(String, (TranslationSession.Configuration) -> Void)] {
+                let language = Locale.Language(identifier: identifier)
+                guard await availability.status(from: language, to: korean) != .unsupported else { continue }
+                keep(TranslationSession.Configuration(source: language, target: korean))
+            }
+        }
+        .translationTask(fromJapanese) { session in
+            await Self.serve(session, desk.japanese)
+        }
+        .translationTask(fromEnglish) { session in
+            await Self.serve(session, desk.english)
+        }
         .tint(Theme.ink)
         // **아직 여러 말로 옮기지 않았다.** 기기를 영어로 써도 화면은 한국어이므로
         // 날짜만 영어로 뜨면 안 된다. 여러 말을 받게 되면 이 줄을 걷어낸다.
@@ -187,4 +224,30 @@ struct RootView: View {
         // 화면에서 그 한 줄만 남의 말이 된다. 이 앱이 쓰는 말로 고정한다.
         .environment(\.locale, Locale(identifier: "ko_KR"))
     }
+
+    /// 줄에 선 것을 받아 옮겨 준다. 줄이 끝나면(세션이 물러나면) 이 반복도 끝난다.
+    private nonisolated static func serve(_ session: TranslationSession, _ store: Translations) async {
+        let requests = await store.openRequests()
+        for await batch in requests {
+            let asked = batch.map { TranslationSession.Request(sourceText: $0) }
+            var responses = try? await session.translations(from: asked)
+            if responses == nil {
+                // **한 번은 더 물어본다.** 언어팩을 아직 내려받는 중이면 첫 물음이 빈손으로
+                // 돌아온다. 그 한 번 때문에 문장이 영영 안 뜨는 것은 사용자가 알 길이 없다.
+                try? await Task.sleep(for: .milliseconds(400))
+                responses = try? await session.translations(from: asked)
+            }
+            guard let responses else {
+                // **쉬었다가 다시 싣는다.** 언어팩을 내려받는 중이면 몇 초 뒤에 되는
+                // 일이고, 쉬지 않고 물으면 되지도 않을 것에 줄이 붙들린다.
+                // 몇 번까지 보낼지는 줄이 세고, 그 뒤에는 놓아준다.
+                try? await Task.sleep(for: .seconds(2))
+                await MainActor.run { store.failed(batch) }
+                continue
+            }
+            let pairs = responses.map { (source: $0.sourceText, target: $0.targetText) }
+            await MainActor.run { store.receive(pairs) }
+        }
+    }
+
 }
