@@ -506,9 +506,23 @@ if let mtCaseCount {
             // 앱이 화면에 되살려 놓는 그 문장을 넘긴다. 사용자가 친 것은 한글이지만
             // 번역기가 받을 수 있는 것은 일본어다.
             let parts = segments.filter { !$0.isWhole }
-            let japanese = args.contains("--mt-kana") ? parts.kana
+            var japanese = args.contains("--mt-kana") ? parts.kana
                          : args.contains("--mt-kanji") ? parts.japanese
                          : parts.forTranslation
+            // **마침표를 붙여 보고 견준다.** 번역기는 문장부호가 있는 글로 배웠는데
+            // 우리는 토막을 던지고 있다. 그 차이가 값을 하는지는 재야 안다.
+            //
+            // **재 보니 값을 하지 않는다.** 문장 25개 중 11개가 달라졌지만 대부분은
+            // 한국어 마침표가 붙은 것뿐이고, 뜻이 바뀐 자리는 좋아진 것 하나
+            // (`和服` → 한복에서 기모노로)와 나빠진 것 둘(`好きだ` 가 "좋아한다"에서
+            // "좋아했다"로, `とっつきやすい` 가 "사람이다"에서 "사람이었다"로 —
+            // 시제가 흔들렸다)이었다. 그래서 앱에는 넣지 않았다.
+            //
+            // 플래그는 남겨 둔다. 다음에 같은 생각을 하는 사람이 다시 재지 않아도 되게.
+            if args.contains("--mt-period"), !japanese.isEmpty,
+               !"。！？".contains(japanese.last!) {
+                japanese += "。"
+            }
             let start = Date()
             do {
                 let response = try await session.translate(japanese)
