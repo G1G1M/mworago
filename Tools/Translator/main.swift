@@ -71,7 +71,19 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
         // 사전의 영어 뜻부터가 설명문이고(`の` → "indicates possessive"),
         // 그대로 넘기면 뜻 자리에 문장이 들어앉는다(`よ` → "안녕, 너").
         // 하필 빈도 최상위가 전부 이것들이라, 안 거르면 상위 N 개가 통째로 쓰레기가 된다.
-        guard hit.entry.wordClass.isTranslatable else {
+        // **관용구는 옮긴다.** 앱의 `isTranslatable` 은 조사·접사·관용구를 한데 묶어
+        // 빼는데, 그 잣대는 이 자리에 너무 넓다. 빼야 하는 것은 **혼자 서지 못하는 것**
+        // (조사 `は`, 접사 `~的`)이지 관용구가 아니다.
+        //
+        // 재 보고 알았다. 빈도 1~30,000 등 안에서 한국어 뜻이 비어 있는 2,425개가
+        // **거의 전부 관용구**였다 — `よろしくお願いします`(2,007위) ·
+        // `申し訳ない`(1,723위) · `好きになる`(1,999위) · `その通り`(2,031위).
+        // 드라마와 애니에서 매일 만나는 말들이 통째로 영어로 남아 있었다.
+        //
+        // 조사와 접사는 그대로 건너뛴다. 조사는 `Tools/data/function-gloss.tsv` 가
+        // 손으로 적어 두었고, 접사는 낱말이 아니라 낱말의 부품이다.
+        let 옮길것 = hit.entry.wordClass.isTranslatable || hit.entry.wordClass == .expression
+        guard 옮길것 else {
             skipped.append(Skipped(writing: entry.writing, reading: entry.reading,
                                    wordClass: hit.entry.wordClass, english: hit.entry.glosses))
             continue
