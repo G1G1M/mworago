@@ -232,8 +232,13 @@ struct SearchView: View {
     ///
     /// 줄이 닫히기 전까지 돌아오지 않는다. 그래야 세션이 살아 있고, 다음 문장을 물을 때
     /// 다시 열지 않아도 된다 — 그 다시 열기가 곧 실기기에서 느껴지던 걸림이었다.
+    ///
+    /// **줄은 여기서 연다.** 이 태스크는 화면에 매여 있어서 찾기 탭을 벗어나면 취소되고,
+    /// 그때 `AsyncStream` 은 되살릴 수 없이 끝난다. 줄을 하나 만들어 두고 쓰면 탭을 한 번
+    /// 다녀온 뒤로 아무것도 옮겨지지 않았다 — 돌아올 때마다 새 줄을 연다.
     private nonisolated static func serve(_ session: TranslationSession, _ store: Translations) async {
-        for await batch in store.requests {
+        let requests = await store.openRequests()
+        for await batch in requests {
             let asked = batch.map { TranslationSession.Request(sourceText: $0) }
             var responses = try? await session.translations(from: asked)
             if responses == nil {
@@ -243,7 +248,11 @@ struct SearchView: View {
                 responses = try? await session.translations(from: asked)
             }
             guard let responses else {
-                await MainActor.run { store.forget(batch) }
+                // **쉬었다가 다시 싣는다.** 언어팩을 내려받는 중이면 몇 초 뒤에 되는
+                // 일이고, 쉬지 않고 물으면 되지도 않을 것에 줄이 붙들린다.
+                // 몇 번까지 보낼지는 줄이 세고, 그 뒤에는 놓아준다.
+                try? await Task.sleep(for: .seconds(2))
+                await MainActor.run { store.failed(batch) }
                 continue
             }
             let pairs = responses.map { (source: $0.sourceText, target: $0.targetText) }

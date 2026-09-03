@@ -3,7 +3,7 @@
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-142%2F150%20%2894%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-148%2F150%20%2898%25%29-171717?style=flat-square)
 ![쿼리](https://img.shields.io/badge/%EC%BF%BC%EB%A6%AC-0.15ms-4a4a4a?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-235%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-243%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -113,6 +113,7 @@ Mworago/                  MworagoCore — 앱·도구가 함께 쓰는 순수 �
     JMDict.swift          JMdict XML 스트리밍 파서와 읽기 색인
     DictionaryStore.swift 미리 구운 SQLite 색인. 여는 데 0.001초
     FrequencyList.swift   애니 도메인 빈도 목록
+    TranslationQueue.swift 옮길 것이 서는 줄. 세션이 물러나도 줄은 다시 열린다
   Runner/
     Transliterator.swift  한글 → 가나 후보 생성
     Deinflector.swift     활용형을 사전형으로 되돌리기
@@ -121,7 +122,7 @@ Mworago/                  MworagoCore — 앱·도구가 함께 쓰는 순수 �
     Ranker.swift          살아남은 후보 줄 세우기
 MworagoApp/               앱. 폴더 자리는 SpringLab 을 따른다
   App/ · Store/ · Views/
-MworagoTests/             테스트 235개. 평면으로 두고 파일 이름으로 구분한다
+MworagoTests/             테스트 243개. 평면으로 두고 파일 이름으로 구분한다
 Tools/
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
   Translator/             한국어 뜻을 온디바이스 모델로 미리 굽는다
@@ -133,7 +134,7 @@ docs/                     기록
 ## 실행
 
 ```sh
-swift test                  # 테스트 235개
+swift test                  # 테스트 243개
 ./Tools/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```
