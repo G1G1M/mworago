@@ -205,7 +205,11 @@ func value(_ flag: String) -> String? {
 }
 
 let indexPath = value("--index") ?? "Tools/data/mworago-dict.db"
-let frequencyPath = value("--freq") ?? "Tools/data/jpdb_freq.csv"
+// **앱이 싣는 빈도 목록으로 굽는다.** 무엇을 구울지는 이 목록의 차례가 정하는데,
+// 한때 기본값이 JPDB 였다. 그것으로 3만 등까지 구워 놓고도 앱 기준으로는 구멍이
+// 1,232개 남아 있었다 — 두 목록이 고르는 낱말이 다르다(JESC 3만 등 대상 9,501개 중
+// JPDB 3만 등에 없는 것이 2,131개). 측정기가 같은 자리에서 어긋났던 것과 같은 병이다.
+let frequencyPath = value("--freq") ?? "MworagoApp/Resources/jesc_freq.tsv"
 let outputPath = value("--out") ?? "Tools/data/korean-gloss.tsv"
 let limit = value("--limit").flatMap(Int.init) ?? 20000
 // 모델에 무엇이 넘어가는지만 보고 끝낸다. 결과가 이상할 때
@@ -236,6 +240,9 @@ if let existing = try? String(contentsOfFile: outputPath, encoding: .utf8) {
     log("이미 끝난 것 \(done.count)개 — 건너뛴다")
 }
 
+// **무엇으로 고르는지 먼저 찍는다.** 대상 집합을 정하는 것이 빈도 목록과 순위 상한인데,
+// 그것을 안 남기면 나중에 "왜 이 낱말이 안 구워졌나"를 되짚을 수가 없다.
+log("빈도 목록 \(frequencyPath) · 순위 상한 \(maxRank.map(String.init) ?? "없음") · 개수 상한 \(limit)")
 var skipped: [Skipped] = []
 let jobs = pickOnly(try loadJobs(indexPath: indexPath, frequencyPath: frequencyPath, limit: limit,
                                  maxRank: maxRank, skipped: &skipped), only)
