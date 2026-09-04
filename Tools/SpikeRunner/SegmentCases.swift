@@ -215,13 +215,15 @@ enum SegmentEval {
                          segmentCost: Double,
                          unknownScore: Double = Segmenter.defaultUnknownScore,
                          boundPenalty: Double = Segmenter.defaultBoundPenalty,
+                         junctionBonus: Double = Segmenter.defaultJunctionBonus,
                          cache: SearchCache? = nil) -> Score {
         var score = Score()
         for testCase in cases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
                                              weights: weights,
                                              segmentCost: segmentCost, unknownScore: unknownScore,
-                                             boundPenalty: boundPenalty, cache: cache)
+                                             boundPenalty: boundPenalty,
+                                             junctionBonus: junctionBonus, cache: cache)
             let mine = segments.map(\.hangul)
             score.total += 1
             if mine == testCase.pieces { score.exact += 1 }

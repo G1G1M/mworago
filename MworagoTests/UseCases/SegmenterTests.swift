@@ -61,10 +61,15 @@ struct SegmenterTests {
     func 첫머리조사() {
         // 벌점이 없으면 `도코에`(どこへ, 어디로)가 `と`+`こえ` 로 갈린다 —
         // 되살린 원문이 `とこえ` 라는 말이 안 되는 문자열이 되어 번역기로 넘어간다.
-        let 벌점없이 = Segmenter.segment("도코에", in: Self.첫머리사전, boundPenalty: 0)
+        //
+        // **두 규칙을 갈라서 본다.** 조사 경계 보너스만으로도 이 자리는 뒤집히므로,
+        // 그것을 켜 둔 채로는 첫머리 벌점이 제 몫을 하는지 알 수 없다.
+        let 벌점없이 = Segmenter.segment("도코에", in: Self.첫머리사전,
+                                       boundPenalty: 0, junctionBonus: 0)
         #expect(벌점없이.filter { !$0.isWhole }.map(\.hangul) == ["도", "코에"])
 
-        let 벌점주고 = Segmenter.segment("도코에", in: Self.첫머리사전, boundPenalty: 40)
+        let 벌점주고 = Segmenter.segment("도코에", in: Self.첫머리사전,
+                                       boundPenalty: 40, junctionBonus: 0)
         #expect(벌점주고.filter { !$0.isWhole }.map(\.hangul) == ["도코", "에"])
     }
 
@@ -81,6 +86,38 @@ struct SegmenterTests {
         // "그런데 …" 로 시작하는 멀쩡한 문장이 밀린다.
         let 결과 = Segmenter.segment("데모코에", in: Self.첫머리사전, boundPenalty: 40)
         #expect(결과.filter { !$0.isWhole }.map(\.hangul) == ["데모", "코에"])
+    }
+
+    /// 조사가 뒷낱말에 삼켜지는 자리를 시험할 사전.
+    ///
+    /// 실제로 났던 일이다 — `쿄다이가이마스카`(兄弟がいますか, 형제가 있습니까)가
+    /// `巨大`(거대) + `買います`(삽니다) 로 갈렸다. 조사 `が` 가 뒤의 `います` 와 붙어
+    /// **사전에 있는 딴 낱말**이 되는데, 조각이 하나 줄어 비용까지 아낀다.
+    static let 삼킴사전: DictIndex = 사전([
+        ("兄弟", "きょうだい", 100, ["n"]),
+        ("が", "が", 200, ["prt"]),
+        ("居ます", "います", 150, ["v1"]),
+        ("買います", "かいます", 220, ["v5u"]),
+    ])
+
+    @Test("조사는 자립어 뒤가 제자리다")
+    func 조사가_삼켜지는_것() {
+        // 보너스가 없으면 조각을 덜 만드는 쪽이 이겨서 조사가 통째로 삼켜진다.
+        let 보너스없이 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전, junctionBonus: 0)
+        #expect(보너스없이.filter { !$0.isWhole }.map(\.hangul) == ["쿄다이", "가이마스"])
+
+        // 자립어 뒤에 조사가 서는 경계를 편들면 제자리를 찾는다.
+        let 보너스주고 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전, junctionBonus: 40)
+        #expect(보너스주고.filter { !$0.isWhole }.map(\.hangul) == ["쿄다이", "가", "이마스"])
+    }
+
+    @Test("보너스는 조사 앞이 자립어일 때만 붙는다")
+    func 보너스_거는_자리() {
+        // 어절 첫머리의 조사에는 보너스가 아니라 벌점이 걸린다. 두 규칙이 한 자리에서
+        // 부딪히면 안 되므로, 첫머리 조사가 보너스로 되살아나지 않는지 못을 박는다.
+        let 결과 = Segmenter.segment("도코에", in: Self.첫머리사전,
+                                    boundPenalty: 40, junctionBonus: 40)
+        #expect(결과.filter { !$0.isWhole }.map(\.hangul) == ["도코", "에"])
     }
 
     @Test("띄어 쓴 입력은 어절마다 나눈다")

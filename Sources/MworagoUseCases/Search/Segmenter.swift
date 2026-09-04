@@ -63,6 +63,50 @@ public enum Segmenter {
     /// 제한이 없으면 긴 입력에서 후보가 제곱으로 불어난다.
     private static let maxPieceLength = 10
 
+    /// 조각이 문장에서 맡는 자리. **앞뒤를 함께 보는 규칙은 이 갈래로 말한다.**
+    private enum Role: Int, CaseIterable {
+        /// 어절의 첫머리. 앞에 아무것도 없다는 것 자체가 하나의 자리다.
+        case start
+        /// 자립어. **갈래를 모르는 것도 여기다** — 모르는 것을 부착어로 몰면
+        /// 멀쩡한 낱말이 벌을 받는다.
+        case content
+        /// 조사·조동사·계사. 앞에 기댈 자립어가 있어야 한다.
+        case bound
+        /// 사전에 없는 조각.
+        case unknown
+
+        /// **그 조각의 1위가 그 조각의 얼굴이다.** 조각마다 갈래별로 가장 좋은 후보를
+        /// 따로 골라 보는 길도 있지만, 그러면 규칙이 스스로 무력해진다 — `도` 는
+        /// 조사 `と`(100)와 명사 `土`(100)를 함께 내므로, 조사에 벌점을 물리면
+        /// 같은 점수의 명사로 갈아타서 벌점을 피해 버린다.
+        init(_ top: SearchResult?) {
+            guard let top else { self = .unknown; return }
+            self = top.entry.isBound ? .bound : .content
+        }
+    }
+
+    /// DP 한 칸. 어디서 왔고 그때 앞 조각이 무슨 갈래였는지를 함께 들고 있다.
+    private struct Step {
+        let score: Double
+        let start: Int
+        let previous: Role
+    }
+
+    /// 조각과 조각 사이에 얹는 값. **조사 앞에서만 걸린다.**
+    ///
+    /// 조사가 어디에 서야 하는지를 한 자리에 모아 적은 것이다 —
+    /// 앞에 아무것도 없으면 그것은 조사가 아니고(벌점), 앞이 자립어면 제자리다(보너스).
+    /// 조사 뒤에 조사가 오는 것(`には`·`では`)은 실제로 흔하므로 아무것도 하지 않는다.
+    private static func junction(from previous: Role, to current: Role,
+                                 boundPenalty: Double, junctionBonus: Double) -> Double {
+        guard current == .bound else { return 0 }
+        switch previous {
+        case .start:   return -boundPenalty
+        case .content: return junctionBonus
+        case .bound, .unknown: return 0
+        }
+    }
+
     /// **빈도 목록에 없는 낱말을 편들어 보았지만, 재서 넣지 않았다.**
     ///
     /// `ではない`(exp)는 사전에 있는데 빈도 목록에는 없어 10점이고, 쪼갠 조각
@@ -132,6 +176,11 @@ public enum Segmenter {
     ///
     /// 140 은 `何時` 도 지킨다(`今 何時 です か`). 135 를 지키던 까닭이 그것뿐이었으므로
     /// 이제 훑기가 고른 값을 그대로 쓴다.
+    ///
+    /// **조사 경계 보너스를 넣은 뒤 다시 훑으니 145 가 나왔지만 옮기지 않았다.**
+    /// (145 · 활용 벌점 10 · 보너스 12 에서 Tanaka 완전일치 50.7%, 140 · 5 · 12 는 49.0%.)
+    /// 화면에서 진짜로 깨진 문장을 세면 순서가 뒤집힌다 — 145 쪽이 94, 140 쪽이 89 다.
+    /// 표본 300개에서 세 값을 한꺼번에 옮기는 것은 채점표에 몸을 맞추는 일에 가깝다.
     public static let defaultSegmentCost = 140.0
 
     /// 어절의 첫 조각이 부착어(조사·조동사·계사)일 때 무는 벌점.
@@ -171,6 +220,44 @@ public enum Segmenter {
     /// 부사에는 열어 두고 있었다. 둘을 함께 막아야 `何処 へ` 가 선다.
     public static let defaultBoundPenalty = 40.0
 
+    /// 자립어 뒤에 조사가 서는 경계에 얹는 보너스.
+    ///
+    /// **조사가 뒷낱말에 삼켜지고 있었다.** `쿄다이가이마스카`(兄弟がいますか,
+    /// 형제가 있습니까)가 `巨大`(거대) + `買います`(삽니다) 로 갈렸다 — `が` 가 뒤의
+    /// `います` 와 붙어 사전에 있는 딴 낱말이 되는데, 조각이 하나 줄어 비용까지 아낀다.
+    ///
+    /// Tanaka 문장 300개의 틀린 분절을 갈라 보니 **화면에서 진짜로 틀린 101건 가운데
+    /// 45건이 이것**이었다(삼켜진 조사는 `が` 16 · `を` 13 · `で` 7 · `に` 6 · `は` 5).
+    /// 나머지는 자립어를 깬 과분할 26건과 그 밖의 뭉침·엇갈림 30건이다.
+    ///
+    /// 조각 비용은 어느 경계에나 똑같이 걸린다. 그런데 **조사 앞 경계는 다른 경계와
+    /// 다르다** — 조사는 붙어 다니지만 제 몫의 낱말이고, 일본어 문장에서 가장 자주
+    /// 나는 경계다. 그 자리를 값싸게 만들어 주는 것이 이 값이다.
+    ///
+    /// 앞 조각이 무엇이었는지를 봐야 하므로 **자리마다 점수 하나로는 모자란다.**
+    /// 그래서 DP 가 마지막 조각의 갈래를 함께 들고 다닌다(`Role`).
+    ///
+    /// **잣대 둘이 서로 다른 값을 고른다.** Tanaka 채점표는 10 을, 화면에서 진짜로
+    /// 깨진 문장만 세면 18~25 를 고른다. 채점표는 `ですか` 를 한 덩어리로 보는데
+    /// 우리가 `です`+`か` 로 나누면 틀렸다고 세기 때문이다 — 화면에는 둘 다 제 뜻이 뜬다.
+    ///
+    ///     보너스    Tanaka 틀림    진짜 오류
+    ///        0        157/300       101/300
+    ///        8        153            92
+    ///       10        152            91
+    ///       12        153            89     ← 고른 값
+    ///       18        156            87
+    ///       25        161            87
+    ///       40        192            91
+    ///
+    /// **18 을 고르지 않은 것은 그 잣대가 이 규칙을 편들기 때문이다.** "조사를 떼어낸
+    /// 것은 오류로 안 센다"는 잣대에 대고 조사 떼기를 키우면 당연히 좋아진다.
+    /// 12 는 두 잣대가 다 인정하는 자리다(채점표 최고 152 와 한 건 차이).
+    ///
+    /// 40 에서 두 잣대가 함께 무너진다. 자립어를 깬 문장이 26 → 52 로 늘어난다 —
+    /// `そんなに` 가 `そんな`+`に` 로, `いつも` 가 `いつ`+`も` 로 갈린다.
+    public static let defaultJunctionBonus = 12.0
+
     /// 분절이 쓰는 가중치. 낱말 검색과 한 가지가 다르다 — **활용을 되돌린 것에 무는 벌점**.
     ///
     /// 낱말 검색에서 이 벌점(25)은 타당하다. 사용자가 낱말 하나를 쳤다면 등재형일
@@ -196,6 +283,7 @@ public enum Segmenter {
                                segmentCost: Double = defaultSegmentCost,
                                unknownScore: Double = defaultUnknownScore,
                                boundPenalty: Double = defaultBoundPenalty,
+                               junctionBonus: Double = defaultJunctionBonus,
                                cache: SearchCache? = nil) -> [Segment] {
         var segments: [Segment] = []
         // 사람이 띄어 썼다면 그 뜻을 존중한다. 어절 안쪽만 사전을 보고 나눈다.
@@ -204,6 +292,7 @@ public enum Segmenter {
                                     weights: weights, segmentCost: segmentCost,
                                     unknownScore: unknownScore,
                                     boundPenalty: boundPenalty,
+                                    junctionBonus: junctionBonus,
                                     cache: cache)
         }
         return segments
@@ -216,6 +305,7 @@ public enum Segmenter {
                                     segmentCost: Double,
                                     unknownScore: Double,
                                     boundPenalty: Double,
+                                    junctionBonus: Double,
                                     cache: SearchCache?) -> [Segment] {
         let syllables = Array(word)
         guard !syllables.isEmpty else { return [] }
@@ -229,13 +319,17 @@ public enum Segmenter {
             }
         }
 
-        // best[i] = 앞에서부터 i음절까지를 나눈 최선의 방법
-        var best: [(score: Double, start: Int)?] = Array(repeating: nil, count: syllables.count + 1)
-        best[0] = (0, -1)
+        // best[i][갈래] = 앞에서부터 i음절까지를 나눈 최선의 방법. **갈래는 마지막 조각의 것**이다.
+        //
+        // 자리마다 점수 하나만 들고 가면 앞뒤를 함께 보는 규칙을 걸 수가 없다 —
+        // 같은 자리라도 마지막 조각이 자립어였는지 조사였는지에 따라 다음 경계의 값이
+        // 달라진다. 갈래가 넷뿐이라 상태를 넷으로 늘려도 값이 거의 안 든다.
+        var best = Array(repeating: [Step?](repeating: nil, count: Role.allCases.count),
+                         count: syllables.count + 1)
+        best[0][Role.start.rawValue] = Step(score: 0, start: -1, previous: .start)
 
         for end in 1...syllables.count {
             for start in max(0, end - maxPieceLength)..<end {
-                guard let previous = best[start] else { continue }
                 let piece = String(syllables[start..<end])
                 let results = lookup(piece)
                 // **모르는 조각은 길수록 나쁘다.** 길이와 무관하게 한 번만 깎으면
@@ -245,22 +339,31 @@ public enum Segmenter {
                 // 길이에 비례시켜도 "정말 모르는 구간은 통째로 둔다"는 그대로다.
                 // 잘게 쪼개면 벌점 합은 같은데 조각 비용만 더 들기 때문이다.
                 let piecePenalty = unknownScore * Double(end - start)
-                var score = (results.first?.score ?? piecePenalty) - segmentCost
-                // **어절의 첫머리에는 기댈 말이 없다.** 거기 조사가 서면 그것은 조사가 아니다.
-                if start == 0, results.first?.entry.isBound == true { score -= boundPenalty }
-                let total = previous.score + score
-                if best[end] == nil || total > best[end]!.score {
-                    best[end] = (total, start)
+                let base = (results.first?.score ?? piecePenalty) - segmentCost
+                let role = Role(results.first)
+
+                for previous in Role.allCases {
+                    guard let step = best[start][previous.rawValue] else { continue }
+                    let total = step.score + base
+                        + junction(from: previous, to: role,
+                                   boundPenalty: boundPenalty, junctionBonus: junctionBonus)
+                    if best[end][role.rawValue] == nil || total > best[end][role.rawValue]!.score {
+                        best[end][role.rawValue] = Step(score: total, start: start, previous: previous)
+                    }
                 }
             }
         }
 
-        // 뒤에서부터 되짚어 조각을 모은다
+        // 뒤에서부터 되짚어 조각을 모은다. 끝자리에서 가장 좋은 갈래부터 잡는다.
         var pieces: [String] = []
         var cursor = syllables.count
-        while cursor > 0, let step = best[cursor] {
+        var role = best[cursor].enumerated()
+            .compactMap { index, step in step.map { (Role(rawValue: index)!, $0.score) } }
+            .max { $0.1 < $1.1 }?.0
+        while cursor > 0, let current = role, let step = best[cursor][current.rawValue] {
             pieces.append(String(syllables[step.start..<cursor]))
             cursor = step.start
+            role = step.previous
         }
         let segments = pieces.reversed().map { Segment(hangul: $0, results: lookup($0)) }
 

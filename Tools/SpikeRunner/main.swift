@@ -79,6 +79,9 @@ let doSegmentFails = args.contains("--segment-fails")
 let boundPenalty = flagValues("--bound").first.flatMap(Double.init) ?? Segmenter.defaultBoundPenalty
 // 그 벌점만 훑는다. 조각을 찾아본 결과는 벌점과 무관하므로 한 벌을 물려 써서 빠르다.
 let doBoundSweep = args.contains("--bound-sweep")
+// 자립어 뒤에 조사가 서는 경계에 얹는 보너스. 0 이면 그 규칙을 쓰지 않는다.
+let junctionBonus = flagValues("--junction").first.flatMap(Double.init) ?? Segmenter.defaultJunctionBonus
+let doJunctionSweep = args.contains("--junction-sweep")
 // 활용을 되돌린 결과에 무는 벌점. 낱말 검색에서 정한 값이 분절에도 맞는지는
 // 따로 재야 안다 — 분절에서는 이 벌점이 활용형을 조각내는 쪽을 편들 수 있다.
 let deinflectionPenalty = flagValues("--deinf-penalty").first.flatMap(Double.init)
@@ -124,7 +127,7 @@ let positional: [String] = {
             let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
-                || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound"
+                || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -343,7 +346,7 @@ if let buildFrequencyLimit {
 //
 // 분절 정답은 Tanaka Corpus 에서 온다. 사람이 손으로 나눈 낱말 경계라 내가 정할 게 없다.
 
-if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep {
+if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep || doJunctionSweep {
     let corpusPath = "Tools/data/examples.utf"
     let count = segmentCaseCount ?? 300
     log("Tanaka Corpus 읽는 중… \(corpusPath)")
@@ -360,11 +363,13 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep {
         var wrong = 0
         let weights = tunedWeights
         let cost = flagValues("--cost").first.flatMap(Double.init) ?? Segmenter.defaultSegmentCost
-        log("조각 비용 \(cost) · 활용 벌점 \(weights.deinflectionPenalty) · 첫머리 조사 벌점 \(boundPenalty)")
+        log("조각 비용 \(cost) · 활용 벌점 \(weights.deinflectionPenalty)"
+            + " · 첫머리 조사 벌점 \(boundPenalty) · 조사 경계 보너스 \(junctionBonus)")
         for testCase in segmentCases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
                                              weights: weights, segmentCost: cost,
-                                             boundPenalty: boundPenalty)
+                                             boundPenalty: boundPenalty,
+                                             junctionBonus: junctionBonus)
             let mine = segments.map(\.hangul)
             guard mine != testCase.pieces else { continue }
             wrong += 1
@@ -375,7 +380,8 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep {
         for testCase in segmentCases {
             let segments = Segmenter.segment(testCase.hangul, in: index, frequency: frequency,
                                              weights: weights, segmentCost: cost,
-                                             boundPenalty: boundPenalty)
+                                             boundPenalty: boundPenalty,
+                                             junctionBonus: junctionBonus)
             guard segments.map(\.hangul) == testCase.pieces else { continue }
             for (i, segment) in segments.enumerated() where i < testCase.words.count {
                 let word = testCase.words[i]
@@ -387,11 +393,30 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep {
         }
         let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
                                          weights: weights, segmentCost: cost,
-                                         boundPenalty: boundPenalty)
+                                         boundPenalty: boundPenalty,
+                                         junctionBonus: junctionBonus)
         log("틀린 것 \(wrong)/\(segmentCases.count)")
         log(String(format: "경계를 맞힌 조각 %d개 · 1위 %.1f%% · 3위 안 %.1f%% · 후보 안 %.1f%%",
                    score.senseTotal, score.senseRate * 100,
                    score.senseTop3Rate * 100, score.senseAnywhereRate * 100))
+        exit(0)
+    }
+
+    if doJunctionSweep {
+        // 조각을 찾아본 결과는 이 보너스와 무관하므로 한 벌을 물려 쓴다.
+        let sweepCache = SearchCache(limit: .max)
+        let weights = tunedWeights
+        let cost = flagValues("--cost").first.flatMap(Double.init) ?? Segmenter.defaultSegmentCost
+        print("조사 경계 보너스   완전일치   경계F1   1위")
+        print(String(repeating: "─", count: 50))
+        for bonus in [0.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 25.0] {
+            let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
+                                             weights: weights, segmentCost: cost,
+                                             boundPenalty: boundPenalty,
+                                             junctionBonus: bonus, cache: sweepCache)
+            print(String(format: "%13.0f   %7.1f%%   %6.3f   %5.1f%%",
+                         bonus, score.exactRate * 100, score.f1, score.senseRate * 100))
+        }
         exit(0)
     }
 
@@ -406,7 +431,8 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep {
         for penalty in [0.0, 10.0, 20.0, 40.0, 80.0, 160.0, 320.0] {
             let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
                                              weights: weights, segmentCost: cost,
-                                             boundPenalty: penalty, cache: sweepCache)
+                                             boundPenalty: penalty,
+                                             junctionBonus: junctionBonus, cache: sweepCache)
             print(String(format: "%13.0f   %7.1f%%   %6.3f   %5.1f%%",
                          penalty, score.exactRate * 100, score.f1, score.senseRate * 100))
         }
@@ -443,7 +469,8 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep {
             let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
                                              weights: sweepWeights,
                                              segmentCost: cost, unknownScore: unknown,
-                                             boundPenalty: boundPenalty, cache: sweepCache)
+                                             boundPenalty: boundPenalty,
+                                             junctionBonus: junctionBonus, cache: sweepCache)
             rows.append((cost, penalty, score.exactRate, score.f1))
             if best == nil || score.exactRate > best!.exact || (score.exactRate == best!.exact && score.f1 > best!.f1) {
                 best = (cost, penalty, score.f1, score.exactRate)
@@ -629,7 +656,7 @@ if !segmentInputs.isEmpty {
     for input in segmentInputs {
         let start = Date()
         let segments = Segmenter.segment(input, in: index, frequency: frequency, segmentCost: cost,
-                                         boundPenalty: boundPenalty)
+                                         boundPenalty: boundPenalty, junctionBonus: junctionBonus)
         let elapsed = -start.timeIntervalSinceNow * 1000
 
         let joined = segments.map { segment in
