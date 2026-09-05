@@ -3,7 +3,7 @@
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-142%2F150%20%2894%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-147%2F150%20%2898%25%29-171717?style=flat-square)
 ![쿼리](https://img.shields.io/badge/%EC%BF%BC%EB%A6%AC-0.15ms-4a4a4a?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-290%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-300%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -49,7 +49,14 @@
 그 길로 옮길 수 없어 손으로 적은 표를 쓴다(`Tools/data/function-gloss.tsv`) —
 `の → ~의, ~것` 처럼 뜻이 아니라 **자리**를 적는다.
 
-지금 **앱이 싣는 빈도 목록(JESC)의 낱말 15,437개가 전부 한국어 뜻을 달고 있다.**
+지금 **굽기 대상 37,948개 중 28,747개(75.8%)가 한국어 뜻을 달고 있다.** 흔한 쪽은
+거의 다 찼고(1~1,000위 99.7% · 1,000~5,000위 98.0%) 아래로 갈수록 빈다.
+
+한때 "전부 달았다"고 적혀 있었는데, **그 숫자는 대상 집합이 조용히 좁아진 뒤에 잰
+것이었다.** 빈도 목록의 읽기를 조회 키로 접어 내보내는 바람에 장음이 든 낱말
+7,653개가 굽기 대상에서 통째로 빠져 있었고, 구멍을 세는 쪽도 같은 잣대라 그것이
+구멍으로 잡히지 않았다(`FrequencyList.sortedEntries`).
+
 남은 자리는 `./Tools/inspect/gloss-holes.sh` 가 구간별로 세어 준다 — 굽기 로그는
 이번에 몇 개를 구웠는지만 알려 주고 구멍이 어디 몰렸는지는 말하지 않는다.
 
@@ -181,7 +188,7 @@ MworagoApp/               앱
     Kana/                 가나표
     Settings/             설정과 만든 것들
     Shared/               화면들이 나눠 쓰는 것 — 색·판·넘기기·소리·품사표
-MworagoTests/             테스트 290개. 층으로 나눈다
+MworagoTests/             테스트 300개. 층으로 나눈다
   Domain/  UseCases/  Infra/
 Tools/                    앱에 실리지 않는 것들
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
@@ -196,7 +203,7 @@ docs/                     기록
 ## 실행
 
 ```sh
-swift test                  # 테스트 290개
+swift test                  # 테스트 300개
 ./Tools/fetch/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```
