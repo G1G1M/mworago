@@ -30,6 +30,9 @@ public struct FrequencyList: Sendable {
     /// "이 낱말을 사람들이 한자로 적는가, 가나로 적는가". 그것은 두 표기의 **횟수 비**라서
     /// 순위 차로는 가늠이 안 된다(`丘` 314 대 `おか` 357 은 순위로 멀어 보인다).
     private let occurrences: [Key: Int]
+    /// 조회 키로 접기 **전**의 읽기 글자. 키는 장음을 하나로 접지만
+    /// (`おおきい` → `おーきー`), 밖으로 내보낼 때는 사전이 든 글자 그대로여야 한다.
+    private let readingTexts: [Key: String]
 
     public var isEmpty: Bool { ranks.isEmpty }
     public var count: Int { ranks.count }
@@ -37,6 +40,7 @@ public struct FrequencyList: Sendable {
     public init(tsv: String) {
         var ranks: [Key: Int] = [:]
         var occurrences: [Key: Int] = [:]
+        var readingTexts: [Key: String] = [:]
         for line in tsv.split(separator: "\n").dropFirst() {   // 첫 줄은 헤더
             let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
             guard columns.count >= 3, let rank = Int(columns[2]) else { continue }
@@ -48,6 +52,7 @@ public struct FrequencyList: Sendable {
             // 같은 낱말이 여러 번 나오면 더 흔한(순위가 앞선) 쪽을 남긴다
             if let existing = ranks[key], existing <= rank { continue }
             ranks[key] = rank
+            readingTexts[key] = String(columns[1])
         }
 
         var byWriting: [String: Int] = [:]
@@ -59,6 +64,7 @@ public struct FrequencyList: Sendable {
         self.ranks = ranks
         self.ranksByWriting = byWriting
         self.occurrences = occurrences
+        self.readingTexts = readingTexts
     }
 
     /// **이 낱말을 말뭉치가 한자로 적는 비율.** 0 이면 늘 가나로 적는다는 뜻이다.
@@ -75,8 +81,15 @@ public struct FrequencyList: Sendable {
     }
 
     /// 순위가 앞선 것부터 (순위, 표기, 읽기). 케이스를 뽑을 때 쓴다.
+    ///
+    /// **읽기는 접기 전 글자로 돌려준다.** 안에서 쓰는 키는 장음을 하나로 접는데
+    /// (`おおきい` → `おーきー`), 그 접힌 글자를 그대로 내보내면 사전이 든 읽기와
+    /// 어긋난다. 뜻을 굽는 쪽이 둘을 맞대어 대상을 고르므로(`Translator.loadJobs`)
+    /// 어긋나는 순간 **장음이 든 낱말이 통째로 대상에서 빠진다** — 재 보니 빈도 목록
+    /// 69,048개 중 7,653개(11%)였고, 구멍을 세는 쪽도 같은 잣대라 안 보였다.
     public func sortedEntries() -> [(rank: Int, writing: String, reading: String)] {
-        ranks.map { (rank: $0.value, writing: $0.key.writing, reading: $0.key.reading) }
+        ranks.map { (rank: $0.value, writing: $0.key.writing,
+                     reading: readingTexts[$0.key] ?? $0.key.reading) }
             .sorted { $0.rank < $1.rank }
     }
 

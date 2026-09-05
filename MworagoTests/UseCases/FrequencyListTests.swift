@@ -113,3 +113,35 @@ struct FrequencyKatakanaTests {
         #expect(FrequencyList(tsv: Self.tsv).score(writing: nil, reading: "すし") == 0)
     }
 }
+
+@Suite("빈도표를 차례대로 내보낼 때")
+struct FrequencySortedEntriesTests {
+
+    static let tsv = """
+        term\treading\tfrequency\tcount
+        大きい\tおおきい\t1737\t1268
+        東京\tとうきょう\t900\t2000
+        悪い\tわるい\t304\t8273
+        """
+
+    /// **내보내는 읽기는 접기 전 글자여야 한다.**
+    ///
+    /// 조회 키는 장음을 하나로 접지만(`おおきい` → `おーきー`), 그 접힌 글자를 밖으로
+    /// 내보내면 사전이 든 읽기와 어긋난다. 뜻을 굽는 쪽이 그 둘을 맞대어 대상을 고르므로
+    /// (`Translator.loadJobs`), 어긋나는 순간 **장음이 든 낱말이 통째로 대상에서 빠진다** —
+    /// 빈도 목록 69,048개 중 7,653개(11%)가 그렇다. 구멍을 세는 쪽도 같은 잣대라
+    /// 빠진 것이 구멍으로도 안 잡혔다.
+    @Test("읽기는 접기 전 글자 그대로 나온다")
+    func 원래글자() {
+        let entries = FrequencyList(tsv: Self.tsv).sortedEntries()
+        #expect(entries.map(\.reading) == ["わるい", "とうきょう", "おおきい"])
+        #expect(entries.map(\.writing) == ["悪い", "東京", "大きい"])
+    }
+
+    /// 접는 것 자체는 그대로 있어야 한다. 조회는 여전히 접힌 키로 만난다.
+    @Test("찾을 때는 접은 채로 만난다")
+    func 조회는그대로() {
+        let list = FrequencyList(tsv: Self.tsv)
+        #expect(list.rank(writing: "東京", reading: "とうきょお") == 900)
+    }
+}

@@ -120,7 +120,7 @@ func translateWithOllama(_ job: Job, model: String, instructions: String,
     let 품사 = job.wordClass.koreanName ?? "낱말"
     let prompt = "\(job.writing)（\(job.reading)）· \(품사) · \(job.english.prefix(2).joined(separator: ", ")) →"
 
-    let body: [String: Any] = [
+    var body: [String: Any] = [
         "model": model, "system": instructions, "prompt": prompt, "stream": false,
         // 사전을 만드는 일이라 **매번 같은 답이 나와야 한다.** 그래서 기본은 온도 0 이다.
         //
@@ -129,6 +129,11 @@ func translateWithOllama(_ job: Job, model: String, instructions: String,
         // 토큰 한도도 마찬가지다. 32 로는 설명이 붙는 낱말에서 문장이 잘려 나갔다.
         "options": ["temperature": temperature, "num_predict": tokens],
     ]
+    // **생각을 끄고 답만 받는다.** Qwen3 계열은 답 앞에 `<think>` 덩어리를 먼저 뱉는데,
+    // 낱말 하나를 옮기는 데 그것이 수백 토큰을 먹는다 — `num_predict` 32 안에서는
+    // 생각만 하다 끝나 답이 한 글자도 안 나온다. 생각을 지원하지 않는 모델은
+    // 이 값을 그냥 무시한다(재 봤다).
+    if model.contains("qwen3") { body["think"] = false }
     var request = URLRequest(url: URL(string: "http://localhost:11434/api/generate")!)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -140,9 +145,15 @@ func translateWithOllama(_ job: Job, model: String, instructions: String,
           let text = json["response"] as? String
     else { throw Failure("ollama 응답을 읽지 못했다") }
 
+    // 생각 덩어리가 딸려 오면 걷어낸다. 끄고 물었어도 모델이 본문에 적어 보내는 일이 있다.
+    var body부분 = text
+    if let close = body부분.range(of: "</think>") { body부분 = String(body부분[close.upperBound...]) }
+
     // 모델이 줄을 여럿 뱉으면 첫 줄만 쓴다. 뒷줄은 대개 자기 설명이다.
-    return text.split(separator: "\n").first
-        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
+    // **빈 줄은 건너뛴다** — 생각을 걷어낸 자리에 줄바꿈이 남아 첫 줄이 빈 칸이 된다.
+    return body부분.split(separator: "\n")
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .first { !$0.isEmpty } ?? ""
 }
 
 #if canImport(FoundationModels)
