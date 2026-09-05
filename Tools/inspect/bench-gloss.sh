@@ -34,7 +34,9 @@ swift build --product Translator > /dev/null
 ONLY=$(cat $GOLD | grep -v '^#' | cut -f1 | LC_ALL=C sort -u | grep . | tr '\n' ',' | sed 's/,$//')
 
 mkdir -p Tools/data/bench
-rm -f "$OUT"
-echo "== $MODEL → $OUT"
+# **지우지 않는다.** Translator 는 `--out` 에 이미 있는 것을 건너뛰므로 끊긴 자리에서
+# 이어 굽는다. 지우고 시작하면 다른 창에서 같은 모델을 한 번 더 띄우는 순간
+# 앞의 것이 통째로 날아간다 — 실제로 1,186줄을 그렇게 잃었다.
+echo "== $MODEL → $OUT ($([ -f "$OUT" ] && wc -l < "$OUT" || echo 0) 줄에서 이어서)"
 "$BINARY" --ollama "$MODEL" --only "$ONLY" --out "$OUT" \
           --limit 999999 --max-rank 100000
