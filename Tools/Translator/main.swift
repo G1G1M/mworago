@@ -230,6 +230,49 @@ let tokens = value("--tokens").flatMap(Int.init) ?? 32
 // 낱말들 때문에 훨씬 아래까지 내려간다(2만 개를 채우느라 45,266위까지 갔다).
 let maxRank = value("--max-rank").flatMap(Int.init)
 
+// **뜻 자리에 소리가 들어앉은 것을 찾는다.**
+//
+// 모델이 옮기지 못하면 옮기는 대신 **음차**를 적어 놓는 일이 있다(`霞` → "카스미").
+// 뜻이 없는 것은 화면에서 티가 나지만 이것은 안 난다 — 한국어 글자로 채워져 있다.
+//
+// 외래어는 음차가 곧 뜻이다(`ラーメン` → 라멘). 그래서 **가나로만 쓰는 낱말은 묻지 않고**,
+// 한자 표기가 있는 낱말만 본다.
+if arguments.contains("--audit") {
+    var glosses: [String: String] = [:]
+    for name in ["korean-gloss", "guardrail-gloss", "corrected-gloss", "function-gloss"] {
+        guard let text = try? String(contentsOfFile: "Tools/data/\(name).tsv", encoding: .utf8) else { continue }
+        for line in text.split(separator: "\n") where !line.hasPrefix("#") {
+            let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard columns.count >= 3 else { continue }
+            glosses["\(columns[0])\t\(columns[1])"] = String(columns[2])
+        }
+    }
+    // **한자어는 소리와 뜻이 우연히 같다.** `要素`(ようそ)의 한국어 뜻 "요소"는 음차와
+    // 같은 글자지만 그것이 정말 뜻이다. 한국 독음표가 그 둘을 갈라 준다 —
+    // 뜻이 **독음과도 같으면** 한자어라서 같은 것이고, 독음과 다르면 옮기다 만 것이다.
+    let hanja = HanjaReading(contentsOfFile: "MworagoApp/Resources/hanja-reading.tsv")
+    var 걸린것 = 0
+    for (key, gloss) in glosses.sorted(by: { $0.key < $1.key }) {
+        let parts = key.split(separator: "\t", omittingEmptySubsequences: false)
+        guard parts.count == 2 else { continue }
+        let (writing, reading) = (String(parts[0]), String(parts[1]))
+        // 한자가 없으면 음차가 뜻일 수 있다 — 외래어와 가나 낱말은 건너뛴다.
+        guard writing.unicodeScalars.contains(where: { (0x4E00...0x9FFF).contains($0.value) })
+        else { continue }
+        let 소리 = KanaToHangul.transliterate(reading)
+        guard !소리.isEmpty else { continue }
+        // 뜻이 소리 그대로이거나, 뜻의 첫 갈래가 소리 그대로인 것
+        let 첫뜻 = gloss.split(separator: ",").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? gloss
+        guard gloss == 소리 || 첫뜻 == 소리 else { continue }
+        let 독음 = hanja.reading(of: writing)
+        if 독음 == 소리 || 독음 == 첫뜻 { continue }   // 한자어다
+        걸린것 += 1
+        print("\(writing)\t\(reading)\t\(gloss)\t← 소리 \(소리) · 독음 \(독음 ?? "—")")
+    }
+    log("뜻 자리에 소리가 들어앉은 것 \(걸린것)개 / 뜻 \(glosses.count)개")
+    exit(0)
+}
+
 // 이미 번역한 것은 건너뛴다 — 몇 시간짜리 작업이라 중단은 예외가 아니라 일상이다.
 var done: Set<String> = []
 if let existing = try? String(contentsOfFile: outputPath, encoding: .utf8) {
