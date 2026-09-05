@@ -256,7 +256,33 @@ public enum Segmenter {
     ///
     /// 40 에서 두 잣대가 함께 무너진다. 자립어를 깬 문장이 26 → 52 로 늘어난다 —
     /// `そんなに` 가 `そんな`+`に` 로, `いつも` 가 `いつ`+`も` 로 갈린다.
-    public static let defaultJunctionBonus = 12.0
+    ///
+    /// **"붙여 놓은 것이 사전에 있으면 보너스를 안 준다"는 길은 재서 버렸다.**
+    /// 갈린 부사들을 지키려던 것인데, 그 조건이 **삼킴을 그대로 되살린다** —
+    /// `が`+`います` 를 붙인 `買います` 도 사전에 있는 낱말이라 보너스가 꺼진다.
+    /// 진짜 오류 89 → 96(조사 삼킴 32 → 41)으로 나빠졌다.
+    ///
+    /// 그리고 애초에 그 부사들은 보너스 탓에 갈린 것이 아니었다. `そんなに` 는
+    /// **빈도 목록에 없어 10점**이고 `そんな`(79.8)+`に`(110.5)는 190점이라,
+    /// 보너스가 0 이어도 진다. `ではない` 와 같은 병이다 — 점수로 풀 자리가 아니라
+    /// 빈도를 셀 때 복합 표현을 한 덩어리로 세야 하는 **자료 쪽 문제**였고,
+    /// 그래서 세는 자리를 고쳤다(`--build-frequency` 가 이어진 토큰도 함께 센다).
+    ///
+    /// **빈도 목록이 바뀌자 이 값도 움직였다.** 복합 표현이 제 점수를 얻으면서
+    /// 뭉치는 쪽 힘이 세졌고, 그것을 막는 이 값도 함께 커져야 균형이 맞는다.
+    ///
+    ///     보너스    Tanaka 틀림    진짜 오류
+    ///       12        146/300        87/300
+    ///       16        148            89
+    ///       18        147            85
+    ///       20        147            82     ← 고른 값
+    ///       22        147            83
+    ///       24        151            88
+    ///       30        170            94
+    ///
+    /// 18~22 가 평평하고 그 밖은 나빠진다. Tanaka 쪽은 그 구간에서 움직이지 않으므로
+    /// 이 값은 채점표를 내주지 않고 얻는 것이다.
+    public static let defaultJunctionBonus = 20.0
 
     /// 분절이 쓰는 가중치. 낱말 검색과 한 가지가 다르다 — **활용을 되돌린 것에 무는 벌점**.
     ///
@@ -344,9 +370,9 @@ public enum Segmenter {
 
                 for previous in Role.allCases {
                     guard let step = best[start][previous.rawValue] else { continue }
-                    let total = step.score + base
-                        + junction(from: previous, to: role,
-                                   boundPenalty: boundPenalty, junctionBonus: junctionBonus)
+                    let edge = junction(from: previous, to: role,
+                                        boundPenalty: boundPenalty, junctionBonus: junctionBonus)
+                    let total = step.score + base + edge
                     if best[end][role.rawValue] == nil || total > best[end][role.rawValue]!.score {
                         best[end][role.rawValue] = Step(score: total, start: start, previous: previous)
                     }

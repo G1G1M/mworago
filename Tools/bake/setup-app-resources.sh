@@ -9,6 +9,10 @@ cd "$(dirname "$0")/../.."
 [ -f Tools/data/JMdict_e ]   || ./Tools/fetch/fetch-jmdict.sh
 [ -f Tools/data/split/train ] || ./Tools/fetch/fetch-jesc.sh
 [ -f Tools/data/mworago-dict.db ] || ./Tools/bake/build-index.sh
+# 빈도는 이어진 토큰까지 함께 센다 — `ではない`·`そんなに` 처럼 사전에는 한 낱말인데
+# 토크나이저가 여럿으로 내놓는 것들이 목록에 아예 안 실려 10점에 머물렀다
+# (자세한 것은 SpikeRunner 의 --build-frequency 주석). 어휘 53,776 → 69,049.
+#
 # 빈도는 전량을 센 뒤 여기서 자른다. count>=5 인 것만 싣는다 —
 # 한두 번 나온 낱말은 대부분 토크나이저가 잘못 읽은 것이라 도움이 아니라 방해였다.
 # 재어 보니 어휘가 112,317 에서 53,775 로 절반이 되는데 분절 완전일치는 30.0%에서

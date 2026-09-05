@@ -293,6 +293,36 @@ if let buildFrequencyLimit {
     }
     defer { try? handle.close() }
 
+    // **복합 표현을 한 덩어리로도 센다.**
+    //
+    // 토크나이저는 낱말 하나씩만 내놓는다. 그래서 `ではない`·`そんなに`·`すぐに` 처럼
+    // **사전에는 한 낱말로 실려 있는데 토큰으로는 여럿인 것**이 빈도 목록에 아예 안 실렸고,
+    // 점수가 10점(JMdict 태그 점수)에 머물렀다. 쪼갠 조각들은 100점대라 반드시 진다 —
+    // `そんなに`(10) 대 `そんな`(79.8)+`に`(110.5).
+    //
+    // 틀린 분절 153건 가운데 129건이 **정답 낱말 하나가 빈도 목록에 없는** 문장이었다.
+    // 점수나 조각 비용으로 풀 자리가 아니라 세는 자리에서 안 센 것이다.
+    //
+    // 이어진 토큰 둘~넷을 붙여 보고 **사전에 그 낱말이 있을 때만** 한 번 더 센다.
+    // 아무 이어짐이나 세면 말뭉치에 없는 낱말이 생긴다.
+    var compoundKeys = Set<FrequencyList.Key>()
+    if let dictData = FileManager.default.contents(atPath: dictPath),
+       let entries = try? JMDictParser.parse(data: dictData) {
+        for entry in entries {
+            for reading in entry.readings {
+                // 가나로 쓰는 낱말은 읽기가 곧 표기다. `uk` 인 것도 그렇게 쓰인다
+                // (`何時も` 는 자막에 `いつも` 로 적힌다).
+                if entry.usableWritings.isEmpty || entry.usuallyKana {
+                    compoundKeys.insert(.init(writing: reading.text, reading: reading.text))
+                }
+                for writing in entry.usableWritings {
+                    compoundKeys.insert(.init(writing: writing.text, reading: reading.text))
+                }
+            }
+        }
+        log("사전이 아는 (표기·읽기) 짝 \(compoundKeys.count)개 — 이어진 토큰이 이 안에 들면 함께 센다")
+    }
+
     log("자막 읽는 중… \(corpusPath) (최대 \(buildFrequencyLimit)줄)")
     let start = Date()
 
@@ -315,8 +345,19 @@ if let buildFrequencyLimit {
             guard let text = String(data: line, encoding: .utf8),
                   let tab = text.firstIndex(of: "\t") else { continue }
             // 앞은 영어, 뒤가 일본어
-            for token in JapaneseReading.analyze(String(text[text.index(after: tab)...])) {
+            let tokens = JapaneseReading.analyze(String(text[text.index(after: tab)...]))
+            for token in tokens {
                 counts[FrequencyList.Key(writing: token.surface, reading: token.reading), default: 0] += 1
+            }
+            // 이어진 토큰 둘~넷이 사전에 한 낱말로 실려 있으면 그것도 한 번 센다.
+            // 넷까지인 것은 그보다 긴 표제항이 드물고, 길수록 헛되이 붙는 값만 늘어서다.
+            for span in 2...4 where tokens.count >= span {
+                for from in 0...(tokens.count - span) {
+                    let piece = tokens[from..<(from + span)]
+                    let key = FrequencyList.Key(writing: piece.map(\.surface).joined(),
+                                                reading: piece.map(\.reading).joined())
+                    if compoundKeys.contains(key) { counts[key, default: 0] += 1 }
+                }
             }
         }
         if lineCount % 200_000 < 5_000 { log("  \(lineCount)줄…") }
