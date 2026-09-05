@@ -30,6 +30,15 @@ struct SentenceMeaning: View {
 
     private var korean: String? { hasSentence ? desk.japanese[source] : nil }
 
+    /// 뜻이 안 뜨는 까닭. 언어팩이 있는 기기에서는 늘 `nil` 이라 아무것도 안 그린다.
+    ///
+    /// **뜻이 뜰 자리가 있을 때만 말한다** — 조각 하나짜리 검색에는 애초에 문장 뜻이
+    /// 없으므로, 거기서 언어팩 이야기를 꺼내면 없는 문제를 알리는 셈이다.
+    private var notice: String? {
+        guard hasSentence, korean == nil else { return nil }
+        return desk.japanesePack.notice
+    }
+
     var body: some View {
         // 비어 있어도 자리는 남긴다. 아무것도 그리지 않는 뷰는 화면에서 통째로 사라져서
         // 여기 붙인 `task` 도 함께 사라진다 — 그러면 물어보러 가지도 못한다.
@@ -52,6 +61,14 @@ struct SentenceMeaning: View {
                     // 8 로 붙여 둔다. 뜻은 다른 층이므로 더 벌린다. 카드가 5 와 12 로
                     // 벌린 그 비율(2.4배)을 이 크기에 옮기면 8 과 19 가 된다.
                     // 바깥 세로 간격 8 위에 11 을 더해 그 19 를 만든다.
+                    .padding(.top, 11)
+            } else if let notice {
+                // **뜻이 아니라 안내다.** 뜻 줄보다 작고 흐리게 두어, 이 자리에 들어올
+                // 진짜 뜻과 헷갈리지 않게 한다. 뜻이 뜨기 시작하면 이 줄은 사라진다.
+                Text(notice)
+                    .font(Theme.korean(13))
+                    .foregroundStyle(Theme.grey2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 11)
             }
         }

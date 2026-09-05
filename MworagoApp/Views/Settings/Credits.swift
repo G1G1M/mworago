@@ -19,6 +19,17 @@ struct Credits: View {
         let url: URL?
     }
 
+    /// **자료를 실제로 받을 수 있는 자리.**
+    ///
+    /// 동일조건변경허락(CC BY-SA 4.0 의 SA)은 "같은 조건으로 내놓아라"까지가 조건이다.
+    /// "같은 조건에 놓입니다"라고 적어 두기만 하면 받는 쪽이 그것을 실제로 손에 넣을
+    /// 길이 없어 조건을 지킨 것이 아니다. 색인을 뜬 자리와 굽는 도구가 여기 있다.
+    ///
+    /// **앱을 내기 전에 이 자리가 공개되어 있어야 한다** — 지금 레포는 비공개라
+    /// 이 주소가 열리지 않는다. 공개로 돌리거나 GitHub Pages 를 켜서 주소를 만든 뒤
+    /// 이 한 줄을 그것으로 바꾼다(`Settings.feedbackAddress` 와 같은 규칙이다).
+    private static let sourceAddress = URL(string: "https://github.com/G1G1M/mworago")
+
     private static let sources: [Source] = [
         Source(role: "일본어 사전",
                name: "JMdict",
@@ -86,14 +97,27 @@ struct Credits: View {
                 // **"기기 안의 모델"이라고 적혀 있었다.** 앱 안에는 모델이 없다 —
                 // 뜻은 만드는 쪽에서 미리 옮겨 색인에 구워 넣은 것이고, 앱은 그 파일만 읽는다.
                 // 심사에 걸릴 말은 아니지만 사용자에게 사실과 다르게 말하고 있었다.
-                Text("""
-                    앱에 실린 사전 색인은 위 자료를 다시 엮은 것이라, \
-                    원본과 같은 CC BY-SA 4.0 조건에 놓입니다. \
-                    한국어 뜻은 미리 옮겨 실은 것이고, 자주 쓰는 낱말은 사람이 다듬었습니다.
-                    """)
-                    .font(Theme.korean(13))
-                    .foregroundStyle(Theme.grey2)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("""
+                        앱에 실린 사전 색인은 위 자료를 다시 엮은 것이라, \
+                        원본과 같은 CC BY-SA 4.0 조건에 놓입니다. \
+                        한국어 뜻은 미리 옮겨 실은 것이고, 자주 쓰는 낱말은 사람이 다듬었습니다.
+                        """)
+                        .font(Theme.korean(13))
+                        .foregroundStyle(Theme.grey2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    // **받을 자리를 함께 밝힌다.** 같은 조건에 놓인다는 말만으로는
+                    // 동일조건변경허락을 지킨 것이 아니다 — 받는 쪽이 손에 넣을 길이 있어야 한다.
+                    if let address = Self.sourceAddress {
+                        Link(destination: address) {
+                            Text("색인과 굽는 도구는 여기에 있습니다")
+                                .font(Theme.korean(13))
+                                .foregroundStyle(Theme.grey1)
+                                .underline(pattern: .solid)
+                        }
+                    }
+                }
 
                 Divider().overlay(Theme.grey3)
 

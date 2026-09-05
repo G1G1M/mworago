@@ -29,6 +29,9 @@ Mworago.xcodeproj/
 MworagoApp/Resources/*.db
 MworagoApp/Resources/*.tsv
 
+# 후보 모델을 정답지에 대고 잰 것 (Tools/inspect/bench-gloss.sh)
+Tools/data/bench/
+
 # 모델로 구운 한국어 뜻 (swift run Translator)
 Tools/data/korean-gloss.tsv
 # 굽는 동안 남는 것들 — 모델이 낸 날것, 정리본, 사람이 정해야 하는 목록

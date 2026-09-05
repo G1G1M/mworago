@@ -71,6 +71,11 @@ final class Translations {
 final class TranslationDesk {
     /// 일본어 문장 → 한국어.
     let japanese = Translations()
+
+    /// 일→한 언어팩이 이 기기에 있는가. **뜻 줄이 왜 비었는지 화면이 말하려면 필요하다.**
+    /// 물어보는 자리는 세션을 여는 자리와 같다(`RootView`) — 거기가 번역기에 닿는
+    /// 유일한 자리이고, 앱이 앞으로 돌아올 때 다시 물어야 하는 자리이기도 하다.
+    var japanesePack: TranslationPack = .unknown
     /// 영어 뜻 → 한국어. 사전에 한국어 뜻이 없는 낱말이 여기로 온다.
     ///
     /// 뜻은 미리 구워서 싣지만 22,610 개까지가 지금 자리고, 나머지는 영어로 남아 있다.

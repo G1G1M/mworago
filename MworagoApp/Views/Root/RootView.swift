@@ -20,6 +20,8 @@ struct RootView: View {
     /// 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
     @State private var fromJapanese: TranslationSession.Configuration?
     @State private var fromEnglish: TranslationSession.Configuration?
+    /// 앱이 앞으로 돌아오는 것을 본다 — 언어팩을 받아 온 사람을 다시 확인하려고.
+    @Environment(\.scenePhase) private var scenePhase
 
     /// 작은 값을 적어 두는 자리 — 모습 설정과 온보딩 표시가 쓴다.
     ///
@@ -137,15 +139,12 @@ struct RootView: View {
         //
         // 번역을 못 하는 기기에서는 설정을 만들지 않으므로 세션도 열리지 않는다 —
         // 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
-        .task {
-            let korean = Locale.Language(identifier: "ko")
-            let availability = LanguageAvailability()
-            for (identifier, keep) in [("ja", { fromJapanese = $0 }), ("en", { fromEnglish = $0 })]
-                    as [(String, (TranslationSession.Configuration) -> Void)] {
-                let language = Locale.Language(identifier: identifier)
-                guard await availability.status(from: language, to: korean) != .unsupported else { continue }
-                keep(TranslationSession.Configuration(source: language, target: korean))
-            }
+        .task { await checkTranslation() }
+        // **앞으로 돌아올 때 다시 묻는다.** 안내를 보고 설정 앱에서 언어팩을 받아 온
+        // 사람에게, 그 사실이 화면에 닿는 자리가 여기밖에 없다.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await checkTranslation() }
         }
         .translationTask(fromJapanese) { session in
             await Self.serve(session, desk.japanese)
@@ -223,6 +222,40 @@ struct RootView: View {
         .environment(\.locale, Locale(identifier: "ko_KR"))
     }
 
+    /// 옮길 수 있는 언어쌍인지 묻고, 세션 설정을 만든다.
+    ///
+    /// **묻고 나온 답을 버리지 않는다.** 예전에는 "못 하는 것만 아니면 된다"고 보고
+    /// `.unsupported` 인지만 확인한 뒤 흘려보냈다. 그런데 `.supported` 는 "기기는 할 수
+    /// 있는데 **언어팩을 아직 안 받았다**"는 뜻이라, 그 상태에서는 문장 뜻이 한 줄도
+    /// 안 뜬다. 화면에는 아무 말이 없었고, 사용자가 보기에 그것은 "이 앱은 문장 뜻을
+    /// 안 준다"와 구별되지 않았다.
+    ///
+    /// 세션 설정은 **한 번만** 만든다. 앞으로 돌아올 때마다 새로 만들면 `.translationTask`
+    /// 가 그때마다 세션을 다시 열고, 줄도 그때마다 새로 난다.
+    private func checkTranslation() async {
+        let korean = Locale.Language(identifier: "ko")
+        let availability = LanguageAvailability()
+        for (identifier, current, keep) in
+                [("ja", fromJapanese, { fromJapanese = $0 }),
+                 ("en", fromEnglish, { fromEnglish = $0 })]
+                as [(String, TranslationSession.Configuration?, (TranslationSession.Configuration) -> Void)] {
+            let language = Locale.Language(identifier: identifier)
+            let status = await availability.status(from: language, to: korean)
+            if identifier == "ja" {
+                desk.japanesePack = switch status {
+                case .installed: .ready
+                case .supported: .needsDownload
+                case .unsupported: .unsupported
+                @unknown default: .unknown
+                }
+            }
+            // 못 하는 기기에서는 설정을 만들지 않는다 — 열어 두고 실패를 삼키면
+            // 애플이 대신 시트를 띄운다.
+            guard status != .unsupported, current == nil else { continue }
+            keep(TranslationSession.Configuration(source: language, target: korean))
+        }
+    }
+
     /// 줄에 선 것을 받아 옮겨 준다. 줄이 끝나면(세션이 물러나면) 이 반복도 끝난다.
     private nonisolated static func serve(_ session: TranslationSession, _ store: Translations) async {
         let requests = await store.openRequests()
@@ -240,7 +273,7 @@ struct RootView: View {
                 // 일이고, 쉬지 않고 물으면 되지도 않을 것에 줄이 붙들린다.
                 // 몇 번까지 보낼지는 줄이 세고, 그 뒤에는 놓아준다.
                 try? await Task.sleep(for: .seconds(2))
-                await MainActor.run { store.failed(batch) }
+                _ = await MainActor.run { store.failed(batch) }
                 continue
             }
             let pairs = responses.map { (source: $0.sourceText, target: $0.targetText) }
