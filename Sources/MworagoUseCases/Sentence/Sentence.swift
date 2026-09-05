@@ -18,10 +18,55 @@ extension Segment {
     ///  2. 활용을 되돌렸으면 **되돌리기 전의 표면형**으로 되돌려 놓는다
     ///  3. 사전이 `uk`(보통 가나로 씀)라고 한 낱말은 한자를 꺼내지 않는다 — 자막도 그렇게 쓴다
     ///  4. 그 밖에는 한자 표기를 쓴다
-    public var japanese: String {
+    public var japanese: String { writing(preferringKanji: false) }
+
+    /// 번역기에 넘길 이 조각의 글자. **사전이 `uk` 라고 한 낱말도 한자를 꺼낸다.**
+    ///
+    /// 화면과 번역기는 같은 글자를 원하지 않는다. 화면은 사람이 실제로 쓰는 대로
+    /// 보여 주어야 하고(`かすみ`), 번역기는 낱말을 가려낼 단서가 필요하다(`霞`).
+    ///
+    /// 이것이 없어서 `카스미노` 가 `かすみの` 로 넘어갔고 뜻 줄에 **"카스미노의"** 가 떴다 —
+    /// 번역기가 옮길 낱말을 못 찾아 소리를 그대로 적은 것이다. `傘`(かさ)도 같은 자리다
+    /// (`かさ思って行かなくてはならない` → "생각보다 많아서 가지 않으면 안 된다").
+    public func japaneseForTranslation(kanjiShare threshold: Double = Self.defaultKanjiShare) -> String {
+        // `uk` 가 아니면 어차피 한자다. `uk` 라면 말뭉치가 정한다.
+        let usuallyKana = results.first?.entry.usuallyKana ?? false
+        return writing(preferringKanji: !usuallyKana || kanjiShareInCorpus >= threshold)
+    }
+
+    /// 한자로 넘길 기준선. **`uk` 한 태그로는 못 가르는 자리를 말뭉치로 가른다.**
+    ///
+    ///     人   93.3%     ← 한자로 넘긴다
+    ///     全て  57.3%
+    ///     丘   46.8%
+    ///     霞   43.8%
+    ///     辺り  42.6%
+    ///     振り  35.8%
+    ///     傘   34.1%
+    ///     ───────────  0.30
+    ///     下さい 24.0%     ← 가나로 둔다
+    ///     為   19.8%
+    ///     貴方   4.9%
+    ///     居る   2.8%
+    ///     成る   0.3%
+    ///     仕手   0.0%
+    ///
+    /// **빈 곳에 선을 그었다.** 傘(34.1%)와 下さい(24.0%) 사이가 10%p 비어 있어서,
+    /// 0.25 도 0.33 도 같은 편을 고른다 — 값을 조금 옮겨도 결과가 안 흔들린다.
+    ///
+    /// 자막 문장 60개로 확인했다(`SpikeRunner --mt-cases --mt-share`). 뜻이 달라진
+    /// 문장은 셋이고 그중 좋아진 것이 하나(`どのあたり` 가 "어느 정도"에서 "어느 쪽"으로),
+    /// 나머지 둘은 말투만 바뀌었다. **다 한자로 넘기면(문턱 0) 열아홉 문장이 흔들리고
+    /// 그중 셋이 나빠진다** — `なる`→`生る`("될 것이다"가 "태어날 것이다"로),
+    /// `してください`→`仕手下さい`, `ためになる`→`為になる`("도움이 됩니다"가 "너를 위해 해"로).
+    public static let defaultKanjiShare = 0.30
+
+    private func writing(preferringKanji: Bool) -> String {
         guard let top = results.first else { return hangul }
-        if top.deinflection != nil { return Self.inflectedWriting(top) ?? top.matchedKana }
-        if top.entry.usuallyKana { return top.reading }
+        if top.deinflection != nil {
+            return Self.inflectedWriting(top, preferringKanji: preferringKanji) ?? top.matchedKana
+        }
+        if top.entry.usuallyKana, !preferringKanji { return top.reading }
         return top.headword
     }
 
@@ -35,9 +80,11 @@ extension Segment {
     /// **지어내는 것이 아니다.** 사전이 그 낱말의 표기를 이미 알려 주었고, 어느 자리까지가
     /// 한자인지도 표기와 읽기를 맞대면 나온다 — 함께 끝나는 부분이 보내는 글자다
     /// (怒る·おこる 의 `る`, 食べる·たべる 의 `べる`). 그 앞자리만 한자로 바꾼다.
-    private static func inflectedWriting(_ result: SearchResult) -> String? {
+    private static func inflectedWriting(_ result: SearchResult,
+                                         preferringKanji: Bool = false) -> String? {
         // 사전이 uk 라고 한 낱말은 꺼내지 않는다. 자막도 가나로 쓴다.
-        guard !result.entry.usuallyKana else { return nil }
+        // 번역기에 넘길 때만 그 규칙을 접는다 — 그쪽은 한자가 단서다.
+        guard preferringKanji || !result.entry.usuallyKana else { return nil }
         let writing = result.headword, reading = result.reading
         guard writing != reading else { return nil }
 
@@ -99,7 +146,13 @@ extension Array where Element == Segment {
     ///
     /// 우리가 낱말을 잘못 고르면 어차피 틀린다. 그때 가나로 둔다고 구제되지 않는다는 것도
     /// 함께 보았다(`年` 를 `都市` 로 고른 문장은 어느 쪽으로 넘겨도 틀렸다).
-    public var forTranslation: String { japanese }
+    ///
+    /// **`uk` 규칙이 이 결정을 조용히 덮고 있었다.** 사전이 "보통 가나로 쓴다"고 표시한
+    /// 낱말은 화면에도 번역기에도 가나로 나갔고, 그래서 `霞`·`傘` 처럼 흔한 명사가
+    /// 소리만 남은 채 넘어갔다. 화면은 그대로 두고 번역기 쪽만 한자를 꺼낸다.
+    public func forTranslation(kanjiShare threshold: Double = Segment.defaultKanjiShare) -> String {
+        map { $0.japaneseForTranslation(kanjiShare: threshold) }.joined()
+    }
 
     /// 되살린 원문의 소리.
     public var kana: String { map(\.kana).joined() }

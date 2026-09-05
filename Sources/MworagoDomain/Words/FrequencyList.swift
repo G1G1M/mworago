@@ -26,17 +26,25 @@ public struct FrequencyList: Sendable {
     private let ranks: [Key: Int]
     /// 표기만으로 찾을 때 쓸 최고 순위(가장 흔한 읽기의 것).
     private let ranksByWriting: [String: Int]
+    /// 말뭉치에 몇 번 나왔는가. **순위로는 못 하는 물음이 하나 있다** —
+    /// "이 낱말을 사람들이 한자로 적는가, 가나로 적는가". 그것은 두 표기의 **횟수 비**라서
+    /// 순위 차로는 가늠이 안 된다(`丘` 314 대 `おか` 357 은 순위로 멀어 보인다).
+    private let occurrences: [Key: Int]
 
     public var isEmpty: Bool { ranks.isEmpty }
     public var count: Int { ranks.count }
 
     public init(tsv: String) {
         var ranks: [Key: Int] = [:]
+        var occurrences: [Key: Int] = [:]
         for line in tsv.split(separator: "\n").dropFirst() {   // 첫 줄은 헤더
             let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
             guard columns.count >= 3, let rank = Int(columns[2]) else { continue }
             let key = Key(writing: String(columns[0]),
                           reading: KanaTable.lookupKey(String(columns[1])))
+            if columns.count >= 4, let count = Int(columns[3]) {
+                occurrences[key] = max(occurrences[key] ?? 0, count)
+            }
             // 같은 낱말이 여러 번 나오면 더 흔한(순위가 앞선) 쪽을 남긴다
             if let existing = ranks[key], existing <= rank { continue }
             ranks[key] = rank
@@ -50,6 +58,20 @@ public struct FrequencyList: Sendable {
 
         self.ranks = ranks
         self.ranksByWriting = byWriting
+        self.occurrences = occurrences
+    }
+
+    /// **이 낱말을 말뭉치가 한자로 적는 비율.** 0 이면 늘 가나로 적는다는 뜻이다.
+    ///
+    /// 사전의 `uk`(보통 가나로 씀) 태그는 갈래가 너무 넓다. `丘`(47%)·`霞`(44%)·`傘`(34%)
+    /// 처럼 자막이 절반 가까이 한자로 적는 낱말과, `生る`(0%)·`貴方`(5%)·`為`(20%) 처럼
+    /// 사실상 가나로만 적는 낱말이 한 통에 담겨 있다. 말뭉치는 그 둘을 가른다.
+    public func kanjiShare(writing: String, reading: String) -> Double {
+        let key = KanaTable.lookupKey(reading)
+        let kanji = occurrences[Key(writing: writing, reading: key)] ?? 0
+        let kana = occurrences[Key(writing: reading, reading: key)] ?? 0
+        guard kanji + kana > 0 else { return 0 }
+        return Double(kanji) / Double(kanji + kana)
     }
 
     /// 순위가 앞선 것부터 (순위, 표기, 읽기). 케이스를 뽑을 때 쓴다.

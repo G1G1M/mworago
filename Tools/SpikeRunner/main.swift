@@ -127,7 +127,7 @@ let positional: [String] = {
             let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
-                || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction"
+                || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction" || args[i] == "--mt-share"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -611,7 +611,7 @@ if let mtCaseCount {
             let parts = segments.filter { !$0.isWhole }
             var japanese = args.contains("--mt-kana") ? parts.kana
                          : args.contains("--mt-kanji") ? parts.japanese
-                         : parts.forTranslation
+                         : parts.forTranslation(kanjiShare: flagValues("--mt-share").first.flatMap(Double.init) ?? Segment.defaultKanjiShare)
             // **마침표를 붙여 보고 견준다.** 번역기는 문장부호가 있는 글로 배웠는데
             // 우리는 토막을 던지고 있다. 그 차이가 값을 하는지는 재야 안다.
             //
@@ -704,6 +704,10 @@ if !segmentInputs.isEmpty {
             segment.results.first.map { "\($0.headword)" } ?? "?"
         }.joined(separator: " ")
         print("\n\(input)  →  \(joined)   (\(String(format: "%.1f", elapsed))ms)")
+        // **번역기가 받는 글자는 화면에 보이는 것과 다르다.** 사전이 `uk` 라고 한 낱말을
+        // 어느 쪽으로 넘기는지가 뜻 줄을 좌우하는데, 조각 목록만 봐서는 안 보인다.
+        let parts = segments.filter { !$0.isWhole }
+        print("  번역기에 넘길 원문   \(parts.forTranslation())")
 
         for segment in segments {
             let top = segment.results.prefix(3).map { result in

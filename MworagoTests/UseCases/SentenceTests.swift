@@ -25,6 +25,42 @@ struct SentenceTests {
         Segment(hangul: 한글, results: 결과들)
     }
 
+    /// 말뭉치가 그 낱말을 어떻게 적는지를 담은 작은 빈도표.
+    static func 말뭉치(_ 줄들: [(String, String, Int, Int)]) -> FrequencyList {
+        let head = "term\treading\tfrequency\tcount\n"
+        let body = 줄들.map { "\($0.0)\t\($0.1)\t\($0.2)\t\($0.3)" }.joined(separator: "\n")
+        return FrequencyList(tsv: head + body)
+    }
+
+    @Test("번역기에는 말뭉치가 한자로 적는 낱말만 한자로 넘긴다")
+    func 번역기에_넘길_글자() {
+        // `霞`(かすみ)는 사전이 `uk` 라고 하지만 자막은 44% 를 한자로 적는다.
+        // 가나로 넘기면 번역기가 옮길 낱말을 못 찾아 소리를 그대로 적는다 —
+        // `카스미노` 의 뜻 줄에 "카스미노의" 가 뜬 일이 실제로 있었다.
+        var 안개 = Self.조각("카스미", [Self.결과("霞", "かすみ", 가나로씀: true)])
+        안개.kanjiShareInCorpus = 0.44
+        // `下さい`(ください)는 같은 `uk` 지만 자막이 24% 만 한자로 적는다. 억지로 한자를
+        // 꺼내면 `仕手下さい` 같은 것이 되어 뜻이 어그러진다.
+        var 주세요 = Self.조각("쿠다사이", [Self.결과("下さい", "ください", 가나로씀: true)])
+        주세요.kanjiShareInCorpus = 0.24
+        let 조사 = Self.조각("노", [Self.결과("の", "の")])
+
+        #expect([안개, 조사].forTranslation() == "霞の")
+        #expect([주세요].forTranslation() == "ください")
+        // 화면은 그대로다 — 사람이 실제로 쓰는 대로 보여 준다.
+        #expect([안개, 조사].japanese == "かすみの")
+    }
+
+    @Test("말뭉치가 한자 비율을 알려 준다")
+    func 한자_비율() {
+        let 표 = Self.말뭉치([("霞", "かすみ", 1, 21), ("かすみ", "かすみ", 2, 27),
+                            ("生る", "なる", 3, 0), ("なる", "なる", 4, 28341)])
+        #expect(abs(표.kanjiShare(writing: "霞", reading: "かすみ") - 21.0 / 48) < 0.001)
+        #expect(표.kanjiShare(writing: "生る", reading: "なる") == 0)
+        // 말뭉치가 모르는 낱말은 0 이다 — 모르면 가나로 둔다.
+        #expect(표.kanjiShare(writing: "傘", reading: "かさ") == 0)
+    }
+
     @Test("한자를 살려 문장을 잇는다")
     func 기본() {
         // 아타마가이타이 → 頭が痛い. 조사도 한 조각이라 사이에 그대로 들어간다.

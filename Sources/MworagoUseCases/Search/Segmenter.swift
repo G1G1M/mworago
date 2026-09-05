@@ -5,6 +5,12 @@ import MworagoDomain
 public struct Segment: Sendable {
     public let hangul: String            // 이 조각의 한글 음차
     public let results: [SearchResult]   // 이 조각을 찾아본 결과. 비어 있으면 사전에 없는 조각이다
+    /// **말뭉치가 이 조각의 낱말을 한자로 적는 비율.** 사전이 `uk` 라고 한 낱말을
+    /// 번역기에 한자로 넘길지 가나로 넘길지는 이 값이 정한다(`japaneseForTranslation`).
+    ///
+    /// 나눌 때 함께 재어 둔다 — 그때가 빈도표를 쥐고 있는 유일한 자리다.
+    public var kanjiShareInCorpus: Double = 0
+
     /// 나눈 조각이 아니라 **입력 전체**를 통째로 찾아본 결과인가.
     ///
     /// 관용구는 조각 점수 싸움에서 져서 묻히므로 통째 뜻을 앞에 얹는다. 다만 이것은
@@ -391,7 +397,17 @@ public enum Segmenter {
             cursor = step.start
             role = step.previous
         }
-        let segments = pieces.reversed().map { Segment(hangul: $0, results: lookup($0)) }
+        let segments = pieces.reversed().map { piece -> Segment in
+            let results = lookup(piece)
+            var segment = Segment(hangul: piece, results: results)
+            // 사전이 `uk` 라고 한 낱말만 물어보면 된다. 그 밖에는 한자를 쓰는 것이 기본이다.
+            if let top = results.first, top.entry.usuallyKana, let frequency,
+               !top.headword.isEmpty, top.headword != top.reading {
+                segment.kanjiShareInCorpus = frequency.kanjiShare(writing: top.headword,
+                                                                 reading: top.reading)
+            }
+            return segment
+        }
 
         // **통째로도 사전에 실려 있으면 그것부터 낸다.**
         //

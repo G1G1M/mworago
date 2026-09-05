@@ -23,7 +23,7 @@ struct SentenceMeaning: View {
 
     /// 번역기에 넘길 원문. 화면에 보이는 그 문장을 그대로 준다.
     /// 무엇을 넘길지는 `Segment.forTranslation` 이 정한다 — 그 자리에 이유를 적어 두었다.
-    private var source: String { parts.forTranslation }
+    private var source: String { parts.forTranslation() }
 
     /// 조각이 하나뿐이면 묻지 않는다. 그때는 카드에 뜬 뜻이 이미 답이다.
     private var hasSentence: Bool { parts.count >= 2 }
