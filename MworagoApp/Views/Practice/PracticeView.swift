@@ -186,11 +186,15 @@ struct PracticeView: View {
         HStack(spacing: 10) {
             // 되돌아갈 길이 있어야 한다. 한 장 지나쳐 버렸을 때 스무 장을 다시
             // 넘겨 돌아오게 두지 않는다 — 온보딩의 `이전` 과 같은 이유다.
+            // **검게 채우는 것은 가운데 하나뿐이다.** 이 화면에서 하는 일은 뒤집는
+            // 것이고, `이전`·`다음` 은 그 일을 하고 나서 자리를 옮기는 것이다.
+            // 뒤집을 때마다 `다음` 이 검어지면 셋 중 무엇이 지금 할 일인지가 흐려지고,
+            // 화면이 "다음으로 가라"고 재촉하는 것처럼 읽힌다.
             button("이전", filled: false) { previous() }
-            button(revealed ? "다시 덮기" : "뒤집기", filled: !revealed) {
+            button(revealed ? "다시 덮기" : "뒤집기", filled: true) {
                 withAnimation(.snappy(duration: 0.18)) { revealed.toggle() }
             }
-            button("다음", filled: revealed) { next() }
+            button("다음", filled: false) { next() }
         }
         .padding(.top, 26)
     }

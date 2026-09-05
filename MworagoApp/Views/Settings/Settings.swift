@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import MworagoCore
 
 /// 앱을 밝게 볼지 어둡게 볼지.
@@ -85,6 +86,42 @@ struct Settings: View {
     /// 내비게이션 바 아래 첫 섹션까지. 제목에 바로 붙으면 화면이 시작하지 않은 것처럼 보인다.
     private static let topPadding: CGFloat = 28
 
+    /// 의견을 받을 자리. **앱을 내려면 여기를 만든 사람의 주소로 바꾼다** —
+    /// 앱스토어의 지원 연락처와 같은 것이어야 한다.
+    private static let feedbackAddress = "kjw100404@gmail.com"
+
+    @State private var copiedAddress = false
+    @Environment(\.openURL) private var openURL
+
+    /// 메일 앱을 연다. **무엇이 적혀 나가는지 사용자가 먼저 본다** —
+    /// 앱이 몰래 보내는 것이 하나도 없다는 것이 이 앱의 약속이다.
+    ///
+    /// 본문에 버전과 기기를 적어 두는 것은, 같은 낱말이 기기마다 다르게 나오는 일이
+    /// 있어서다(번역기 언어팩이 그렇다). 사용자가 지우고 보내도 된다.
+    private func sendFeedback() {
+        let 본문 = """
+
+
+            ─────────────
+            무엇이 어떻게 나왔는지 적어 주세요. 친 글자와 화면을 함께 알려 주시면 좋습니다.
+
+            앱 \(version)
+            \(UIDevice.current.systemName) \(UIDevice.current.systemVersion)
+            """
+        var url = URLComponents(string: "mailto:\(Self.feedbackAddress)")
+        url?.queryItems = [URLQueryItem(name: "subject", value: "뭐라고 — 의견"),
+                           URLQueryItem(name: "body", value: 본문)]
+        // `mailto` 의 물음표 뒤는 공백을 `+` 로 적어도 되지만, 메일 앱은 그것을 글자
+        // `+` 로 읽는다. 본문이 `+` 투성이가 되므로 퍼센트로 적는다.
+        let 주소 = url?.url.map { URL(string: $0.absoluteString.replacingOccurrences(of: "+", with: "%20")) ?? $0 }
+        guard let 주소 else { return }
+        openURL(주소) { 열렸나 in
+            guard !열렸나 else { return }
+            UIPasteboard.general.string = Self.feedbackAddress
+            copiedAddress = true
+        }
+    }
+
     private var version: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -110,6 +147,35 @@ struct Settings: View {
                             Rectangle().fill(Theme.grey3).frame(height: 0.5)
 
                             row("버전", detail: version, chevron: false)
+                        }
+                    }
+
+                    // **틀린 것을 말할 자리.** 이 앱이 내놓는 것은 사전과 규칙이 함께
+                    // 만들어 낸 답이라, 틀리는 자리가 반드시 있다 — 뜻이 어긋나거나,
+                    // 문장이 엉뚱하게 갈리거나, 소리가 안 맞는다. 그런데 그것을 본
+                    // 사람이 말할 곳이 앱 안에 없었다.
+                    //
+                    // **계정도 서버도 없는 앱이라 메일로 보낸다.** 신고를 받자고 서버를
+                    // 세우면 "아무것도 안 보냅니다"라고 적어 둔 것이 거짓이 된다.
+                    // 메일은 사용자가 보내기를 누르기 전까지 아무것도 나가지 않고,
+                    // 무엇이 적혔는지 눈으로 보고 고칠 수 있다.
+                    section("의견") {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Button { sendFeedback() } label: {
+                                row("오류 신고 · 의견 보내기", detail: "메일")
+                            }
+                            .buttonStyle(.plain)
+
+                            if copiedAddress {
+                                // 메일 앱이 없을 때. 주소를 보여 주기만 하면 옮겨 적어야 하므로
+                                // 붙여 넣을 수 있게 해 두고 그 사실만 알린다.
+                                Text("메일 앱을 열 수 없어 주소를 복사했습니다 — \(Self.feedbackAddress)")
+                                    .font(Theme.korean(12))
+                                    .foregroundStyle(Theme.grey2)
+                                    .padding(.horizontal, 14)
+                                    .padding(.bottom, 12)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
 

@@ -177,11 +177,13 @@ struct KanaQuiz: View {
     /// `あ` 는 봤는데 `ア` 는 한 번도 안 나오기도 했다.
     ///
     /// **익힐 것은 소리가 아니라 글자다.** `あ` 와 `ア` 는 따로 외워야 하므로 따로 센다.
-    struct Card: Equatable {
+    struct Card: Equatable, Identifiable {
         let kana: String
         let katakana: Bool
         /// 앞면에 보이는 글자. 뒤집기 전에는 이것 하나뿐이다.
         var shown: String { katakana ? KanaTable.toKatakana(kana) : kana }
+        /// `あ` 와 `ア` 는 따로 외우는 글자라 따로 센다 — 자리도 따로다.
+        var id: String { (katakana ? "K" : "H") + kana }
     }
 
     @Environment(\.speaker) private var speaker
@@ -191,7 +193,9 @@ struct KanaQuiz: View {
     /// 이번 판에 물을 차례. 범위와 순서가 바뀌면 다시 짠다 —
     /// **범위 셋이 각자 제 차례를 갖는다.**
     @State private var deck: [Card] = KanaQuiz.cards(scope: .hiragana, order: .random)
-    @State private var at = 0
+    /// 지금 보고 있는 장. **자리(번호)가 아니라 `id` 로 붙든다** — 밀어서 넘길 때
+    /// 스크롤이 돌려주는 것이 자리가 아니라 장 자체이기 때문이다(연습 카드와 같다).
+    @State private var currentID: Card.ID?
     @State private var revealed = LaunchOptions.current.has("revealed")
 
     /// 표에 실린 소리 전부. 빈 자리(ゐ·ゑ)는 뺀다 — 표에서는 자리를 지켜야 행과 단이
@@ -217,8 +221,11 @@ struct KanaQuiz: View {
     /// 지금 물고 있는 것. **차례에서 꺼내 온다** — 따로 들고 있으면 범위를 좁혔을 때
     /// 지난 판의 글자가 남는다.
     private var current: Card {
-        deck.indices.contains(at) ? deck[at] : Card(kana: "あ", katakana: false)
+        deck.first { $0.id == currentID } ?? deck.first ?? Card(kana: "あ", katakana: false)
     }
+
+    /// 몇째 장인가.
+    private var at: Int { deck.firstIndex { $0.id == currentID } ?? 0 }
 
     /// **이 화면만 가운데 맞춤이다.**
     ///
@@ -274,44 +281,21 @@ struct KanaQuiz: View {
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, Theme.screenTop)
 
-            Spacer(minLength: 0)
-
-            VStack(spacing: 26) {
-                // 화면에 이것 하나뿐이라 본문 크기를 따를 이유가 없다. 표에서 24pt 로
-                // 훑던 글자를 여기서 크게 다시 만나는 것 자체가 "이제 이걸 본다"는 신호다.
-                // 요음은 두 자(きゃ)라 폭이 배가 되므로 줄이지 않고 넘치게 두면 안 된다.
-                Text(current.shown)
-                    .font(Theme.japanese(180, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.4)
-                    .foregroundStyle(Theme.ink)
-
-                // 뒤집기 전에는 자리만 잡아 둔다. 답이 나타날 때 글자가 밀려 올라가면
-                // 눈이 따라가느라 정작 답을 놓친다.
-                HStack(spacing: 10) {
-                    Image(systemName: "speaker.wave.2")
-                        .font(.system(size: 18))
-                    Text(KanaToHangul.transliterate(current.kana))
-                        .font(Theme.korean(28))
-                }
-                .foregroundStyle(Theme.grey1)
-                .opacity(revealed ? 1 : 0)
-                .accessibilityHidden(!revealed)
+            // **손으로 밀어도 넘어간다.** 연습 카드와 같은 몸짓이다 — 넘기는 일 자체는
+            // 시스템에 맡기고(`Pager`), 단추는 그대로 둔다. 밀 수 있다는 것은 해 봐야 안다.
+            Pager(items: deck, current: $currentID) { item in
+                card(item).containerRelativeFrame(.vertical)
             }
-            .frame(maxWidth: Theme.readWidth)
-            .padding(.horizontal, Theme.gutter)
-
-            Spacer(minLength: 0)
 
             HStack(spacing: 12) {
                 // 되돌아갈 길. 지나친 글자를 다시 보려고 한 바퀴를 돌 이유가 없다.
+                //
+                // **검게 채우는 것은 가운데 하나뿐이다.** 이 화면에서 하는 일은 뒤집는
+                // 것이고, `이전`·`다음` 은 그 일을 하고 나서 자리를 옮기는 것이다.
+                // 셋 중 둘이 번갈아 검어지면 무엇이 지금 할 일인지가 흐려진다.
                 button("이전", filled: false) { previous() }
-                button(revealed ? "소리 듣기" : "뒤집기", filled: true) {
-                    if revealed {
-                        speaker.speak(current.kana)
-                    } else {
-                        withAnimation(.snappy(duration: 0.18)) { revealed = true }
-                    }
+                button(revealed ? "다시 덮기" : "뒤집기", filled: true) {
+                    withAnimation(.snappy(duration: 0.18)) { revealed.toggle() }
                 }
                 button("다음", filled: false) { next() }
             }
@@ -319,6 +303,61 @@ struct KanaQuiz: View {
             .padding(.bottom, Theme.screenBottom)
         }
         .frame(maxWidth: .infinity)
+        // 첫 장. 범위를 바꿔 차례를 다시 짰을 때도 여기서 잡힌다.
+        .onAppear { if current.id != currentID { currentID = deck.first?.id } }
+        // **장이 바뀌면 도로 덮인다.** 밀어서 넘겼든 단추로 넘겼든 같다.
+        // 첫 장을 잡을 때는 덮지 않는다 — `--revealed` 로 펼친 채 띄우는 길이 있다.
+        .onChange(of: currentID) { 앞, _ in if 앞 != nil { revealed = false } }
+    }
+
+    /// 한 장.
+    ///
+    /// **`뒤집기` 라고 말하려면 뒤집을 것이 있어야 한다.** 글자 하나가 허공에 떠 있으면
+    /// 그 말이 무엇을 가리키는지가 화면에 없다. 면을 하나 두면 앞뒤가 생기고,
+    /// 좌우로 미는 몸짓도 카드 더미를 넘기는 일로 읽힌다.
+    private func card(_ item: Card) -> some View {
+        VStack(spacing: 26) {
+            // 화면에 이것 하나뿐이라 본문 크기를 따를 이유가 없다. 표에서 24pt 로
+            // 훑던 글자를 여기서 크게 다시 만나는 것 자체가 "이제 이걸 본다"는 신호다.
+            // 요음은 두 자(きゃ)라 폭이 배가 되므로 줄이지 않고 넘치게 두면 안 된다.
+            Text(item.shown)
+                .font(Theme.japanese(180, weight: .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
+                .foregroundStyle(Theme.ink)
+
+            // 뒤집기 전에는 자리만 잡아 둔다. 답이 나타날 때 글자가 밀려 올라가면
+            // 눈이 따라가느라 정작 답을 놓친다.
+            //
+            // **이 줄이 곧 소리 단추다.** 스피커 모양을 그려 놓고 눌리지 않으면
+            // 그것은 그림이지 단추가 아니다. 아래에 `소리 듣기` 를 따로 두었다가
+            // 걷어낸 자리다 — 같은 일을 하는 것이 화면에 둘일 이유가 없다.
+            Button { speaker.speak(item.kana) } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "speaker.wave.2")
+                        .font(.system(size: 18))
+                    Text(KanaToHangul.transliterate(item.kana))
+                        .font(Theme.korean(28))
+                }
+                .foregroundStyle(Theme.grey1)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .opacity(revealed ? 1 : 0)
+            .disabled(!revealed)
+            .accessibilityLabel("소리 듣기")
+            .accessibilityHidden(!revealed)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 54)
+        .background(Theme.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Theme.grey3.opacity(0.45), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
+        .frame(maxWidth: Theme.readWidth)
+        .padding(.horizontal, Theme.gutter)
     }
 
     /// 순서 다이얼. 범위 다이얼과 같은 문법이다 — 평평하고, 고른 것 하나만 검게 채워진다.
@@ -385,8 +424,7 @@ struct KanaQuiz: View {
     private func next() {
         guard !deck.isEmpty else { return }
         withAnimation(.snappy(duration: 0.18)) {
-            at = (at + 1) % deck.count
-            revealed = false
+            currentID = deck[(at + 1) % deck.count].id
         }
     }
 
@@ -394,8 +432,7 @@ struct KanaQuiz: View {
     private func previous() {
         guard !deck.isEmpty else { return }
         withAnimation(.snappy(duration: 0.18)) {
-            at = (at - 1 + deck.count) % deck.count
-            revealed = false
+            currentID = deck[(at - 1 + deck.count) % deck.count].id
         }
     }
 
@@ -404,7 +441,7 @@ struct KanaQuiz: View {
     private func reset() {
         withAnimation(.snappy(duration: 0.18)) {
             deck = Self.cards(scope: scope, order: order)
-            at = 0
+            currentID = deck.first?.id
             revealed = false
         }
     }
