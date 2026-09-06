@@ -41,8 +41,17 @@ struct Splash: View {
     // 높이 22 · 간격 9 로 굽고 있고, 그 비율이 곧 로고다. 화면에서는 알약 높이를
     // **입력 바 높이에 맞춰** 키운다 — 그래야 마지막에 세로로 늘어나거나 줄지 않는다.
 
-    private static let ratios: [CGFloat] = [22, 46, 30]
+    // 아이콘이 `あ` 와 밑줄 하나가 되면서 여기도 따라왔다. 알약 셋 중 가운데가
+    // 입력 바가 되던 자리에, 이제 **밑줄이 입력 바가 된다** — 아이콘에서 사전이
+    // 짚어 주던 그 선이 사용자가 칠 자리로 내려앉는다.
+    private static let ratios: [CGFloat] = [46]
     private static let iconUnit: CGFloat = 22
+
+    /// 글자 크기와 글자 아래 사이. 아이콘의 비율(글자 0.52 · 밑줄 굵기 0.055 ·
+    /// 사이 0.075)을 화면에 옮긴 값이다. **아이콘의 값을 그대로 쓰지는 않는다** —
+    /// 밑줄 굵기를 입력 바 높이에 맞추면 글자가 화면을 넘는다.
+    private var glyphSize: CGFloat { barHeight * 1.7 }
+    private var glyphGap: CGFloat { barHeight * 0.30 }
     /// 자리를 아직 못 받았을 때, 첫 한 프레임만 쓰는 어림값.
     ///
     /// **52 가 아니라 56 이다.** 글자 19 + 위아래 여백 14씩이면 52 여야 할 것 같지만,
@@ -55,8 +64,8 @@ struct Splash: View {
     private var scale: CGFloat { barHeight / Self.iconUnit }
     private var gap: CGFloat { 9 * scale }
     private var widths: [CGFloat] { Self.ratios.map { $0 * scale } }
-    /// 가운데 알약. 가장 길고, 이것이 입력 바가 된다.
-    private static let hero = 1
+    /// 입력 바가 되는 것. 이제 그리는 것이 밑줄 하나뿐이라 그것이 곧 주인공이다.
+    private static let hero = 0
 
     /// 자리를 못 받았을 때 쓸 어림값.
     ///
@@ -69,7 +78,7 @@ struct Splash: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var arrived = [false, false, false]
+    @State private var arrived = [false]
     /// 변형은 **한 동작이 아니라 네 박자**다.
     ///
     /// 넷을 한꺼번에 하면 자리를 옮기는 중에 색까지 바뀌어, 중간에 정체를 알 수 없는
@@ -92,6 +101,12 @@ struct Splash: View {
             ZStack {
                 Theme.paper.ignoresSafeArea()
 
+                // **글자가 먼저 서고 밑줄이 그 아래에 그어진다.** 아이콘 그대로다.
+                // 밑줄이 입력 바 자리로 내려갈 때 글자는 제자리에서 물러난다 —
+                // 따라가면 두 물건이 함께 이사하는 것으로 보이고, 이 장면이 하는 말
+                // ("이 밑줄이 저 입력 바가 되었다")이 흐려진다.
+                glyph(in: geo)
+
                 ForEach(Array(widths.enumerated()), id: \.offset) { index, width in
                     pill(index: index, width: width, in: geo)
                 }
@@ -101,6 +116,21 @@ struct Splash: View {
             .onTapGesture { finish() }
             .task { await play() }
         }
+    }
+
+    /// 아이콘의 `あ`. 밑줄 위에 선다.
+    private func glyph(in geo: GeometryProxy) -> some View {
+        Text("あ")
+            .font(Theme.japanese(glyphSize, weight: .medium))
+            .foregroundStyle(Theme.ink)
+            // 글자는 제 상자보다 작게 앉는다. 밑줄과의 사이를 눈으로 맞추려면
+            // 상자가 아니라 잉크를 기준으로 재야 하는데, 화면에서는 그 값을 얻기
+            // 어려우므로 상자 높이의 어림값으로 당긴다(아이콘을 구울 때와 같은 이유).
+            .offset(y: yOffset(index: Self.hero, moved: false,
+                               steppedAside: asideGone, in: geo)
+                       - glyphSize * 0.62 - glyphGap)
+            .scaleEffect(asideGone ? 0.92 : (arrived[Self.hero] ? 1 : 0.72))
+            .opacity(arrived[Self.hero] && !asideGone ? 1 : 0)
     }
 
     // MARK: 알약 하나
@@ -245,20 +275,20 @@ struct Splash: View {
         // 섰다는 것을 알아보기도 전에 이미 입력 바가 되어 있었다. 무엇이 무엇으로
         // 바뀌었는지 보이지 않으면 이 장면은 아무 말도 하지 않는 셈이다.
 
-        for index in Self.ratios.indices {
-            // **알약 사이 터울이 등장의 속도를 정한다.** 130 이면 셋이 거의 한꺼번에
-            // 뜬 것처럼 보여, 하나씩 떨어지는 것이 눈에 들어오지 않는다.
-            // 첫 하나도 조금 늦게 시작한다 — 화면이 켜지자마자 튀어나오면 급해 보인다.
-            await wait(index == 0 ? 140 : 200)
-            guard !done else { return }
-            // 통통 — 낮은 감쇠가 그 튐을 만든다. 앱이 쓰는 `.snappy` 는 튀지 않아서
-            // 여기서만 스프링을 쓰되, 값 하나로 셋을 다 그린다.
-            //
-            // **느긋하게 만드는 것은 `response` 다.** 감쇠(0.5)를 올리면 느려지는 대신
-            // 튐이 사라져 통통이 아니라 스윽이 된다 — 그것은 뒤 변형 구간의 문법이다.
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.5)) {
-                arrived[index] = true
-            }
+        // **글자와 밑줄이 한 번에 통통 들어온다.** 알약 셋일 때는 하나씩 떨어뜨려
+        // 셋이라는 것을 보여 줬는데, 지금 서는 것은 두 조각이 아니라 **글자 하나**다.
+        // 나눠 떨어뜨리면 밑줄이 뒤늦게 붙는 부속처럼 보인다.
+        //
+        // 화면이 켜지자마자 튀어나오면 급해 보이므로 한 박자 두고 시작한다.
+        await wait(140)
+        guard !done else { return }
+        // 통통 — 낮은 감쇠가 그 튐을 만든다. 앱이 쓰는 `.snappy` 는 튀지 않아서
+        // 여기서만 스프링을 쓴다.
+        //
+        // **느긋하게 만드는 것은 `response` 다.** 감쇠(0.5)를 올리면 느려지는 대신
+        // 튐이 사라져 통통이 아니라 스윽이 된다 — 그것은 뒤 변형 구간의 문법이다.
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.5)) {
+            arrived[Self.hero] = true
         }
 
         // 셋이 다 선 채로 머무는 자리. **여기가 로고다.** 이 사이가 없으면
@@ -275,12 +305,14 @@ struct Splash: View {
         await wait(760)
         guard !done else { return }
 
-        // 온보딩이 뒤따르면 여기서 끝낸다. 알약 셋이 선 채로 넘어간다.
+        // 온보딩이 뒤따르면 여기서 끝낸다. 글자와 밑줄이 선 채로 넘어간다.
         guard becomesInputBar else { finish(); return }
 
+        // `asideGone` 이 이제 글자가 물러나는 것을 뜻한다. 곁의 알약이 비키던 자리를
+        // 글자가 이어받았다 — 남는 것은 밑줄 하나이고, 그것이 입력 바가 된다.
         withAnimation(.snappy(duration: 0.32)) { asideGone = true }
 
-        // 곁이 비키기 시작하면 곧바로 주인공이 내려간다. 다 비킨 뒤에 움직이면
+        // 글자가 물러나기 시작하면 곧바로 밑줄이 내려간다. 다 사라진 뒤에 움직이면
         // 사이가 뜨고, 함께 움직이면 무엇을 봐야 할지 흩어진다.
         await wait(100)
         guard !done else { return }
