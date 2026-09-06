@@ -43,7 +43,18 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
         guard jobs.count < limit else { break }
         // 순위 상한을 넘으면 더 볼 것이 없다 — 목록이 순위순이다.
         if let maxRank, entry.rank > maxRank { break }
-        // 사전에 있고 영어 뜻이 달린 것만 번역할 수 있다
+        // 사전에 있고 영어 뜻이 달린 것만 번역할 수 있다.
+        //
+        // **후보가 하나뿐이면 고를 것이 없다.** 아래 규칙이 "표기가 딸린 항목은
+        // 가나 빈도 줄로 받지 않는다"고 막는 까닭은 어느 항목인지 고를 수 없어서인데,
+        // 그 읽기를 가진 항목이 애초에 하나면 고르는 일 자체가 없다. 이것을 막고
+        // 있어서 `ません`(55위) · `のか`(59위) · `ても`(117위) · `ために`(170위)
+        // 같은 것들이 통째로 빠져 있었다 — 말뭉치가 가나로 적고 사전은 한자로
+        // 실어서(`為に`) 표기가 안 만나는 부류다.
+        let byReading = store.lookup(entry.reading).filter {
+            $0.reading == entry.reading && !$0.entry.glosses.isEmpty
+        }
+        let onlyCandidate = byReading.count == 1
         guard let hit = store.lookup(entry.reading).first(where: { hit in
             // **가나 종류까지 같아야 한다.** 색인 조회 키는 히라가나로 정규화돼 있어서
             // でも 로 찾으면 デモ(시위)가 함께 걸려 나오고, 표기 없는 항목끼리 비교하면
@@ -64,7 +75,11 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
                     //
                     // 뜻이 없는 것은 "아직 안 된 것"으로 보이지만 **틀린 뜻은 사람을 속인다.**
                     // 이런 낱말은 손으로 적는다 — guardrail-gloss.tsv 가 그 자리다.
-                    || (hit.entry.usableWritings.isEmpty && entry.writing == entry.reading))
+                    //
+                    // **다만 후보가 하나뿐이면 받는다.** 위 목록이 무서운 것은 고르는
+                    // 일이 있어서다. 하나뿐이면 틀릴 자리가 없다.
+                    || (entry.writing == entry.reading
+                        && (hit.entry.usableWritings.isEmpty || onlyCandidate)))
         }), !hit.entry.glosses.isEmpty else { continue }
 
         // **조사·조동사·계사는 건너뛴다.** 뜻이 아니라 기능이라 낱말 뜻으로 옮길 수가 없다.
@@ -89,9 +104,19 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
             continue
         }
 
-        let key = "\(entry.writing)\t\(entry.reading)"
+        // **적어 두는 표기는 사전의 것이다.**
+        //
+        // 색인이 뜻을 붙일 때 쓰는 열쇠는 `사전 표기 + 읽기` 다(`DictionaryStore.build`).
+        // 말뭉치가 가나로 적은 낱말을 빈도 목록의 표기 그대로(`やめる`) 적어 두면,
+        // 사전은 그 낱말을 `止める` 로 싣고 있어 **열쇠가 안 맞아 영영 안 붙는다.**
+        // 구워는 놓고 화면에는 영어가 뜨는 자리가 그렇게 생긴다.
+        //
+        // 표기 없는 낱말은 읽기가 곧 표기다 — 붙이는 쪽도 그 자리에서는
+        // `읽기 + 읽기` 로 찾으므로 그대로 둔다.
+        let writing = hit.entry.usableWritings.first?.text ?? entry.writing
+        let key = "\(writing)\t\(entry.reading)"
         guard seen.insert(key).inserted else { continue }
-        jobs.append(Job(writing: entry.writing, reading: entry.reading,
+        jobs.append(Job(writing: writing, reading: entry.reading,
                         english: hit.entry.glosses, wordClass: hit.entry.wordClass))
     }
     if !skipped.isEmpty { log("기능어 \(skipped.count)개는 건너뛴다 — 조사·조동사는 뜻으로 옮길 수 없다") }
