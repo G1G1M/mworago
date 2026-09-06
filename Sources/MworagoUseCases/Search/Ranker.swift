@@ -10,6 +10,21 @@ public struct SearchResult: Sendable {
     public let score: Double
 
     public var headword: String { entry.headword }
+
+    /// 가나 옆 괄호에 넣을 한자. 가나로만 쓰는 낱말이면 nil.
+    ///
+    /// **문장에 적을 글자와는 규칙이 다르다.** `Segment.japanese` 는 사전이 `uk`
+    /// (보통 가나로 씀)라고 한 낱말의 한자를 꺼내지 않는다 — 자막도 그렇게 쓰기 때문이다.
+    /// 괄호는 적는 자리가 아니라 **가리키는 자리**라 그 규칙을 따르지 않는다.
+    /// `なる` 로는 成る(되다)와 生る(열매 맺다)가 갈리지 않고, 소리로 찾아온 사람에게
+    /// 어느 것인지 말해 주는 것이 이 괄호가 있는 까닭이다.
+    ///
+    /// 드문 표기(`rK`·`sK`)는 `entry.headword` 가 이미 빼고 준다 — `する` 의 `為る` 는
+    /// 사전에 실려 있을 뿐 그렇게 적는 사람이 없다.
+    public var kanji: String? {
+        let writing = headword
+        return writing.isEmpty || writing == reading ? nil : writing
+    }
 }
 
 /// 살아남은 후보들을 줄 세운다.

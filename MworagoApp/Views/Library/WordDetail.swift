@@ -121,9 +121,7 @@ struct WordDetail: View {
     private func layers(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(word.reading)
-                    .font(Theme.japanese(.display, weight: .medium))
-                    .foregroundStyle(Theme.ink)
+                Headword(reading: word.reading, kanji: word.kanji, size: .display)
                 if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                 SpeakButton(text: word.reading, size: 18)
             }

@@ -29,6 +29,25 @@ public struct CollectedWord: Codable, Sendable, Equatable, Identifiable {
     /// 표기와 읽기가 함께여야 한 낱말이다 — 机(つくえ)와 机(つき)는 다른 낱말이다.
     public var id: String { "\(headword)\u{1F}\(reading)" }
 
+    /// 문장으로 담은 것인가. 낱말과 같은 칸에 담기므로 갈래는 꼬리표가 말해 준다.
+    public static let sentenceTag = "문장"
+    public var isSentence: Bool { partOfSpeech == Self.sentenceTag }
+
+    /// 가나 옆 괄호에 넣을 한자. 가나로만 쓰는 낱말이면 nil.
+    ///
+    /// 담을 때 이미 걸러진 값이 들어온다 — `headword` 는 드문 표기(`rK`·`sK`)를 뺀
+    /// 첫 표기이고, 그런 것이 없으면 읽기가 그대로 들어앉는다. 그래서 읽기와 같은지만
+    /// 보면 된다. 자세한 까닭은 `SearchResult.kanji` 에 적어 두었다.
+    ///
+    /// **문장에는 안 단다.** 괄호는 같은 소리로 갈리는 낱말이 무엇인지 가리키는
+    /// 자리인데, 문장에는 가릴 것이 없고 길이만 두 배가 된다 —
+    /// `わたしはがくせいです(私は学生です)` 가 목록 한 줄에 선다.
+    /// 문장의 한자 원문은 담을 때 그대로 붙들려 있으므로(`headword`) 잃는 것은 없다.
+    public var kanji: String? {
+        guard !isSentence, headword != reading else { return nil }
+        return headword
+    }
+
     public init(headword: String, reading: String, hangul: String, gloss: String,
                 collectedAt: Date = Date(), folder: String? = nil,
                 partOfSpeech: String? = nil) {

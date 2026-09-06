@@ -336,9 +336,7 @@ struct FolderDetail: View {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(word.reading)
-                            .font(Theme.japanese(.word, weight: .medium))
-                            .foregroundStyle(Theme.ink)
+                        Headword(reading: word.reading, kanji: word.kanji, size: .word)
                         if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                     }
                 }

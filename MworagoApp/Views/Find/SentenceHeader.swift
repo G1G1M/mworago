@@ -56,7 +56,7 @@ struct SentenceHeader: View {
                 // **낱말 카드와 같은 꼬리표를 단다.** 카드에는 `동사`·`관용구` 가 알약으로
                 // 붙는데 여기만 맨 글씨였다 — 같은 것을 가리키는 자리가 화면마다 다르면
                 // 사용자는 어느 쪽이 진짜 이름인지 매번 판단해야 한다. 문장도 갈래 하나다.
-                PartOfSpeechTag(name: "문장")
+                PartOfSpeechTag(name: CollectedWord.sentenceTag)
                 SpeakButton(text: parts.kana, size: 13, pace: .sentence)
                 Spacer(minLength: 10)
                 bookmark
@@ -98,7 +98,7 @@ struct SentenceHeader: View {
                       // 아직 안 옮겨졌으면 비운다. **없는 뜻을 지어내지 않는다** —
                       // 빈 자리는 화면에서 티가 나지만 틀린 뜻은 사용자가 믿는다.
                       gloss: desk.japanese[parts.forTranslation()] ?? "",
-                      partOfSpeech: "문장")
+                      partOfSpeech: CollectedWord.sentenceTag)
     }
 
     /// 문장 담기. 카드의 갈피표와 같은 문법이다 — 담을 때는 어디에 넣을지 묻고,

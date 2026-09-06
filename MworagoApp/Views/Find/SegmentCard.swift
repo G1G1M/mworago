@@ -103,9 +103,9 @@ struct SegmentCard: View {
     private func headline(_ result: SearchResult) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(result.reading)
-                    .font(Theme.japanese(.hero, weight: .medium))
-                    .foregroundStyle(Theme.ink)
+                // **가나 옆에 한자를 단다.** 소리로 찾아온 사람이 그다음에 알고 싶은
+                // 것은 "그래서 무슨 낱말이냐"이고, 그 답이 한자다.
+                Headword(reading: result.reading, kanji: result.kanji, size: .hero)
 
                 // **품사.** 실제 사전이 하는 것과 같다 — 낱말마다 늘 있으므로 자리가 고정된다.
                 //
@@ -200,15 +200,16 @@ struct SegmentCard: View {
     // 1위가 정답인 비율은 93%지만 3위 안에 있을 비율은 98%다.
     // 그 5%를 사용자가 직접 고를 수 있게 곁에 둔다.
 
-    /// 대안 후보는 **뜻만** 늘어놓는다.
+    /// 대안 후보는 **한자와 뜻**을 늘어놓는다.
     ///
-    /// 한때는 가나를 앞에 붙였는데, 한자를 뺀 뒤로 그 가나가 **첫 줄과 똑같아졌다** —
-    /// `やめる` 를 찾으면 `やめる 멈추다` · `やめる 퇴사하다` · `やめる sick` 이 되어
-    /// 같은 글자가 세 번 나온다. 대안끼리 가르는 것이 이제 뜻뿐이므로 가나는 정보가 0이다.
+    /// 한때 뜻만 남긴 적이 있다. 앞에 가나를 붙였더니 한자를 안 그리던 시절이라
+    /// 그 가나가 **첫 줄과 똑같아졌기** 때문이다 — `やめる` 를 찾으면
+    /// `やめる 멈추다` · `やめる 퇴사하다` · `やめる sick` 이 되어 같은 글자가 세 번 났다.
     ///
-    /// **그리고 층을 깼다.** 카드의 규칙은 가나 · 한국어 발음 · 뜻 세 층인데,
-    /// 대안만 "가나 + 뜻" 한 줄이라 같은 카드 안에서 문법이 둘로 갈렸다.
-    /// 뜻만 남기면 위의 뜻 줄에 그대로 이어져 **한 층이 여러 줄인 것**으로 읽힌다.
+    /// **한자가 돌아오면서 그 자리가 정보를 되찾았다.** 止める · 辞める · 病める 는
+    /// 서로 다른 글자이고, 대안을 펴 보는 까닭이 바로 "1위가 헛짚었나" 를 보려는 것이라
+    /// 뜻만으로 고르게 두는 것보다 낱말을 함께 보이는 편이 낫다.
+    /// 한자가 없는 낱말은 그대로 뜻만 선다 — 없는 것을 지어내지 않는다.
     /// 접혀 있을 때의 한 줄. **개수를 적는다** — 몇 개가 더 있는지 알아야 누를지 정한다.
     ///
     /// 글자를 회색으로만 두고 꼬리표나 테두리를 붙이지 않는다. 이 카드에서 눌러야 하는
@@ -232,10 +233,17 @@ struct SegmentCard: View {
     private var alternateList: some View {
         VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(alternates.enumerated()), id: \.offset) { _, result in
-                Text(korean(of: result.entry))
-                    .font(Theme.korean(.sub))
-                    .foregroundStyle(Theme.grey2)
-                    .lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    if let kanji = result.kanji {
+                        Text(kanji)
+                            .font(Theme.japanese(.sub, weight: .medium))
+                            .foregroundStyle(Theme.grey1)
+                    }
+                    Text(korean(of: result.entry))
+                        .font(Theme.korean(.sub))
+                        .foregroundStyle(Theme.grey2)
+                        .lineLimit(1)
+                }
             }
             Button {
                 withAnimation(.snappy(duration: 0.18)) { expanded = false }

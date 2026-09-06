@@ -599,9 +599,7 @@ struct LibraryView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Text(word.reading)
-                            .font(Theme.japanese(.word, weight: .medium))
-                            .foregroundStyle(Theme.ink)
+                        Headword(reading: word.reading, kanji: word.kanji, size: .word)
                         if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                     }
                     Text(word.hangul)
