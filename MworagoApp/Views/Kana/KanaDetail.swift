@@ -283,8 +283,12 @@ struct KanaQuiz: View {
 
             // **손으로 밀어도 넘어간다.** 연습 카드와 같은 몸짓이다 — 넘기는 일 자체는
             // 시스템에 맡기고(`Pager`), 단추는 그대로 둔다. 밀 수 있다는 것은 해 봐야 안다.
-            Pager(items: deck, current: $currentID) { item in
-                card(item).containerRelativeFrame(.vertical)
+            // **손으로 밀지 않는다.** 바깥(글자 탭)이 가로로 미는 일을 이미 맡고 있다 —
+            // 표와 익히기 사이를 오가는 일이다. 한 화면에서 가로 축이 두 가지를 뜻하면
+            // 안쪽이 손을 먹어 버려 표로 돌아올 길이 막힌다. 넘기는 것은 `이전`·`다음`
+            // 이 하고, 자리가 바뀔 때 미끄러지는 것은 그대로다.
+            Pager(items: deck, current: $currentID, scrollDisabled: true) { item in
+                card(item).frame(maxHeight: .infinity)
             }
 
             HStack(spacing: 12) {
@@ -295,7 +299,7 @@ struct KanaQuiz: View {
                 // 셋 중 둘이 번갈아 검어지면 무엇이 지금 할 일인지가 흐려진다.
                 button("이전", filled: false) { previous() }
                 button(revealed ? "다시 덮기" : "뒤집기", filled: true) {
-                    withAnimation(.snappy(duration: 0.18)) { revealed.toggle() }
+                    withAnimation(Flip.motion) { revealed.toggle() }
                 }
                 button("다음", filled: false) { next() }
             }
@@ -312,55 +316,81 @@ struct KanaQuiz: View {
         .onChange(of: currentID) { 앞, _ in if 앞 != nil { revealed = false } }
     }
 
-    /// 한 장.
+    /// 한 장. **앞뒤가 있는 카드다.**
     ///
-    /// **`뒤집기` 라고 말하려면 뒤집을 것이 있어야 한다.** 글자 하나가 허공에 떠 있으면
-    /// 그 말이 무엇을 가리키는지가 화면에 없다. 면을 하나 두면 앞뒤가 생기고,
-    /// 좌우로 미는 몸짓도 카드 더미를 넘기는 일로 읽힌다.
+    /// `뒤집기` 라고 말해 놓고 아래에 답만 나타나던 자리다. 카드를 그려 두고도 그것이
+    /// 돌지 않으면 그 네모는 카드가 아니라 배경이다. 앞면은 글자, 뒷면은 소리 —
+    /// 떠올렸다가 확인하는 이 화면의 일이 뒤집는 몸짓과 같은 모양이다.
     private func card(_ item: Card) -> some View {
-        VStack(spacing: 26) {
-            // 화면에 이것 하나뿐이라 본문 크기를 따를 이유가 없다. 표에서 24pt 로
-            // 훑던 글자를 여기서 크게 다시 만나는 것 자체가 "이제 이걸 본다"는 신호다.
-            // 요음은 두 자(きゃ)라 폭이 배가 되므로 줄이지 않고 넘치게 두면 안 된다.
-            Text(item.shown)
-                .font(Theme.japanese(180, weight: .medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.4)
-                .foregroundStyle(Theme.ink)
-
-            // 뒤집기 전에는 자리만 잡아 둔다. 답이 나타날 때 글자가 밀려 올라가면
-            // 눈이 따라가느라 정작 답을 놓친다.
-            //
-            // **이 줄이 곧 소리 단추다.** 스피커 모양을 그려 놓고 눌리지 않으면
-            // 그것은 그림이지 단추가 아니다. 아래에 `소리 듣기` 를 따로 두었다가
-            // 걷어낸 자리다 — 같은 일을 하는 것이 화면에 둘일 이유가 없다.
-            Button { speaker.speak(item.kana) } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "speaker.wave.2")
-                        .font(.system(size: 18))
-                    Text(KanaToHangul.transliterate(item.kana))
-                        .font(Theme.korean(28))
-                }
-                .foregroundStyle(Theme.grey1)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .opacity(revealed ? 1 : 0)
-            .disabled(!revealed)
-            .accessibilityLabel("소리 듣기")
-            .accessibilityHidden(!revealed)
+        FlipCard(angle: revealed ? 180 : 0) {
+            face { front(item) }
+        } back: {
+            face { back(item) }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 54)
-        .background(Theme.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(Theme.grey3.opacity(0.45), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
         .frame(maxWidth: Theme.readWidth)
         .padding(.horizontal, Theme.gutter)
     }
+
+    /// 카드의 면 하나. 연습 카드와 같은 꼴이다.
+    private func face<V: View>(@ViewBuilder _ inner: () -> V) -> some View {
+        inner()
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 54)
+            .background(Theme.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Theme.grey3.opacity(0.45), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
+    }
+
+    /// 앞면 — 글자 하나.
+    ///
+    /// 화면에 이것 하나뿐이라 본문 크기를 따를 이유가 없다. 표에서 24pt 로 훑던 글자를
+    /// 여기서 크게 다시 만나는 것 자체가 "이제 이걸 본다"는 신호다.
+    /// 요음은 두 자(きゃ)라 폭이 배가 되므로 줄이지 않고 넘치게 두면 안 된다.
+    private func front(_ item: Card) -> some View {
+        Text(item.shown)
+            .font(Theme.japanese(180, weight: .medium))
+            .lineLimit(1)
+            .minimumScaleFactor(0.4)
+            .foregroundStyle(Theme.ink)
+            .frame(minHeight: Self.faceHeight)
+    }
+
+    /// 뒷면 — 소리.
+    ///
+    /// **글자를 작게 남긴다.** 뒤집고 나서 "무엇의 답인지"를 다시 찾아 앞면으로
+    /// 되돌아가게 하지 않기 위해서다.
+    ///
+    /// **이 줄이 곧 소리 단추다.** 스피커 모양을 그려 놓고 눌리지 않으면 그것은
+    /// 그림이지 단추가 아니다. 아래에 `소리 듣기` 를 따로 두었다가 걷어낸 자리다 —
+    /// 같은 일을 하는 것이 화면에 둘일 이유가 없다.
+    private func back(_ item: Card) -> some View {
+        VStack(spacing: 22) {
+            Text(item.shown)
+                .font(Theme.japanese(56, weight: .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .foregroundStyle(Theme.grey2)
+            Button { speaker.speak(item.kana) } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "speaker.wave.2")
+                        .font(.system(size: 20))
+                    Text(KanaToHangul.transliterate(item.kana))
+                        .font(Theme.korean(34))
+                }
+                .foregroundStyle(Theme.ink)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("소리 듣기")
+        }
+        .frame(minHeight: Self.faceHeight)
+    }
+
+    /// 두 면이 함께 쓰는 최소 높이. 앞뒤가 크게 다르면 뒤집는 순간 카드가 늘었다 줄었다 한다.
+    private static let faceHeight: CGFloat = 210
 
     /// 순서 다이얼. 범위 다이얼과 같은 문법이다 — 평평하고, 고른 것 하나만 검게 채워진다.
     private var orderDial: some View {

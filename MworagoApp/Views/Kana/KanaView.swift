@@ -20,7 +20,10 @@ struct KanaView: View {
         }
     }
 
-    @State private var mode: Mode = LaunchOptions.current.has("quiz") ? .quiz : .chart
+    /// 지금 보고 있는 쪽. **`Pager` 가 자리를 들고 있으므로 `id` 로 든다** —
+    /// 밀어서 넘겼을 때 스크롤이 돌려주는 것이 자리가 아니라 장 자체이기 때문이다.
+    @State private var modeID: Mode.ID? = (LaunchOptions.current.has("quiz") ? Mode.quiz : .chart).id
+    private var mode: Mode { Mode(rawValue: modeID ?? 0) ?? .chart }
     /// 가타카나로 넘겨 볼 수 있다. 같은 소리의 두 글자를 나란히 두지 않는 것은,
     /// 한 번에 둘을 외우려 들면 둘 다 흐려지기 때문이다.
     @State private var katakana = false
@@ -34,9 +37,19 @@ struct KanaView: View {
         NavigationStack {
             ZStack {
                 Theme.paper.ignoresSafeArea()
-                switch mode {
-                case .chart: chart
-                case .quiz:  KanaQuiz()
+                // **표와 익히기 사이도 밀어서 오간다.** 위 다이얼은 지금 어디인지를
+                // 말하고, 옮기는 일은 손이 한다 — 앱의 다른 자리(낱말 상세 · 연습 카드 ·
+                // 글자 상세)가 모두 좌우로 넘어가므로 여기만 단추로 갈 이유가 없다.
+                //
+                // **익히기 쪽 카드 더미는 손으로 밀지 않는다.** 가로로 미는 일의 뜻이
+                // 한 화면에 둘이면 어느 쪽이 먼저인지 손이 알 수 없고, 안쪽 스크롤이
+                // 손을 먹어 버려 익히기에서 표로 돌아올 길이 막힌다. 카드는 `이전`·`다음`
+                // 으로 넘기고, 가로로 미는 것은 **표 ↔ 익히기** 하나만 뜻한다.
+                Pager(items: Mode.allCases, current: $modeID) { option in
+                    switch option {
+                    case .chart: chart
+                    case .quiz:  KanaQuiz()
+                    }
                 }
             }
             .navigationTitle("글자")
@@ -48,24 +61,42 @@ struct KanaView: View {
         }
     }
 
-    /// 표와 익히기를 가른다. 읽기 보조 다이얼과 같은 문법이다.
+    /// 표와 익히기를 가른다.
+    ///
+    /// **여기만 알약이 아니다.** 아래 다이얼들(히라가나/가타카나 · 범위 · 순서)은 있던
+    /// 화면 안에서 **조건**을 바꾸지만, 이것은 화면 자체를 바꾼다 — 고르는 일이 아니라
+    /// 가는 일이다. 같은 알약으로 그려 두면 "이것도 조건이겠지" 하고 눌렀다가 화면이
+    /// 통째로 갈린다.
+    ///
+    /// 알약이 위아래로 겹쳐 서면 무엇이 무엇의 아래인지도 화면이 말하지 못한다.
+    /// 맨 위 하나를 다른 꼴로 빼는 것만으로 층이 생긴다.
+    ///
+    /// 밀어서도 오갈 수 있으므로 이것은 이제 **지금 어디인지를 알리는 표시**를 겸한다.
+    /// 밑줄은 그 자리를 가리키는 가장 조용한 방법이다.
     private var modeDial: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 20) {
             ForEach(Mode.allCases) { option in
-                let selected = option == mode
+                let selected = option.id == modeID
                 Button {
-                    withAnimation(.snappy(duration: 0.18)) { mode = option }
+                    withAnimation(.snappy(duration: 0.22)) { modeID = option.id }
                 } label: {
-                    Text(option.label)
-                        .font(Theme.korean(13, weight: selected ? .semibold : .regular))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(selected ? Theme.ink : .clear, in: Capsule())
-                        .foregroundStyle(selected ? Theme.paper : Theme.grey2)
+                    VStack(spacing: 4) {
+                        Text(option.label)
+                            .font(Theme.korean(15, weight: selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? Theme.ink : Theme.grey2)
+                        Rectangle()
+                            .fill(selected ? Theme.ink : Color.clear)
+                            .frame(height: 1.5)
+                    }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? [.isSelected] : [])
             }
         }
+        // **툴바가 폭을 줄이려 든다.** 내비 바 가운데 자리는 좁으면 글자를 줄여 버리는데,
+        // 그러면 `익히기` 가 `...` 로 나온다. 잴 만큼은 내주라고 못 박는다.
+        .fixedSize()
     }
 
     private var chart: some View {

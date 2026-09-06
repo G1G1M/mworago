@@ -52,15 +52,24 @@ struct PracticeView: View {
             if words.isEmpty {
                 empty
             } else {
-                // **손으로 밀어도 넘어간다.** 카드 더미를 넘기는 몸짓이 단추보다 먼저
-                // 떠오르는 자리다. 단추는 그대로 둔다 — 밀 수 있다는 것은 해 봐야 알고,
-                // `이전`·`다음` 은 보이는 채로 있다.
-                Pager(items: words, current: $currentID) { word in
-                    card(word)
-                        // 카드가 화면 한가운데 선다. 페이지가 뷰포트 높이를 그대로 받고,
-                        // 그 안에서 카드는 제 크기대로 가운데 놓인다.
-                        .containerRelativeFrame(.vertical)
+                // **미는 것은 카드뿐이다.**
+                //
+                // 한때는 머리줄과 단추까지 한 장에 담아 통째로 밀었다. 그런데 저 둘은
+                // 장에 딸린 것이 아니라 **화면에 딸린 것**이다 — 스무 장을 넘겨도 `뒤집기`
+                // 는 같은 자리에 있어야 손이 그 자리를 기억한다. 머리줄도 장마다 같은
+                // 말("연습")을 다시 적으므로, 밀 때마다 같은 글자가 옆에서 흘러들어와
+                // 넘어간 것이 아니라 화면이 흔들린 것처럼 보였다.
+                VStack(spacing: 0) {
+                    header
+                    Pager(items: words, current: $currentID) { word in
+                        card(word)
+                            // 남은 높이 안에서 카드가 가운데 선다.
+                            .frame(maxHeight: .infinity)
+                    }
+                    buttons
                 }
+                .padding(.top, Theme.screenTop)
+                .padding(.bottom, Theme.screenBottom)
             }
             if let subsetLabel { subsetBanner(subsetLabel) }
         }
@@ -81,7 +90,11 @@ struct PracticeView: View {
         }
         // **장이 바뀌면 도로 덮인다.** 밀어서 넘겼든 단추로 넘겼든 같다 —
         // 다음 낱말의 답이 이미 펼쳐져 있으면 떠올려 볼 틈이 없다.
-        .onChange(of: currentID) { _, _ in revealed = false }
+        //
+        // **첫 장을 잡을 때는 덮지 않는다.** 화면이 서면서 `currentID` 가 `nil` 에서
+        // 첫 낱말로 한 번 바뀌는데, 그것까지 "장이 바뀐 것"으로 세면 `--revealed` 로
+        // 펼친 채 띄우는 길이 막힌다(글자 익히기는 이미 막아 둔 자리다).
+        .onChange(of: currentID) { 앞, _ in if 앞 != nil { revealed = false } }
     }
 
     /// 지금 무엇을 연습하고 있는지. 전체가 아니라면 그 사실이 화면에 있어야 한다 —
@@ -112,74 +125,109 @@ struct PracticeView: View {
         }
     }
 
-    /// 한 장.
+    /// 지금 어디쯤인가. **장을 따라 밀리지 않는다** — 장마다 같은 말을 다시 적는 줄이라,
+    /// 밀 때 같은 글자가 옆에서 흘러들어오면 넘어간 것이 아니라 화면이 흔들려 보인다.
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("연습")
+                .font(Theme.korean(24, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+            Text("\(min(index + 1, words.count)) / \(words.count)")
+                .font(Theme.korean(15))
+                .foregroundStyle(Theme.grey2)
+                .monospacedDigit()
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: Theme.readWidth, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, Theme.gutter)
+    }
+
+    /// 한 장. **앞뒤가 있는 카드다.**
     ///
-    /// **덩어리는 가운데, 글줄은 왼쪽.** 이름·낱말·답이 저마다 가운데로 서면 줄마다
-    /// 시작하는 자리가 달라 눈이 매번 첫 글자를 찾아야 한다. 한 자리에서 시작하되,
-    /// 그 덩어리를 **폭에 맞춰 재서** 화면 가운데 세운다 — 폭을 넓게 잡아 두고 그 안에서
-    /// 왼쪽에 붙이면 글은 여전히 화면 왼쪽에 쏠린다.
+    /// 앞면은 문제 — 가나와, 그것을 읽는 데 쓰는 것들(품사·소리). 뒷면은 답 —
+    /// 한글 음차와 뜻. 뒷면에도 가나를 작게 남긴다. 뒤집고 나서 "무엇의 답인지"를
+    /// 다시 찾아 앞면으로 되돌아가게 하지 않기 위해서다.
     ///
-    /// **단추 줄만 따로 가운데다.** 그것은 읽는 것이 아니라 누르는 것이고,
-    /// 세 알약이 좌우로 균형을 이룰 때 손이 어디로 갈지가 분명하다.
+    /// **덩어리는 가운데, 글줄은 왼쪽.** 줄마다 시작점이 다르면 눈이 매번 첫 글자를
+    /// 찾아야 한다. 한 자리에서 시작하되 그 덩어리를 폭에 맞춰 재서 화면 가운데 세운다.
     private func card(_ word: CollectedWord) -> some View {
-        VStack(spacing: 0) {
-            upper(word)
-            buttons
+        FlipCard(angle: revealed ? 180 : 0) {
+            face { question(word) }
+        } back: {
+            face { answer(word) }
         }
         .frame(maxWidth: Theme.readWidth)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, Theme.gutter)
     }
 
-    /// 읽는 것들 — 이름·낱말·답. 왼쪽에서 시작하고, 덩어리째 가운데로 간다.
-    private func upper(_ word: CollectedWord) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("연습")
-                    .font(Theme.korean(24, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                Text("\(min(index + 1, words.count)) / \(words.count)")
-                    .font(Theme.korean(15))
-                    .foregroundStyle(Theme.grey2)
-            }
-            .padding(.bottom, 40)
-
-            // **가나부터 보인다.** 한글 음차는 찾을 때 쓰는 열쇠이지 익힐 것이 아니다.
-            // 그것을 앞에 두면 한글 음차를 보고 뜻을 떠올리는 연습이 되는데,
-            // 자막에 뜨는 것은 `いたい` 이지 `이타이` 가 아니다.
-            // 앞면에도 소리를 둔다. **뒤집기 전에 들어 보는 것이 곧 문제다** —
-            // 자막에서 만나는 것은 글자만이 아니라 소리이기도 하다.
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Text(word.reading)
-                    .font(Theme.japanese(38, weight: .medium))
-                    .foregroundStyle(Theme.ink)
-                marks(word)
-            }
-
-            // 뒤집기 전에는 자리만 잡아 둔다. 답이 나타나며 아래가 밀리면
-            // 눈이 따라가야 해서, 있던 자리에 그대로 나타나게 한다.
-            //
-            // 층의 차례는 화면 어디서나 같다 — 가나(앞면) · 한글 · 뜻.
-            // 한글 음차를 뒤에 남기는 것은 **"내가 이것을 어떻게 찾았는지"의 기록**이라서다.
-            // 소리와 글자를 잇는 다리인데, 답의 일부지 문제는 아니다.
-            VStack(alignment: .leading, spacing: 7) {
-                Text(word.hangul)
-                    .font(Theme.korean(15))
-                    .foregroundStyle(Theme.grey3)
-                if !word.gloss.isEmpty {
-                    Text(word.gloss)
-                        .font(Theme.korean(17))
-                        .foregroundStyle(Theme.grey1)
-                        .padding(.top, 4)
-                }
-            }
-            // 폭을 넓게 잡지 않는다. `maxWidth: .infinity` 를 주면 이 줄이 카드 폭을
-            // 끝까지 벌려, 덩어리를 재서 가운데 세우려던 것이 도로 왼쪽에 붙는다.
-            .frame(minHeight: 130, alignment: .topLeading)
-            .opacity(revealed ? 1 : 0)
-            .padding(.top, 22)
-        }
+    /// 카드의 면 하나. **앞뒤가 같은 판 위에 있어야** 뒤집는 것이 한 물건으로 읽힌다.
+    /// 글자 익히기 카드와 같은 꼴이다 — 두 화면이 하는 일이 같으므로 물건도 같아야 한다.
+    private func face<V: View>(@ViewBuilder _ inner: () -> V) -> some View {
+        inner()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 26)
+            .padding(.vertical, 34)
+            .background(Theme.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Theme.grey3.opacity(0.45), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
     }
+
+    /// 앞면 — 문제.
+    ///
+    /// **가나부터 보인다.** 한글 음차는 찾을 때 쓰는 열쇠이지 익힐 것이 아니다.
+    /// 그것을 앞에 두면 한글 음차를 보고 뜻을 떠올리는 연습이 되는데, 자막에 뜨는 것은
+    /// `いたい` 이지 `이타이` 가 아니다.
+    ///
+    /// **품사와 소리는 앞면에 둔다.** 답이 아니라 문제의 일부다 — 동사인지 명사인지를
+    /// 알고 뜻을 떠올리는 것이 실제로 하는 일이고, 뒤집기 전에 들어 보는 것이 곧 문제다.
+    private func question(_ word: CollectedWord) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(word.reading)
+                .font(Theme.japanese(38, weight: .medium))
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            marks(word)
+        }
+        .frame(minHeight: Self.faceHeight, alignment: .leading)
+    }
+
+    /// 뒷면 — 답.
+    ///
+    /// 층의 차례는 화면 어디서나 같다 — 가나 · 한글 · 뜻. 한글 음차를 남기는 것은
+    /// **"내가 이것을 어떻게 찾았는지"의 기록**이라서다. 소리와 글자를 잇는 다리인데,
+    /// 답의 일부지 문제는 아니다.
+    private func answer(_ word: CollectedWord) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            // 무엇의 답인지. 앞면보다 작게 두어 답과 섞이지 않는다.
+            Text(word.reading)
+                .font(Theme.japanese(22))
+                .foregroundStyle(Theme.grey2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(word.hangul)
+                .font(Theme.korean(15))
+                .foregroundStyle(Theme.grey3)
+            if !word.gloss.isEmpty {
+                Text(word.gloss)
+                    .font(Theme.korean(22))
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
+            }
+            SpeakButton(text: word.reading, size: 18)
+                .padding(.top, 8)
+        }
+        .frame(minHeight: Self.faceHeight, alignment: .leading)
+    }
+
+    /// 두 면이 함께 쓰는 최소 높이. **앞뒤가 크게 다르면 뒤집는 순간 카드가 늘었다
+    /// 줄었다 한다** — 겹쳐 두었으므로 높이는 큰 쪽으로 굳지만, 바닥값을 함께 두어야
+    /// 짧은 낱말과 긴 낱말 사이에서도 카드가 들썩이지 않는다.
+    private static let faceHeight: CGFloat = 150
 
     /// 누르는 것들. 읽는 덩어리와 달리 **줄째 가운데** 선다.
     private var buttons: some View {
@@ -192,10 +240,11 @@ struct PracticeView: View {
             // 화면이 "다음으로 가라"고 재촉하는 것처럼 읽힌다.
             button("이전", filled: false) { previous() }
             button(revealed ? "다시 덮기" : "뒤집기", filled: true) {
-                withAnimation(.snappy(duration: 0.18)) { revealed.toggle() }
+                withAnimation(Flip.motion) { revealed.toggle() }
             }
             button("다음", filled: false) { next() }
         }
+        .frame(maxWidth: .infinity)
         // 뒤집는 것이 이 화면에서 하는 일이다. 카드가 넘어가는 결로 한 번 알린다 —
         // 답을 맞혔는지 틀렸는지를 말하지 않으므로 성공·실패의 결은 쓰지 않는다.
         .sensoryFeedback(.selection, trigger: revealed)

@@ -17,6 +17,10 @@ struct Pager<Item: Identifiable, Content: View>: View {
     let items: [Item]
     /// 지금 보고 있는 것. 넘기면 이 값이 따라 바뀐다.
     @Binding var current: Item.ID?
+    /// 손으로 미는 것을 막는다. **가로 축의 뜻이 한 화면에 둘일 수는 없다** —
+    /// 바깥에서 이미 가로로 미는 일(화면 넘기기)을 맡고 있으면, 안쪽은 자리를 내주고
+    /// 단추로만 넘어간다. 자리를 옮기는 것(`current` 를 바꾸는 것)은 그대로 미끄러진다.
+    var scrollDisabled = false
     @ViewBuilder let content: (Item) -> Content
 
     var body: some View {
@@ -37,6 +41,7 @@ struct Pager<Item: Identifiable, Content: View>: View {
         // 더 있다고 말해 놓고 없는 것과 같다.
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .scrollPosition(id: $current)
+        .scrollDisabled(scrollDisabled)
     }
 }
 
