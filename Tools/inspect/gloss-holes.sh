@@ -189,5 +189,9 @@ print("두 숫자를 그대로 견주지 말 것. 위는 굽기의 진도이고,
 print("있는 것 전부다 — 흔한 읽기일수록 동음이의어 꼬리가 길어(`は` 11개 · `し` 40개)")
 print("아래 표의 상위 구간이 낮게 나온다. 그 꼬리는 대개 카드의 `다른 뜻 N` 에 들어가고")
 print("1위로는 잘 안 올라온다. **아래 표는 바닥값이지 사용자가 겪는 값이 아니다.**")
-print("1위만 세려면 순위를 매겨 봐야 하므로 이 도구가 아니라 측정기가 할 일이다.")
+print("1위만 세는 잣대는 측정기에 있다 — 순위를 매겨 봐야 하기 때문이다.")
+print()
+print("  swift run SpikeRunner --gloss-top 10000 \\")
+print("      --index MworagoApp/Resources/mworago-dict.db \\")
+print("      --freq MworagoApp/Resources/jesc_freq.tsv")
 PY

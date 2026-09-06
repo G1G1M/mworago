@@ -68,6 +68,8 @@ func flagValues(_ name: String) -> [String] {
 }
 let explainWords = flagValues("--explain")
 let doSweep = args.contains("--sweep")
+let glossTopCount = flagValues("--gloss-top").first.flatMap(Int.init)
+    ?? (args.contains("--gloss-top") ? 10_000 : nil)
 let buildCount = flagValues("--build-cases").first.flatMap(Int.init)
 let segmentInputs = flagValues("--segment")
 let segmentCaseCount = flagValues("--segment-cases").first.flatMap(Int.init)
@@ -128,6 +130,7 @@ let positional: [String] = {
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
                 || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction" || args[i] == "--mt-share"
+                || args[i] == "--gloss-top"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -273,6 +276,127 @@ if !explainWords.isEmpty {
             print("\(i + 1). \(result.headword.padded(14))\(result.reading.padded(14))\(String(format: "%6.1f", result.score))  \(rule)\(result.entry.glosses.prefix(2).joined(separator: ", "))")
         }
         if results.count > 10 { print("   … 외 \(results.count - 10)개") }
+    }
+    exit(0)
+}
+
+// MARK: --gloss-top
+//
+// **1위 카드에 한국어 뜻이 뜨는가.**
+//
+// `gloss-holes.sh` 는 잣대를 둘 쓰는데 둘 다 이 물음에는 답하지 못한다. 하나는
+// 굽기의 진도(빈도 목록의 표기·읽기 쌍)이고, 다른 하나는 읽기로 닿는 표제항 **전부**라
+// 동음이의어 꼬리를 다 센다(`は` 11개 · `し` 40개). 꼬리는 대개 카드의 `다른 뜻 N` 에
+// 들어가지 1위로는 잘 안 올라온다. 그래서 두 숫자 사이가 98.8% 와 68.2% 로 벌어져 있고,
+// **그 사이 어디가 사용자가 겪는 값인지**를 아무도 몰랐다.
+//
+// 여기서는 순위를 실제로 매겨 본다. 빈도 목록의 낱말을 **그 소리대로 쳐 보고**
+// (`KanaToHangul` 로 음차해서 앱과 같은 `Ranker.search` 에 넣는다) 1위로 올라온 카드에
+// 한국어 뜻이 있는지 센다. 앱이 하는 일과 같은 길이다.
+//
+// **1위가 그 낱말인지는 묻지 않는다.** 그것은 정확도이고 이미 M0 가 잰다. 여기서 묻는
+// 것은 "치면 한국어가 뜨는가" 하나다 — 1위가 딴 낱말이어도 뜻이 있으면 화면은 채워진다.
+
+if let glossTopCount {
+    guard let frequency else {
+        FileHandle.standardError.write(Data("빈도 목록이 있어야 한다 (--freq)\n".utf8))
+        exit(1)
+    }
+    // **구운 색인을 물려야 한다.** 기본은 JMdict 원본을 메모리에 올린 것이라 한국어 뜻이
+    // 아예 없다 — 처음 돌렸을 때 모든 구간이 0.0% 로 나와서 알았다.
+    guard useIndexPath != nil else {
+        FileHandle.standardError.write(Data(
+            "구운 색인을 물려야 한다: --index MworagoApp/Resources/mworago-dict.db\n".utf8))
+        exit(1)
+    }
+
+    // 같은 음차로 겹치는 줄이 있다(`私·わたし` 와 `渡し·わたし`). 가장 높은 순위로 센다.
+    var bestRank: [String: Int] = [:]
+    for entry in frequency.sortedEntries() {
+        guard entry.rank <= glossTopCount else { break }
+        let hangul = KanaToHangul.transliterate(entry.reading)
+        guard !hangul.isEmpty else { continue }
+        if bestRank[hangul].map({ entry.rank < $0 }) ?? true { bestRank[hangul] = entry.rank }
+    }
+    log("음차해서 쳐 볼 낱말 \(bestRank.count)개 (빈도 1~\(glossTopCount)위)\n")
+
+    let bands: [(Int, Int)] = [(1, 1000), (1000, 5000), (5000, 10000), (10000, 30000), (30000, .max)]
+    var tried = [Int](repeating: 0, count: bands.count)
+    var covered = [Int](repeating: 0, count: bands.count)
+    var byHand = [Int](repeating: 0, count: bands.count)   // 기능어·접사 — 손으로 적을 자리
+    var byMachine = [Int](repeating: 0, count: bands.count) // 그 밖 — 구워서 메울 자리
+    var notFound = [Int](repeating: 0, count: bands.count)  // 1위가 아예 안 나온 것
+    var handList: [(Int, String, String)] = []
+    var machineList: [(Int, String, String)] = []
+
+    for (hangul, rank) in bestRank.sorted(by: { $0.value < $1.value }) {
+        let band = bands.firstIndex { rank >= $0.0 && rank < $0.1 } ?? bands.count - 1
+        tried[band] += 1
+        guard let top = Ranker.search(hangul, in: index, frequency: frequency).first else {
+            notFound[band] += 1
+            continue
+        }
+        if !(top.entry.koreanGloss ?? "").isEmpty {
+            covered[band] += 1
+            continue
+        }
+        // **메울 길이 둘로 갈린다.** 조사·조동사·접사는 낱말 뜻으로 옮길 수가 없어
+        // 굽기가 일부러 건너뛴다 — `function-gloss.tsv` 에 손으로 적을 자리다.
+        // 그 밖은 기계가 구울 수 있는데 아직 안 구워졌거나, 후보가 여럿이라 막힌 것이다.
+        let 손 = top.entry.wordClass == .function || top.entry.wordClass == .affix
+        if 손 {
+            byHand[band] += 1
+            if handList.count < 40 { handList.append((rank, hangul, top.headword)) }
+        } else {
+            byMachine[band] += 1
+            if machineList.count < 40 { machineList.append((rank, hangul, top.headword)) }
+        }
+    }
+
+    func row(_ label: String, _ a: Int, _ b: Int, _ c: Int, _ d: Int, _ e: Int) {
+        let rate = a - e > 0 ? 100 * Double(b) / Double(a - e) : 0
+        print("\(label.padded(16))\(String(a).padded(9))\(String(b).padded(9))"
+              + "\(String(c).padded(9))\(String(d).padded(9))\(String(e).padded(8))"
+              + String(format: "%5.1f%%", rate))
+    }
+
+    print("\n1위 카드에 한국어 뜻이 뜨는가 — **소리대로 쳐 보고 센다**\n")
+    print("\("순위 구간".padded(16))\("쳐 봄".padded(9))\("뜻 뜸".padded(9))"
+          + "\("손으로".padded(9))\("구워서".padded(9))\("못 찾음".padded(8))비율")
+    print(String(repeating: "─", count: 66))
+    var t = 0, c = 0, h = 0, m = 0, n = 0
+    for (i, band) in bands.enumerated() where tried[i] > 0 {
+        t += tried[i]; c += covered[i]; h += byHand[i]; m += byMachine[i]; n += notFound[i]
+        let label = band.1 == .max ? "\(band.0.formatted())~"
+                                   : "\(band.0.formatted())~\(band.1.formatted())"
+        row(label, tried[i], covered[i], byHand[i], byMachine[i], notFound[i])
+    }
+    print(String(repeating: "─", count: 66))
+    row("합계", t, c, h, m, n)
+
+    print("""
+
+        비율은 **1위가 나온 것 중** 뜻이 뜬 비율이다(`못 찾음` 은 뺐다).
+        `못 찾음` 은 뜻이 아니라 검색 쪽 자리다 — 빈도 목록에 토크나이저가 흘린
+        활용 조각(`잇` · `낫` · `얏`)이 섞여 있어 그것들이 여기 잡힌다.
+
+        `손으로` 는 조사·조동사·접사다. 굽기가 **일부러** 건너뛴다 — 낱말 뜻으로
+        옮길 수가 없어서다(`の` → "indicates possessive"). `function-gloss.tsv` 자리다.
+        `구워서` 는 기계가 옮길 수 있는데 아직 안 된 것이거나, 한 읽기에 후보가
+        여럿이라 굽기가 막아 둔 것이다(`guardrail-gloss.tsv` 자리).
+        """)
+
+    if !handList.isEmpty {
+        print("\n손으로 적을 자리 — 흔한 것부터 스물")
+        for (rank, hangul, headword) in handList.prefix(20) {
+            print("  \(String(rank).padded(7))\(hangul.padded(16))\(headword)")
+        }
+    }
+    if !machineList.isEmpty {
+        print("\n구워서 메울 자리 — 흔한 것부터 스물")
+        for (rank, hangul, headword) in machineList.prefix(20) {
+            print("  \(String(rank).padded(7))\(hangul.padded(16))\(headword)")
+        }
     }
     exit(0)
 }
