@@ -14,13 +14,14 @@ import MworagoCore
 struct SpeakButton: View {
     let text: String
     var size: CGFloat = 15
-    /// 기본은 낱말이다. 이 단추가 서는 자리는 대개 낱말 곁이고, 문장은 한 곳뿐이다.
-    var pace: SpeechPace = .word
+    /// 빠르기. **주지 않으면 글자를 보고 고른다** — 연습 카드에는 낱말도 문장도
+    /// 담기므로(문장째 담기), 부르는 자리마다 갈래를 정하면 잣대가 어긋난다.
+    var pace: SpeechPace?
 
     @Environment(\.speaker) private var speaker
 
     var body: some View {
-        Button { speaker.speak(text, pace: pace) } label: {
+        Button { speaker.speak(text, pace: pace ?? .of(text)) } label: {
             Image(systemName: "speaker.wave.2")
                 .font(.system(size: size))
                 .foregroundStyle(Theme.grey2)

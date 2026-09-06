@@ -90,6 +90,18 @@ struct Settings: View {
     /// 앱스토어의 지원 연락처와 같은 것이어야 한다.
     private static let feedbackAddress = "kjw100404@gmail.com"
 
+    /// **이름 없이 보낼 자리.** 메일은 보내는 주소가 함께 가므로, 오탈자 하나를
+    /// 알려 주려던 사람도 제 주소를 내놓아야 한다. 말하기를 접는 쪽이 되기 쉽다.
+    ///
+    /// 서버를 세우지는 않는다 — 세우는 순간 "아무것도 안 보냅니다"가 거짓이 된다.
+    /// 대신 **밖에 있는 폼**을 브라우저로 연다. 앱이 스스로 보내는 것은 없고,
+    /// 무엇을 적을지는 그 화면에서 사용자가 정한다.
+    ///
+    /// **앱을 내기 전에 폼 하나를 만들어 그 주소를 여기 적는다**(구글 폼 · Tally 등,
+    /// 로그인 없이 쓸 수 있는 것으로). 비워 두면 이 줄은 화면에 서지 않는다 —
+    /// 눌러도 아무 데도 가지 않는 줄을 두는 것보다 없는 편이 낫다.
+    private static let feedbackForm: URL? = nil
+
     @State private var copiedAddress = false
     @Environment(\.openURL) private var openURL
 
@@ -159,12 +171,35 @@ struct Settings: View {
                     // 세우면 "아무것도 안 보냅니다"라고 적어 둔 것이 거짓이 된다.
                     // 메일은 사용자가 보내기를 누르기 전까지 아무것도 나가지 않고,
                     // 무엇이 적혔는지 눈으로 보고 고칠 수 있다.
+                    //
+                    // **다만 메일은 이름을 요구한다.** 보내는 주소가 함께 가므로,
+                    // 오탈자 하나 알려 주려던 사람도 제 주소를 내놓아야 한다. 그래서
+                    // 밖에 있는 폼으로 가는 길을 곁에 둔다(`feedbackForm`).
                     section("의견") {
                         VStack(alignment: .leading, spacing: 0) {
                             Button { sendFeedback() } label: {
                                 row("오류 신고 · 의견 보내기", detail: "메일")
                             }
                             .buttonStyle(.plain)
+
+                            // 이름을 남기고 싶지 않은 사람의 자리. 폼 주소를 안 적어
+                            // 두었으면 서지 않는다.
+                            if let form = Self.feedbackForm {
+                                Link(destination: form) {
+                                    row("이름 없이 보내기", detail: "웹")
+                                }
+                                .buttonStyle(.plain)
+
+                                // **무엇이 다른지 한 줄로 말한다.** 둘을 나란히 놓기만
+                                // 하면 왜 둘인지를 사용자가 짐작해야 한다.
+                                Text("메일은 보내는 주소가 함께 갑니다. 웹은 브라우저가 열리고 이름을 묻지 않습니다.")
+                                    .font(Theme.korean(12))
+                                    .foregroundStyle(Theme.grey2)
+                                    .padding(.horizontal, 14)
+                                    .padding(.top, 4)
+                                    .padding(.bottom, 12)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
 
                             if copiedAddress {
                                 // 메일 앱이 없을 때. 주소를 보여 주기만 하면 옮겨 적어야 하므로

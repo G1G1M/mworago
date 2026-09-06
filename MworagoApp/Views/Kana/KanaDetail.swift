@@ -72,7 +72,7 @@ struct KanaDetail: View {
     private func page(_ kana: String) -> some View {
         VStack(alignment: .leading, spacing: 30) {
             // 큰 글자와 소리. 누르면 읽어 준다.
-            Button { speaker.speak(kana) } label: {
+            Button { speaker.speak(kana, pace: .kana) } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(katakana ? katakanaForm(kana) : hiragana(kana))
                         .font(Theme.japanese(84, weight: .medium))
@@ -373,7 +373,7 @@ struct KanaQuiz: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .foregroundStyle(Theme.grey2)
-            Button { speaker.speak(item.kana) } label: {
+            Button { speaker.speak(item.kana, pace: .kana) } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "speaker.wave.2")
                         .font(.system(size: 20))

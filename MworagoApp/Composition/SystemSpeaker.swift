@@ -24,9 +24,16 @@ final class SystemSpeaker: Speaking, @unchecked Sendable {
 
     /// 빠르기를 합성기의 숫자로 옮긴다. 뜻(`SpeechPace`)은 코어가 알고,
     /// 그것이 몇인지는 소리를 내는 이 자리가 안다.
+    /// **너무 느렸다.** 낱말을 기본의 0.4배로 읽고 있었는데, 그것은 글자 하나를
+    /// 익히는 속도다. 자막에서 만나는 말은 그렇게 발음되지 않으므로, 느리게 읽어
+    /// 또렷해지는 대신 **다른 말을 익히게 된다.**
+    ///
+    /// 셋으로 나눈다 — 글자 하나는 소리를 익히는 자리라 가장 느리고, 낱말은 그보다
+    /// 빠르고, 문장은 있는 그대로다.
     private static func rate(for pace: SpeechPace) -> Float {
         switch pace {
-        case .word: AVSpeechUtteranceDefaultSpeechRate * 0.4
+        case .kana: AVSpeechUtteranceDefaultSpeechRate * 0.55
+        case .word: AVSpeechUtteranceDefaultSpeechRate * 0.75
         case .sentence: AVSpeechUtteranceDefaultSpeechRate
         }
     }
