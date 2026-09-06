@@ -75,6 +75,30 @@ public enum KanaToHangul {
         "ゃ": 중성_ㅑ, "ゅ": 중성_ㅠ, "ょ": 중성_ㅛ,
     ]
 
+    // MARK: 조사로 쓰인 は·へ
+    //
+    // **일본어에서 표기와 발음이 어긋나는 낱말은 셋뿐이다** — `は`(와) · `へ`(에) ·
+    // `を`(오). 그중 `を` 는 위의 표에서도 이미 "오"라 갈릴 것이 없다.
+    //
+    // 찾을 때는 `Transliterator.particleSpellings` 가 그 사이를 열어 준다 —
+    // `와` 를 친 사람에게 `は` 를 후보로 내준다. **보여 줄 때 닫지 않으면**
+    // `와타시와` 를 친 사람의 카드에 "하"가 적힌다. 치지도 않았고 들리지도 않는 소리다.
+
+    /// 조사로 쓰였을 때만 표기와 다르게 읽히는 가나.
+    ///
+    /// **글자 하나에만 걸린다.** 조사는 조각 하나로 홀로 서므로 이것으로 닿고,
+    /// 여러 자를 통째로 바꾸려 들면 안 되는 자리까지 손댄다.
+    public static let particleSounds: [String: String] = ["は": "와", "へ": "에"]
+
+    /// 조사인지까지 헤아린 음차.
+    ///
+    /// **갈리는 것은 품사이지 글자가 아니다.** 가나표의 `は` 도, 낱말 `葉`(잎)의
+    /// 읽기 `は` 도 "하"가 맞다. 그래서 조사임을 아는 자리에서만 `asParticle` 을 준다.
+    public static func transliterate(_ kana: String, asParticle: Bool) -> String {
+        if asParticle, let sound = particleSounds[kana] { return sound }
+        return transliterate(kana)
+    }
+
     public static func transliterate(_ kana: String) -> String {
         let normalized = KanaTable.toHiragana(kana)
         var result = ""

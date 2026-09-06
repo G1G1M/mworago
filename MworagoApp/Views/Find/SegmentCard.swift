@@ -141,9 +141,13 @@ struct SegmentCard: View {
     }
 
     /// 소리 줄. 되돌렸으면 `야메떼 → 야메루`, 아니면 `쿠다사이`.
+    ///
+    /// **조사 `は`·`へ` 는 쓰는 대로 읽지 않는다.** 표기대로 옮기면 `와타시와` 를 친
+    /// 사람의 카드에 "하"가 적힌다 — 찾을 때 열어 준 사이를 여기서 닫는다.
     @ViewBuilder
     private func reading(_ result: SearchResult) -> some View {
-        let sound = KanaToHangul.transliterate(result.reading)
+        let sound = KanaToHangul.transliterate(
+            result.reading, asParticle: result.entry.wordClass == .function)
         if result.deinflection != nil, segment.hangul != sound {
             HStack(spacing: 6) {
                 Text(segment.hangul)
