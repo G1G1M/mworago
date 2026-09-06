@@ -152,6 +152,59 @@ let cases = loadCases(casesPath)
 
 func log(_ message: String) { FileHandle.standardError.write(Data((message + "\n").utf8)) }
 
+// 구웠는데 `KoreanGloss.tidy` 가 버리는 줄을 흔한 것부터 늘어놓는다.
+//
+// 색인 굽기 로그는 **몇 개를 버렸는지**만 말하고 무엇을 버렸는지는 말하지 않는다.
+// 버려진 자리는 화면에서 영어 뜻으로 남으므로 구멍과 다를 바 없는데, 다시 구워도
+// 대개 같은 것이 돌아온다(`おでん` → "오데ん"). 손으로 적는 편이 빠르고,
+// 손으로 적으려면 목록이 있어야 한다.
+//
+// **이미 손으로 덮은 것은 뺀다.** 세 표(`guardrail` · `corrected` · `function`)가
+// 색인에서 모델 것을 이기므로, 그 자리는 버려져도 화면에 구멍이 아니다.
+if args.contains("--gloss-rejects") {
+    func rows(_ path: String) -> [(String, String, String)] {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return [] }
+        return text.split(separator: "\n").compactMap { line in
+            guard !line.hasPrefix("#") else { return nil }
+            let c = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard c.count >= 3, !c[2].isEmpty else { return nil }
+            return (String(c[0]), String(c[1]), String(c[2]))
+        }
+    }
+    var covered = Set<String>()
+    for path in ["Tools/data/guardrail-gloss.tsv", "Tools/data/corrected-gloss.tsv",
+                 "Tools/data/function-gloss.tsv"] {
+        for (writing, reading, _) in rows(path) { covered.insert("\(writing)\t\(reading)") }
+    }
+
+    // 순위는 빈도 목록에서 온다. 없는 것은 맨 아래로 — 흔한 것부터 적어야 값어치가 있다.
+    var rank: [String: Int] = [:]
+    let freqPath = flagValues("--freq").first ?? "Tools/data/jesc_freq.tsv"
+    if let text = try? String(contentsOfFile: freqPath, encoding: .utf8) {
+        for line in text.split(separator: "\n") {
+            let c = line.replacingOccurrences(of: ",", with: "\t")
+                .split(separator: "\t", omittingEmptySubsequences: false)
+            guard c.count >= 3, let r = Int(c[2]) else { continue }
+            rank["\(c[0])\t\(c[1])"] = r
+        }
+    }
+
+    var rejects: [(Int, String, String, String)] = []
+    for (writing, reading, raw) in rows("Tools/data/korean-gloss.tsv") {
+        let key = "\(writing)\t\(reading)"
+        guard !covered.contains(key), KoreanGloss.tidy(raw) == nil else { continue }
+        rejects.append((rank[key] ?? Int.max, writing, reading, raw))
+    }
+    rejects.sort { $0.0 < $1.0 }
+
+    log("버려지는 줄 \(rejects.count)개 (손으로 덮은 \(covered.count)개는 뺐다)")
+    for (r, writing, reading, raw) in rejects {
+        let rankText = r == Int.max ? "-" : String(r)
+        print("\(rankText)\t\(writing)\t\(reading)\t\(raw)")
+    }
+    exit(0)
+}
+
 // --index 를 주면 구워 둔 색인만 연다. XML 은 건드리지도 않는다 — 그게 이 색인의 목적이다.
 let index: any DictionaryLookup
 var memoryIndexForBuild: DictIndex?
