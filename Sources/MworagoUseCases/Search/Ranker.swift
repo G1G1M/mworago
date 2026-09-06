@@ -84,6 +84,28 @@ public enum Ranker {
         var best = 0.0
         if entry.usableWritings.isEmpty || entry.usuallyKana {
             best = readingForms.map { list.score(writing: nil, reading: $0.form) }.max() ?? 0
+
+            // **가나 빈도를 물려받는 낱말이 여럿이면 동점이 된다.**
+            //
+            // `なる` 는 말뭉치에 100위(28,341회)로 실려 있는데, 그 한 줄을 `成る`(되다)와
+            // `生る`(열매 맺다)가 **똑같이** 물려받아 둘 다 80.0 이었다. 동점의 순서는
+            // 뜻이 없으므로 `生る` 가 먼저 나왔고, `나루` 를 친 사람이 "열매 맺다"를 봤다.
+            //
+            // 말뭉치가 이미 답을 알고 있다. **한자로 적은 적이 있는 쪽**이 그 낱말이다 —
+            // `成る` 는 13,983위로 따로 실려 있고 `生る` 는 목록에 아예 없다.
+            // 가나로 쓰는 낱말이라도 어쩌다 한자로 적힌 자리가 있고, 그 자리가 신원을 말한다.
+            //
+            // **동점을 가르는 데만 쓴다.** 물려받은 점수를 덮으면 안 되므로 아주 작게 얹는다
+            // — 순위가 뒤집히는 것은 앞의 층이 아무 말도 하지 않을 때뿐이다.
+            // **표기가 없는 낱말은 가나가 곧 제 꼴이다.** `して`(조사)와 `仕手`(주식 용어)가
+            // 둘 다 `して` 빈도(23위·126,257회)를 물려받아 92.8 로 동점이었는데,
+            // 말뭉치는 `して` 를 12만 번 적었고 `仕手` 는 **한 번도 안 적었다.**
+            // 제 꼴로 재면 그 차이가 드러난다.
+            let forms = entry.usableWritings.isEmpty
+                ? readingForms.map(\.form)
+                : entry.usableWritings.map(\.text)
+            let identity = forms.map { list.scoreByWriting($0) }.max() ?? 0
+            best += identity * Self.kanaIdentityWeight
             if entry.usableWritings.isEmpty { return best }
         }
 
@@ -138,6 +160,10 @@ public enum Ranker {
 
     /// 표기만으로 물려받은 점수에 실어 줄 무게. 값은 재서 골랐다.
     static let writingOnlyWeight = 0.6
+
+    /// 가나 빈도를 물려받은 낱말끼리의 **동점만 가르는** 무게.
+    /// 물려받은 점수(80점대)를 덮지 않을 만큼 작아야 한다 — 1점 안쪽이다.
+    static let kanaIdentityWeight = 0.01
 
     /// 일상에서 쓰지 않는 말에 매길 벌점.
     ///

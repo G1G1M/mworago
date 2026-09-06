@@ -347,7 +347,11 @@ if let glossTopCount {
         let 손 = top.entry.wordClass == .function || top.entry.wordClass == .affix
         if 손 {
             byHand[band] += 1
-            if handList.count < 40 { handList.append((rank, hangul, top.headword)) }
+            // **적을 자리의 열쇠까지 찍는다.** 손으로 적는 표는 `표기 + 읽기` 로 붙는데
+            // (`DictionaryStore.build`), 그 표기가 표제어와 다를 수 있다 —
+            // 표기가 없는 낱말은 읽기가 곧 표기다. 열쇠를 모르면 적어도 안 붙는다.
+            let key = (top.entry.usableWritings.first?.text ?? top.reading) + "\t" + top.reading
+            handList.append((rank, hangul, key))
         } else {
             byMachine[band] += 1
             // **가타카나 표제어는 구우면 메워질 자리다.** 그 밖은 1위가 엉뚱한 낱말이라
@@ -393,9 +397,13 @@ if let glossTopCount {
         """)
 
     if !handList.isEmpty {
-        print("\n손으로 적을 자리 — 흔한 것부터 스물")
-        for (rank, hangul, headword) in handList.prefix(20) {
-            print("  \(String(rank).padded(7))\(hangul.padded(16))\(headword)")
+        let handLimit = args.contains("--gloss-top-hand") ? handList.count : 20
+        print("\n손으로 적을 자리 — 흔한 것부터 \(handLimit)개")
+        print("(순위 · 친 소리 · **적을 열쇠**(표기⇥읽기) · 영어 뜻)")
+        for (rank, hangul, key) in handList.prefix(handLimit) {
+            let english = Ranker.search(hangul, in: index, frequency: frequency).first?
+                .entry.glosses.prefix(2).joined(separator: " / ") ?? ""
+            print("  \(String(rank).padded(7))\(hangul.padded(14))\(key)\t\(english)")
         }
     }
     let kata = katakana.reduce(0, +)
