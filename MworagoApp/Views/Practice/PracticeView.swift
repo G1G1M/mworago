@@ -61,12 +61,23 @@ struct PracticeView: View {
                 // 넘어간 것이 아니라 화면이 흔들린 것처럼 보였다.
                 VStack(spacing: 0) {
                     header
+                    // **카드와 단추가 한 덩어리로 가운데 선다.**
+                    //
+                    // 한때는 카드 자리가 남은 높이를 통째로 먹었다. 카드는 그 안에서
+                    // 가운데 서고 단추는 화면 바닥에 붙으니, 아이패드에서 둘 사이가
+                    // 500pt 넘게 벌어졌다 — 뒤집을 것과 뒤집는 단추가 서로 남남으로 보인다.
+                    // 눈이 카드에서 단추로 가는 길이 화면 절반이었다.
+                    //
+                    // 카드가 설 자리를 정해 주고, 남는 높이는 위아래 빈자리가 나눠 갖는다.
+                    Spacer(minLength: 0)
                     Pager(items: words, current: $currentID) { word in
                         card(word)
-                            // 남은 높이 안에서 카드가 가운데 선다.
+                            // 정해 준 자리 안에서 카드가 가운데 선다.
                             .frame(maxHeight: .infinity)
                     }
+                    .frame(height: cardArea)
                     buttons
+                    Spacer(minLength: 0)
                 }
                 .padding(.top, Theme.screenTop)
                 .padding(.bottom, Theme.screenBottom)
@@ -228,6 +239,16 @@ struct PracticeView: View {
     /// 줄었다 한다** — 겹쳐 두었으므로 높이는 큰 쪽으로 굳지만, 바닥값을 함께 두어야
     /// 짧은 낱말과 긴 낱말 사이에서도 카드가 들썩이지 않는다.
     private static let faceHeight: CGFloat = 150
+
+    /// 카드가 설 자리의 높이.
+    ///
+    /// **높이를 정해 주는 것은 넘길 때 단추가 안 움직이게 하기 위해서다.** 장들은
+    /// 필요할 때 만들어지는데(`LazyHStack`), 자리를 카드 크기에 맡기면 뜻이 긴 장이
+    /// 들어오는 순간 자리가 늘고 아래 단추가 밀린다. 스무 장을 넘겨도 `뒤집기` 는
+    /// 같은 자리에 있어야 손이 그 자리를 기억한다.
+    ///
+    /// 글자 크기를 키우면 함께 자란다 — 값을 고정하면 키운 사람에게만 카드가 잘린다.
+    @ScaledMetric private var cardArea: CGFloat = 300
 
     /// 누르는 것들. 읽는 덩어리와 달리 **줄째 가운데** 선다.
     private var buttons: some View {
