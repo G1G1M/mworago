@@ -16,6 +16,11 @@ struct Credits: View {
         let name: String
         let by: String
         let license: String
+        /// 라이선스 원문이 있는 자리. **이것이 빠지면 조건을 안 지킨 것이다** —
+        /// CC BY-SA 4.0 은 "라이선스 본문 또는 그 주소를 함께 실으라"고 못 박는다
+        /// (3(a)(1)). 자료로 가는 링크는 "합리적으로 가능한 범위"라는 단서가 붙지만,
+        /// 이쪽에는 단서가 없다.
+        let licenseURL: URL?
         let url: URL?
     }
 
@@ -23,7 +28,13 @@ struct Credits: View {
     ///
     /// 동일조건변경허락(CC BY-SA 4.0 의 SA)은 "같은 조건으로 내놓아라"까지가 조건이다.
     /// "같은 조건에 놓입니다"라고 적어 두기만 하면 받는 쪽이 그것을 실제로 손에 넣을
-    /// 길이 없어 조건을 지킨 것이 아니다. 색인을 뜬 자리와 굽는 도구가 여기 있다.
+    /// 길이 없어 조건을 지킨 것이 아니다.
+    ///
+    /// **색인 파일 자체는 저 자리에 없다.** 40MB 짜리라 저장소에 두지 않는다
+    /// (`.gitignore`). 대신 원본을 받는 스크립트(`Tools/fetch`)와 그것으로 색인을
+    /// 굽는 도구(`Tools/bake/build-index.sh`)가 있어, 받는 쪽이 같은 것을 다시 만들 수
+    /// 있다. **화면 문구도 그렇게 적는다** — "색인이 여기 있다"고 적어 두고 가 보면
+    /// 없는 것은, 안 적어 둔 것보다 나쁘다.
     ///
     /// **앱을 내기 전에 이 자리가 공개되어 있어야 한다** — 지금 레포는 비공개라
     /// 이 주소가 열리지 않는다. 공개로 돌리거나 GitHub Pages 를 켜서 주소를 만든 뒤
@@ -35,21 +46,25 @@ struct Credits: View {
                name: "JMdict",
                by: "Electronic Dictionary Research and Development Group",
                license: "CC BY-SA 4.0",
+               licenseURL: URL(string: "https://creativecommons.org/licenses/by-sa/4.0/"),
                url: URL(string: "https://www.edrdg.org/jmdict/j_jmdict.html")),
         Source(role: "한자의 한국 독음",
                name: "KANJIDIC2",
                by: "Electronic Dictionary Research and Development Group",
                license: "CC BY-SA 4.0",
+               licenseURL: URL(string: "https://creativecommons.org/licenses/by-sa/4.0/"),
                url: URL(string: "https://www.edrdg.org/wiki/index.php/KANJIDIC_Project")),
         Source(role: "낱말이 얼마나 흔한지",
                name: "JESC (Japanese-English Subtitle Corpus)",
                by: "Stanford NLP · Google Brain · Rakuten Institute of Technology",
                license: "CC BY-SA 4.0",
+               licenseURL: URL(string: "https://creativecommons.org/licenses/by-sa/4.0/"),
                url: URL(string: "https://nlp.stanford.edu/projects/jesc/")),
         Source(role: "글꼴",
                name: "Zen Maru Gothic · 고운돋움",
                by: "Yoshimichi Ohira · 고운한글",
                license: "SIL Open Font License 1.1",
+               licenseURL: URL(string: "https://openfontlicense.org/"),
                url: URL(string: "https://fonts.google.com/")),
     ]
 
@@ -83,9 +98,18 @@ struct Credits: View {
                         Text(source.by)
                             .font(Theme.korean(13))
                             .foregroundStyle(Theme.grey1)
-                        Text(source.license)
-                            .font(Theme.korean(13))
-                            .foregroundStyle(Theme.grey2)
+                        // **누를 수 있어야 조건을 지킨 것이다.** 이름만 적어 두면
+                        // 그 라이선스가 무엇을 요구하는지 읽을 길이 없다.
+                        if let licenseURL = source.licenseURL {
+                            Link(source.license, destination: licenseURL)
+                                .font(Theme.korean(13))
+                                .foregroundStyle(Theme.grey2)
+                                .underline(pattern: .solid)
+                        } else {
+                            Text(source.license)
+                                .font(Theme.korean(13))
+                                .foregroundStyle(Theme.grey2)
+                        }
                     }
                 }
 
@@ -111,7 +135,7 @@ struct Credits: View {
                     // 동일조건변경허락을 지킨 것이 아니다 — 받는 쪽이 손에 넣을 길이 있어야 한다.
                     if let address = Self.sourceAddress {
                         Link(destination: address) {
-                            Text("색인과 굽는 도구는 여기에 있습니다")
+                            Text("색인을 만드는 도구와 원본 받는 길이 여기에 있습니다")
                                 .font(Theme.korean(13))
                                 .foregroundStyle(Theme.grey1)
                                 .underline(pattern: .solid)
