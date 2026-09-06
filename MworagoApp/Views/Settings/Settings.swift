@@ -86,70 +86,40 @@ struct Settings: View {
     /// 내비게이션 바 아래 첫 섹션까지. 제목에 바로 붙으면 화면이 시작하지 않은 것처럼 보인다.
     private static let topPadding: CGFloat = 28
 
-    /// 의견을 받을 자리. **앱을 내려면 여기를 만든 사람의 주소로 바꾼다** —
-    /// 앱스토어의 지원 연락처와 같은 것이어야 한다.
-    private static let feedbackAddress = "kjw100404@gmail.com"
-
-    /// **이름 없이 보낼 자리.** 메일은 보내는 주소가 함께 가므로, 오탈자 하나를
-    /// 알려 주려던 사람도 제 주소를 내놓아야 한다. 말하기를 접는 쪽이 되기 쉽다.
-    ///
-    /// 서버를 세우지는 않는다 — 세우는 순간 "아무것도 안 보냅니다"가 거짓이 된다.
-    /// 대신 **밖에 있는 폼**을 브라우저로 연다. 앱이 스스로 보내는 것은 없고,
-    /// 무엇을 적을지는 그 화면에서 사용자가 정한다.
-    ///
-    /// 비워 두면 이 줄은 화면에 서지 않는다 — 눌러도 아무 데도 가지 않는 줄을 두는
-    /// 것보다 없는 편이 낫다.
-    ///
-    /// 지금 것은 구글 폼이고 **로그인 없이 열리며 이메일을 걷지 않는 것을 확인했다**
-    /// (묻는 것 넷: 무엇을 쳤나 · 무엇이 나왔나 · 무엇을 기대했나 · 기기와 앱 버전).
-    private static let feedbackForm = URL(string: "https://forms.gle/pjN4z7L8Sa3ZNL4T9")
-
-    @State private var copiedAddress = false
-    @Environment(\.openURL) private var openURL
-
-    /// 메일 앱을 연다. **무엇이 적혀 나가는지 사용자가 먼저 본다** —
-    /// 앱이 몰래 보내는 것이 하나도 없다는 것이 이 앱의 약속이다.
-    ///
-    /// 본문에 버전과 기기를 적어 두는 것은, 같은 낱말이 기기마다 다르게 나오는 일이
-    /// 있어서다(번역기 언어팩이 그렇다). 사용자가 지우고 보내도 된다.
-    private func sendFeedback() {
-        let 본문 = """
-
-
-            ─────────────
-            무엇이 어떻게 나왔는지 적어 주세요. 친 글자와 화면을 함께 알려 주시면 좋습니다.
-
-            앱 \(version)
-            \(UIDevice.current.systemName) \(UIDevice.current.systemVersion)
-            """
-        var url = URLComponents(string: "mailto:\(Self.feedbackAddress)")
-        url?.queryItems = [URLQueryItem(name: "subject", value: "뭐라고 — 의견"),
-                           URLQueryItem(name: "body", value: 본문)]
-        // `mailto` 의 물음표 뒤는 공백을 `+` 로 적어도 되지만, 메일 앱은 그것을 글자
-        // `+` 로 읽는다. 본문이 `+` 투성이가 되므로 퍼센트로 적는다.
-        let 주소 = url?.url.map { URL(string: $0.absoluteString.replacingOccurrences(of: "+", with: "%20")) ?? $0 }
-        guard let 주소 else { return }
-        openURL(주소) { 열렸나 in
-            guard !열렸나 else { return }
-            UIPasteboard.general.string = Self.feedbackAddress
-            copiedAddress = true
-        }
-    }
-
-    private var version: String {
-        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        return "\(v) (\(b))"
-    }
-
     var body: some View {
         NavigationStack {
             ScrollView {
+                // **차례는 하는 일 → 아는 일이다.**
+                //
+                // 설정에 들어오는 까닭이 그 순서다 — 눈이 부셔서 어둡게 바꾸러 오고,
+                // 틀린 것을 보고 말하러 오고, 이 앱이 무엇을 쓰는지 궁금해서 온다.
+                // 앞의 둘은 **하러** 오는 것이고 마지막은 **읽으러** 오는 것이라,
+                // 손대는 것을 위에 두고 읽는 것을 아래에 둔다.
                 VStack(alignment: .leading, spacing: Self.sectionGap) {
                     // 곁말("고르지 않으면 기기 설정을 따릅니다")을 뺐다. 고르개에
                     // `기기 따라`가 이미 적혀 있고 그것이 골라져 있으므로, 같은 말을
                     // 두 자리에서 하는 셈이었다.
-                    section("모습") { dial }
+                    //
+                    // **`모습` 이 아니라 `화면` 이다.** 모습은 무엇의 모습인지가 빠져
+                    // 있어 앱의 성격을 고르는 자리처럼도 읽힌다. 여기서 고르는 것은
+                    // 화면이 밝은가 어두운가 하나다.
+                    section("화면") { dial }
+
+                    // **틀린 것을 말할 자리.** 이 앱이 내놓는 것은 사전과 규칙이 함께
+                    // 만들어 낸 답이라, 틀리는 자리가 반드시 있다 — 뜻이 어긋나거나,
+                    // 문장이 엉뚱하게 갈리거나, 소리가 안 맞는다.
+                    //
+                    // **줄 둘을 늘어놓지 않고 화면 하나로 뺐다.** 보내는 길이 둘이고
+                    // 둘의 차이를 말해 줘야 하는데(하나는 이름이 함께 가고 하나는 안
+                    // 간다), 그 설명까지 여기 늘어놓으면 고르개 옆에 문단이 붙는다.
+                    // 고르는 일이 있는 자리는 제 화면을 갖는다 — `이 앱이 쓰는 자료` 와
+                    // 같은 결이다.
+                    section("의견") {
+                        NavigationLink { Feedback() } label: {
+                            row("의견 보내기", detail: "메일 · 이름 없이")
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     section("앱에 대하여") {
                         VStack(alignment: .leading, spacing: 0) {
@@ -160,64 +130,16 @@ struct Settings: View {
 
                             Rectangle().fill(Theme.grey3).frame(height: 0.5)
 
-                            row("버전", detail: version, chevron: false)
-                        }
-                    }
-
-                    // **틀린 것을 말할 자리.** 이 앱이 내놓는 것은 사전과 규칙이 함께
-                    // 만들어 낸 답이라, 틀리는 자리가 반드시 있다 — 뜻이 어긋나거나,
-                    // 문장이 엉뚱하게 갈리거나, 소리가 안 맞는다. 그런데 그것을 본
-                    // 사람이 말할 곳이 앱 안에 없었다.
-                    //
-                    // **계정도 서버도 없는 앱이라 메일로 보낸다.** 신고를 받자고 서버를
-                    // 세우면 "아무것도 안 보냅니다"라고 적어 둔 것이 거짓이 된다.
-                    // 메일은 사용자가 보내기를 누르기 전까지 아무것도 나가지 않고,
-                    // 무엇이 적혔는지 눈으로 보고 고칠 수 있다.
-                    //
-                    // **다만 메일은 이름을 요구한다.** 보내는 주소가 함께 가므로,
-                    // 오탈자 하나 알려 주려던 사람도 제 주소를 내놓아야 한다. 그래서
-                    // 밖에 있는 폼으로 가는 길을 곁에 둔다(`feedbackForm`).
-                    section("의견") {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Button { sendFeedback() } label: {
-                                row("오류 신고 · 의견 보내기", detail: "메일")
-                            }
-                            .buttonStyle(.plain)
-
-                            // 이름을 남기고 싶지 않은 사람의 자리. 폼 주소를 안 적어
-                            // 두었으면 서지 않는다.
-                            if let form = Self.feedbackForm {
-                                Link(destination: form) {
-                                    row("이름 없이 보내기", detail: "웹")
-                                }
-                                .buttonStyle(.plain)
-
-                                // **무엇이 다른지 한 줄로 말한다.** 둘을 나란히 놓기만
-                                // 하면 왜 둘인지를 사용자가 짐작해야 한다.
-                                Text("메일은 보내는 주소가 함께 갑니다. 웹은 브라우저가 열리고 이름을 묻지 않습니다.")
-                                    .font(Theme.korean(12))
-                                    .foregroundStyle(Theme.grey2)
-                                    .padding(.horizontal, 14)
-                                    .padding(.top, 4)
-                                    .padding(.bottom, 12)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            if copiedAddress {
-                                // 메일 앱이 없을 때. 주소를 보여 주기만 하면 옮겨 적어야 하므로
-                                // 붙여 넣을 수 있게 해 두고 그 사실만 알린다.
-                                Text("메일 앱을 열 수 없어 주소를 복사했습니다 — \(Self.feedbackAddress)")
-                                    .font(Theme.korean(12))
-                                    .foregroundStyle(Theme.grey2)
-                                    .padding(.horizontal, 14)
-                                    .padding(.bottom, 12)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
+                            row("버전", detail: Feedback.appVersion, chevron: false)
                         }
                     }
 
                     // 계정도 서버도 없는 앱이라 약관에 적을 것이 사실상 없다.
                     // 없는 것을 있는 척 적기보다, 무엇을 하지 않는지를 적는다.
+                    //
+                    // **제목을 달지 않는다.** 이것은 고르거나 눌러 들어갈 것이 아니라
+                    // 화면을 닫으며 남기는 말이다. 지붕을 씌우면 위의 구역들과 같은
+                    // 무게가 되어 "여기서도 무언가 할 수 있다"고 말하게 된다.
                     //
                     // **짧게 적는다.** 아무것도 안 한다는 말을 길게 쓰면 오히려 무언가
                     // 하는 것처럼 읽힌다. 자세한 것은 '이 앱이 쓰는 자료' 안에 있다.
