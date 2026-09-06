@@ -114,14 +114,14 @@ struct PracticeView: View {
         VStack {
             HStack(spacing: 10) {
                 Text(label)
-                    .font(Theme.korean(13, weight: .medium))
+                    .font(Theme.korean(.sub, weight: .medium))
                     .foregroundStyle(Theme.ink)
                 Text("\(words.count)개")
-                    .font(Theme.korean(13))
+                    .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey2)
                 Button(action: onClearSubset) {
                     Text("전체")
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                 }
                 .buttonStyle(.plain)
@@ -141,10 +141,10 @@ struct PracticeView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text("연습")
-                .font(Theme.korean(24, weight: .semibold))
+                .font(Theme.korean(.heading, weight: .semibold))
                 .foregroundStyle(Theme.ink)
             Text("\(min(index + 1, words.count)) / \(words.count)")
-                .font(Theme.korean(15))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
                 .monospacedDigit()
             Spacer(minLength: 0)
@@ -199,7 +199,7 @@ struct PracticeView: View {
     private func question(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             Text(word.reading)
-                .font(Theme.japanese(38, weight: .medium))
+                .font(Theme.japanese(.display, weight: .medium))
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             marks(word)
@@ -216,15 +216,15 @@ struct PracticeView: View {
         VStack(alignment: .leading, spacing: 9) {
             // 무엇의 답인지. 앞면보다 작게 두어 답과 섞이지 않는다.
             Text(word.reading)
-                .font(Theme.japanese(22))
+                .font(Theme.japanese(.heading))
                 .foregroundStyle(Theme.grey2)
                 .fixedSize(horizontal: false, vertical: true)
             Text(word.hangul)
-                .font(Theme.korean(15))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey3)
             if !word.gloss.isEmpty {
                 Text(word.gloss)
-                    .font(Theme.korean(22))
+                    .font(Theme.korean(.heading))
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
@@ -289,7 +289,7 @@ struct PracticeView: View {
     private func button(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(Theme.korean(15, weight: filled ? .semibold : .regular))
+                .font(Theme.korean(.body, weight: filled ? .semibold : .regular))
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
                 .background(filled ? Theme.ink : Theme.grey4, in: Capsule())
@@ -322,13 +322,13 @@ struct PracticeView: View {
     private var empty: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("연습할 것이 없어요")
-                .font(Theme.korean(22, weight: .semibold))
+                .font(Theme.korean(.heading, weight: .semibold))
                 .foregroundStyle(Theme.ink)
             Text("모은 낱말을 가나만 보고 떠올려 보는 자리입니다.")
-                .font(Theme.korean(15))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
             Text("소리 내어 따라 하고 얼마나 닮았는지 보는 것은 그다음이에요.")
-                .font(Theme.korean(13))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey3)
         }
         .padding(.horizontal, Theme.gutter)

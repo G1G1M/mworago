@@ -65,7 +65,7 @@ struct SentenceHeader: View {
             pieces
 
             Text(parts.map(\.hangul).joined())
-                .font(Theme.korean(16))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey3)
 
             // **셋째 층.** 카드와 같은 차례다 — 가나 · 한글 발음 · 뜻.
@@ -137,11 +137,11 @@ struct SentenceHeader: View {
                     // 여기 놓이는 가나는 **표면형**이다. 카드는 표제어를 보이는 자리라 사전형이 맞지만
                     // (やめる), 문장은 사용자가 한 말을 되살리는 자리다 (やめろ).
                     Text(segment.kana)
-                        .font(Theme.japanese(44, weight: .medium))
+                        .font(Theme.japanese(.piece, weight: .medium))
                         // **조각이 차지하는 폭을 글자 폭에 맞춘다.** 그러지 않으면 `Text` 가
                         // 좌우에 두는 여유가 조각마다 끼어들어, 조각 경계에서만 자간이 벌어진다.
                         // 일본어는 띄어 쓰지 않으므로 그 틈은 없는 띄어쓰기로 읽힌다.
-                        .frame(width: Theme.japaneseWidth(segment.kana, size: 44, weight: .medium))
+                        .frame(width: Theme.japaneseWidth(segment.kana, size: .piece, weight: .medium))
                         .padding(.vertical, 4)
                         .background(isSelected ? Theme.ink : .clear,
                                     in: RoundedRectangle(cornerRadius: 7, style: .continuous))

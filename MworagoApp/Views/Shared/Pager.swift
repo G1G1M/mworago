@@ -58,7 +58,7 @@ struct PagerPosition: View {
     var body: some View {
         if let index, total > 1 {
             Text("\(index + 1) / \(total)")
-                .font(Theme.korean(13))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey2)
                 .monospacedDigit()
                 .accessibilityLabel("\(total)개 중 \(index + 1)번째")

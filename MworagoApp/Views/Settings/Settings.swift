@@ -150,7 +150,7 @@ struct Settings: View {
                         계정도 서버도 없습니다.
                         사전은 앱 안에 있고, 모은 낱말은 기기 안에만 있습니다.
                         """)
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
@@ -191,7 +191,7 @@ struct Settings: View {
                     }
                 } label: {
                     Text(option.label)
-                        .font(Theme.korean(14))
+                        .font(Theme.korean(.sub))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 9)
                         .background(selected ? Theme.ink : .clear, in: Capsule())
@@ -213,7 +213,7 @@ struct Settings: View {
         VStack(alignment: .leading, spacing: Theme.blockGap) {
             VStack(alignment: .leading, spacing: Theme.lineGap) {
                 Text(title)
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.tag))
                     .tracking(0.6)
                     .foregroundStyle(Theme.grey2)
                 Theme.rule()
@@ -225,11 +225,11 @@ struct Settings: View {
     private func row(_ title: String, detail: String, chevron: Bool = true) -> some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(Theme.korean(16))
+                .font(Theme.korean(.title))
                 .foregroundStyle(Theme.ink)
             Spacer(minLength: 12)
             Text(detail)
-                .font(Theme.korean(13))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey2)
             if chevron {
                 Image(systemName: "chevron.right")

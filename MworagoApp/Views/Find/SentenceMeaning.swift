@@ -47,10 +47,11 @@ struct SentenceMeaning: View {
                 // **이름표를 달지 않는다.** 문장 아래 한 줄이 그 문장의 뜻이라는 것은
                 // 자리가 이미 말해 준다. "뜻"이라고 적어 두면 읽을 것이 하나 늘 뿐이다.
                 Text(korean)
-                    // **발음 줄과 같은 크기다.** 카드에서 발음과 뜻이 둘 다 14 이고
-                    // 색으로만 갈리는 것과 같다. 17 이었을 때는 발음(16)보다 1 만 커서
-                    // 위계가 아니라 어긋난 값으로 보였다.
-                    .font(Theme.korean(16))
+                    // **발음 줄과 같은 계단이다.** 카드에서 발음과 뜻이 한 크기이고
+                    // 색으로만 갈리는 것과 같다. 발음보다 한 칸 위에 두었더니 1pt 차이라
+                    // 위계가 아니라 어긋난 값으로 보였다 — 사다리에 계단 사이를 2pt 로
+                    // 못 박아 둔 까닭이 이것이다.
+                    .font(Theme.korean(.body))
                     // **가르는 것은 색뿐이다.** 위 두 줄은 사용자가 친 소리를 적은 것이고
                     // 이 줄은 기계가 옮긴 말이다. 카드도 발음 grey3 · 뜻 grey1 로 가른다.
                     .foregroundStyle(Theme.grey1)
@@ -66,7 +67,7 @@ struct SentenceMeaning: View {
                 // **뜻이 아니라 안내다.** 뜻 줄보다 작고 흐리게 두어, 이 자리에 들어올
                 // 진짜 뜻과 헷갈리지 않게 한다. 뜻이 뜨기 시작하면 이 줄은 사라진다.
                 Text(notice)
-                    .font(Theme.korean(13))
+                    .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey2)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 11)

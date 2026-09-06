@@ -91,7 +91,7 @@ struct TypingGuide: View {
                 VStack(alignment: .leading, spacing: Self.sectionGap) {
                     // 이 화면이 하려는 말 전부다. 규칙은 그 뒤에 오는 각주다.
                     Text("들린 대로 치면 됩니다.\n정확히 옮길 필요는 없어요.")
-                        .font(Theme.korean(17))
+                        .font(Theme.korean(.title))
                         .foregroundStyle(Theme.grey1)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -111,7 +111,7 @@ struct TypingGuide: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("닫기") { dismiss() }
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(.body))
                         .foregroundStyle(Theme.ink)
                 }
             }
@@ -127,7 +127,7 @@ struct TypingGuide: View {
         VStack(alignment: .leading, spacing: Theme.blockGap) {
             VStack(alignment: .leading, spacing: Self.lineGap) {
                 Text(title)
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.tag))
                     .tracking(0.6)
                     .foregroundStyle(Theme.grey2)
                 Rectangle()
@@ -144,7 +144,7 @@ struct TypingGuide: View {
                 ForEach(Array(rules.enumerated()), id: \.element.id) { index, rule in
                     GridRow {
                         Text(rule.name)
-                            .font(Theme.korean(16))
+                            .font(Theme.korean(.body))
                             .foregroundStyle(Theme.ink)
                             .padding(.top, index == 0 ? 0 : Self.ruleGap)
                             .gridCellColumns(3)
@@ -157,7 +157,7 @@ struct TypingGuide: View {
                             // 축이 둘이었고, 눈이 왼쪽·오른쪽을 오가며 읽어야 했다.
                             // 짧은 예시 뒤에 빈 자리가 생기지만, 그것은 열이 맞는 값이다.
                             Text(example.typed.joined(separator: " · "))
-                                .font(Theme.korean(15))
+                                .font(Theme.korean(.body))
                                 .foregroundStyle(Theme.grey1)
                                 .gridColumnAlignment(.leading)
                             // 두 열을 잇는 유일한 표시다. 10pt 회색으로는 거의 안 보여
@@ -168,7 +168,7 @@ struct TypingGuide: View {
                             // **이 표의 답이다.** 친 것과 같은 크기면 무엇이 물음이고
                             // 무엇이 답인지 눈이 매번 다시 판단한다.
                             Text(example.result)
-                                .font(Theme.japanese(19))
+                                .font(Theme.japanese(.title))
                                 .foregroundStyle(Theme.ink)
                                 .gridColumnAlignment(.leading)
                         }
@@ -176,7 +176,7 @@ struct TypingGuide: View {
                     if let note = rule.note {
                         GridRow {
                             Text(note)
-                                .font(Theme.korean(13))
+                                .font(Theme.korean(.sub))
                                 .foregroundStyle(Theme.grey2)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .padding(.top, Self.noteGap - Self.lineGap)

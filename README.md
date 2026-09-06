@@ -191,7 +191,7 @@ MworagoApp/               앱
     Practice/             연습
     Kana/                 가나표
     Settings/             설정과 만든 것들
-    Shared/               화면들이 나눠 쓰는 것 — 색·판·넘기기·소리·품사표
+    Shared/               화면들이 나눠 쓰는 것 — 색·글자 크기·판·넘기기·소리·품사표
 MworagoTests/             테스트 300개. 층으로 나눈다
   Domain/  UseCases/  Infra/
 Tools/                    앱에 실리지 않는 것들

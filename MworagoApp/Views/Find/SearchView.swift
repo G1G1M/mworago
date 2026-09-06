@@ -72,7 +72,7 @@ struct SearchView: View {
             // 눈에 띈다 — 첫 글자에서만 걸리던 것의 한 몫이다.
             // 보이지 않게 한 번 그려 두면 그 읽기가 손 얹히기 전에 끝난다.
             Text("あ")
-                .font(Theme.japanese(17))
+                .font(Theme.japanese(.title))
                 .opacity(0)
                 .accessibilityHidden(true)
 
@@ -205,7 +205,7 @@ struct SearchView: View {
     private var savedNotice: some View {
         if let folder = justSaved {
             Text("「\(folder)」에 담았어요")
-                .font(Theme.korean(13))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey1)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
@@ -342,10 +342,10 @@ struct SearchView: View {
             // 만나면 처음부터 다시 이해해야 한다. "들린 대로 치세요"는 무엇을 치라는
             // 것인지가 빠져 있어 실제로 안 읽혔다.
             Text("일본어를 들리는 대로 쳐보세요")
-                .font(Theme.korean(26, weight: .semibold))
+                .font(Theme.korean(.hero, weight: .semibold))
                 .foregroundStyle(Theme.ink)
             Text("띄어 쓰지 않아도 됩니다. 어디서 끊을지는 사전이 정해요.")
-                .font(Theme.korean(15))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
         }
         .padding(.horizontal, Theme.gutter)
@@ -354,8 +354,8 @@ struct SearchView: View {
 
     private func notice(_ title: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(Theme.korean(19, weight: .medium)).foregroundStyle(Theme.ink)
-            Text(detail).font(Theme.korean(14)).foregroundStyle(Theme.grey2)
+            Text(title).font(Theme.korean(.title, weight: .medium)).foregroundStyle(Theme.ink)
+            Text(detail).font(Theme.korean(.body)).foregroundStyle(Theme.grey2)
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 24)
@@ -370,7 +370,7 @@ struct SearchView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Theme.grey2)
                 TextField("콘니치와", text: $input)
-                    .font(Theme.korean(19))
+                    .font(Theme.korean(.field))
                     .foregroundStyle(Theme.ink)
                     .focused($inputFocused)
                     .submitLabel(.search)

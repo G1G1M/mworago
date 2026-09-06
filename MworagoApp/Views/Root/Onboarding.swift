@@ -48,7 +48,7 @@ struct Onboarding: View {
     /// 마지막 버튼이 차지할 자리. `다음` 과 `시작` 중 넓은 쪽에 맞춘다 —
     /// 장을 넘길 때 글자가 바뀌어도 자리가 흔들리지 않는다.
     private static var actionWidth: CGFloat {
-        max(Theme.koreanWidth("다음", size: 15), Theme.koreanWidth("시작", size: 15))
+        max(Theme.koreanWidth("다음", size: .body), Theme.koreanWidth("시작", size: .body))
     }
 
     /// 탭바에 선 다섯 자리. 마지막 장이 이것을 짚는다.
@@ -119,7 +119,7 @@ struct Onboarding: View {
                         .frame(width: 46, height: 36)
                         .background(focused ? Theme.ink : .clear, in: Capsule())
                     Text(Self.tabs[i].name)
-                        .font(Theme.korean(11))
+                        .font(Theme.korean(.tag))
                         .foregroundStyle(focused ? Theme.ink : Theme.grey3)
                 }
             }
@@ -178,10 +178,10 @@ struct Onboarding: View {
                     ForEach(pages.indices, id: \.self) { i in
                         VStack(alignment: .leading, spacing: 12) {
                             Text(pages[i].title)
-                                .font(Theme.korean(26, weight: .semibold))
+                                .font(Theme.korean(.hero, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                             Text(pages[i].detail)
-                                .font(Theme.korean(15))
+                                .font(Theme.korean(.body))
                                 .foregroundStyle(Theme.grey2)
                                 .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
@@ -220,7 +220,7 @@ struct Onboarding: View {
                     Button("이전") {
                         withAnimation(.snappy(duration: 0.18)) { page -= 1 }
                     }
-                    .font(Theme.korean(15))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey2)
                     .buttonStyle(.plain)
                     .opacity(page == 0 ? 0 : 1)
@@ -243,7 +243,7 @@ struct Onboarding: View {
                             if page == pages.count - 1 { onDone() } else { page += 1 }
                         }
                     }
-                    .font(Theme.korean(15))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(Theme.ink)
                     .buttonStyle(.plain)
                     .frame(width: Self.actionWidth, alignment: .trailing)
@@ -269,7 +269,7 @@ struct Onboarding: View {
                 HStack {
                     Spacer()
                     Button("건너뛰기", action: onDone)
-                        .font(Theme.korean(14))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .buttonStyle(.plain)
                 }

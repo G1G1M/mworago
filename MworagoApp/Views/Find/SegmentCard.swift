@@ -71,7 +71,7 @@ struct SegmentCard: View {
                 let gloss = korean(of: top.entry)
                 if !gloss.isEmpty {
                     Text(gloss)
-                        .font(Theme.korean(14))
+                        .font(Theme.korean(.body))
                         .foregroundStyle(Theme.grey1)
                 }
                 if !alternates.isEmpty {
@@ -104,7 +104,7 @@ struct SegmentCard: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(result.reading)
-                    .font(Theme.japanese(26, weight: .medium))
+                    .font(Theme.japanese(.hero, weight: .medium))
                     .foregroundStyle(Theme.ink)
 
                 // **품사.** 실제 사전이 하는 것과 같다 — 낱말마다 늘 있으므로 자리가 고정된다.
@@ -151,11 +151,11 @@ struct SegmentCard: View {
                     .font(.system(size: 9, weight: .medium))
                 Text(sound)
             }
-            .font(Theme.korean(14))
+            .font(Theme.korean(.sub))
             .foregroundStyle(Theme.grey3)
         } else {
             Text(sound)
-                .font(Theme.korean(14))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey3)
         }
     }
@@ -215,7 +215,7 @@ struct SegmentCard: View {
         } label: {
             HStack(spacing: 5) {
                 Text("다른 뜻 \(alternates.count)")
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.sub))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .medium))
             }
@@ -229,7 +229,7 @@ struct SegmentCard: View {
         VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(alternates.enumerated()), id: \.offset) { _, result in
                 Text(korean(of: result.entry))
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey2)
                     .lineLimit(1)
             }
@@ -237,7 +237,7 @@ struct SegmentCard: View {
                 withAnimation(.snappy(duration: 0.18)) { expanded = false }
             } label: {
                 Text("접기")
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey3)
                     .contentShape(Rectangle())
             }
@@ -252,10 +252,10 @@ struct SegmentCard: View {
     private var notFound: some View {
         HStack(spacing: 10) {
             Text(segment.hangul)
-                .font(Theme.korean(17))
+                .font(Theme.korean(.title))
                 .foregroundStyle(Theme.grey2)
             Text("사전에 없어요")
-                .font(Theme.korean(12))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey3)
         }
     }

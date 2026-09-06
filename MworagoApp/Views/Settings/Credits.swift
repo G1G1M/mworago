@@ -72,42 +72,42 @@ struct Credits: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 19) {
                 Text("이 앱은 여러 사람이 공개해 둔 자료로 만들어졌습니다.")
-                    .font(Theme.korean(15))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey1)
                     .padding(.top, 4)
 
                 ForEach(Self.sources) { source in
                     VStack(alignment: .leading, spacing: 5) {
                         Text(source.role)
-                            .font(Theme.korean(12))
+                            .font(Theme.korean(.tag))
                             .foregroundStyle(Theme.grey2)
 
                         if let url = source.url {
                             // 색을 바꾸지 않고 밑줄로만 알린다 — 이 앱에서 색을 쓰는 자리는
                             // 강조 하나뿐이고, 출처는 강조할 것이 아니다.
                             Link(source.name, destination: url)
-                                .font(Theme.korean(16))
+                                .font(Theme.korean(.title))
                                 .foregroundStyle(Theme.ink)
                                 .underline(pattern: .solid)
                         } else {
                             Text(source.name)
-                                .font(Theme.korean(16))
+                                .font(Theme.korean(.title))
                                 .foregroundStyle(Theme.ink)
                         }
 
                         Text(source.by)
-                            .font(Theme.korean(13))
+                            .font(Theme.korean(.sub))
                             .foregroundStyle(Theme.grey1)
                         // **누를 수 있어야 조건을 지킨 것이다.** 이름만 적어 두면
                         // 그 라이선스가 무엇을 요구하는지 읽을 길이 없다.
                         if let licenseURL = source.licenseURL {
                             Link(source.license, destination: licenseURL)
-                                .font(Theme.korean(13))
+                                .font(Theme.korean(.sub))
                                 .foregroundStyle(Theme.grey2)
                                 .underline(pattern: .solid)
                         } else {
                             Text(source.license)
-                                .font(Theme.korean(13))
+                                .font(Theme.korean(.sub))
                                 .foregroundStyle(Theme.grey2)
                         }
                     }
@@ -127,7 +127,7 @@ struct Credits: View {
                         원본과 같은 CC BY-SA 4.0 조건에 놓입니다. \
                         한국어 뜻은 미리 옮겨 실은 것이고, 자주 쓰는 낱말은 사람이 다듬었습니다.
                         """)
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -136,7 +136,7 @@ struct Credits: View {
                     if let address = Self.sourceAddress {
                         Link(destination: address) {
                             Text("색인을 만드는 도구와 원본 받는 길이 여기에 있습니다")
-                                .font(Theme.korean(13))
+                                .font(Theme.korean(.sub))
                                 .foregroundStyle(Theme.grey1)
                                 .underline(pattern: .solid)
                         }
@@ -149,20 +149,20 @@ struct Credits: View {
                 // 아무것도 안 한다는 말을 길게 쓰면 오히려 무언가 하는 것처럼 읽힌다.
                 VStack(alignment: .leading, spacing: 7) {
                     Text("개인정보")
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(.title))
                         .foregroundStyle(Theme.ink)
                     Text("""
                         이 앱은 아무것도 모으지 않습니다. 계정도, 위치도, 사용 기록도 \
                         받지 않고 어디로도 보내지 않습니다.
                         """)
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey1)
                         .fixedSize(horizontal: false, vertical: true)
                     Text("""
                         사전은 앱 안에 통째로 들어 있어 찾을 때 인터넷을 쓰지 않습니다. \
                         모은 낱말은 기기 안 파일에만 있고, 앱을 지우면 함께 사라집니다.
                         """)
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .fixedSize(horizontal: false, vertical: true)
                 }

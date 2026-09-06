@@ -13,7 +13,7 @@ struct PartOfSpeechTag: View {
 
     var body: some View {
         Text(name)
-            .font(Theme.korean(11))
+            .font(Theme.korean(.tag))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(Theme.grey4, in: Capsule())

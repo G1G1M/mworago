@@ -82,7 +82,7 @@ struct KanaView: View {
                 } label: {
                     VStack(spacing: 4) {
                         Text(option.label)
-                            .font(Theme.korean(15, weight: selected ? .semibold : .regular))
+                            .font(Theme.korean(.body, weight: selected ? .semibold : .regular))
                             .foregroundStyle(selected ? Theme.ink : Theme.grey2)
                         Rectangle()
                             .fill(selected ? Theme.ink : Color.clear)
@@ -103,7 +103,7 @@ struct KanaView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 Text("가나는 소리 글자예요.\n표를 다 외우지 않아도,\n찾다 막힐 때 여기서 확인하면 됩니다.")
-                    .font(Theme.korean(15))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey1)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
@@ -131,7 +131,7 @@ struct KanaView: View {
                     withAnimation(.snappy(duration: 0.18)) { katakana = isKatakana }
                 } label: {
                     Text(isKatakana ? "가타카나" : "히라가나")
-                        .font(Theme.korean(13, weight: selected ? .semibold : .regular))
+                        .font(Theme.korean(.sub, weight: selected ? .semibold : .regular))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .background(selected ? Theme.ink : .clear, in: Capsule())
@@ -146,7 +146,7 @@ struct KanaView: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 7) {
                 Text(chart.title)
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.tag))
                     .tracking(0.6)
                     .foregroundStyle(Theme.grey2)
                 Theme.rule()
@@ -177,10 +177,10 @@ struct KanaView: View {
                 Button { detail = Glyph(kana: kana) } label: {
                     VStack(spacing: 3) {
                         Text(katakana ? KanaTable.toKatakana(kana) : kana)
-                            .font(Theme.japanese(24))
+                            .font(Theme.japanese(.word))
                             .foregroundStyle(Theme.ink)
                         Text(KanaToHangul.transliterate(kana))
-                            .font(Theme.korean(12))
+                            .font(Theme.korean(.sub))
                             .foregroundStyle(Theme.grey3)
                     }
                     .frame(maxWidth: .infinity)
@@ -189,9 +189,9 @@ struct KanaView: View {
                 .buttonStyle(.plain)
             } else {
                 Text(" ")
-                    .font(Theme.japanese(24))
+                    .font(Theme.japanese(.word))
                 Text(" ")
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.sub))
             }
         }
         .frame(maxWidth: .infinity)

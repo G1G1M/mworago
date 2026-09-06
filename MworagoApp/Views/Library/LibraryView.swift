@@ -348,7 +348,7 @@ struct LibraryView: View {
                 Button(action: remove) {
                     Image(systemName: "minus.circle.fill")
                         .font(.system(size: 21))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.destructive)
                         .padding(.leading, Theme.gutter)
                         .padding(.vertical, 8)
                         .contentShape(Rectangle())
@@ -443,13 +443,13 @@ struct LibraryView: View {
         Group {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("책장")
-                    .font(Theme.korean(24, weight: .semibold))
+                    .font(Theme.korean(.heading, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                 // 개수는 담긴 낱말을 센다. **`0` 은 적지 않는다** — 묶음만 만들어 둔
                 // 책장에서 알려 주는 것이 없고, 빈 자리를 세어 보라는 말처럼 읽힌다.
                 if !collection.words.isEmpty {
                     Text("\(collection.words.count)")
-                        .font(Theme.korean(15))
+                        .font(Theme.korean(.body))
                         .foregroundStyle(Theme.grey2)
                 }
 
@@ -466,7 +466,7 @@ struct LibraryView: View {
                             withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
                         } label: {
                             Text(editing ? "완료" : "지우기")
-                                .font(Theme.korean(15, weight: editing ? .medium : .regular))
+                                .font(Theme.korean(.body, weight: editing ? .medium : .regular))
                                 .foregroundStyle(editing ? Theme.ink : Theme.grey2)
                         }
                         .buttonStyle(.plain)
@@ -475,7 +475,7 @@ struct LibraryView: View {
                             withAnimation(.snappy(duration: 0.18)) { selecting = true }
                         } label: {
                             Text("고르기")
-                                .font(Theme.korean(15))
+                                .font(Theme.korean(.body))
                                 .foregroundStyle(Theme.grey2)
                         }
                         .buttonStyle(.plain)
@@ -510,7 +510,7 @@ struct LibraryView: View {
                     withAnimation(.snappy(duration: 0.18)) { grouping = option }
                 } label: {
                     Text(option.label)
-                        .font(Theme.korean(13, weight: selected ? .semibold : .regular))
+                        .font(Theme.korean(.sub, weight: selected ? .semibold : .regular))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .background(selected ? Theme.ink : .clear, in: Capsule())
@@ -531,10 +531,10 @@ struct LibraryView: View {
         NavigationLink(value: route) {
             HStack(alignment: .firstTextBaseline, spacing: 9) {
                 Text(name)
-                    .font(Theme.korean(17, weight: .medium))
+                    .font(Theme.korean(.title, weight: .medium))
                     .foregroundStyle(dim ? Theme.grey2 : Theme.ink)
                 Text("\(words.count)")
-                    .font(Theme.korean(13))
+                    .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey3)
 
                 Spacer(minLength: 12)
@@ -543,17 +543,19 @@ struct LibraryView: View {
                 // 지워진 것처럼 보이므로, 비었다고 적는다.
                 if words.isEmpty {
                     Text("비어 있음")
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey3)
                 } else {
                     Text(words.prefix(2).map(\.reading).joined(separator: " · "))
-                        .font(Theme.japanese(13))
+                        .font(Theme.japanese(.sub))
                         .foregroundStyle(Theme.grey3)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .medium))
+                    // 설정의 줄 끝에 서는 것과 같은 11 이다. 같은 기호가 같은 일을
+                    // 하는데 화면마다 1pt 씩 다르면, 탭을 옮길 때 줄 끝만 흔들린다.
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.grey3)
             }
             .padding(.horizontal, Theme.gutter)
@@ -576,7 +578,7 @@ struct LibraryView: View {
                     .font(.system(size: 13, weight: .medium))
                     .frame(width: 16)
                 Text("새 묶음 만들기")
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Theme.grey1)
@@ -598,16 +600,16 @@ struct LibraryView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .firstTextBaseline, spacing: 9) {
                         Text(word.reading)
-                            .font(Theme.japanese(24, weight: .medium))
+                            .font(Theme.japanese(.word, weight: .medium))
                             .foregroundStyle(Theme.ink)
                         if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                     }
                     Text(word.hangul)
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey3)
                     if !word.gloss.isEmpty {
                         Text(word.gloss)
-                            .font(Theme.korean(14))
+                            .font(Theme.korean(.sub))
                             .foregroundStyle(Theme.grey1)
                             .padding(.top, 2)
                     }
@@ -626,7 +628,8 @@ struct LibraryView: View {
                     collection.remove(word)
                 } label: {
                     Image(systemName: "bookmark.fill")
-                        .font(.system(size: 16))
+                        // 찾기의 갈피표와 같은 15 다. 같은 기호가 같은 일(담기·빼기)을 한다.
+                        .font(.system(size: 15))
                         .foregroundStyle(Theme.ink)
                 }
                 .buttonStyle(.plain)
@@ -652,16 +655,16 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: Theme.blockGap) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("아직 책장이 비어 있어요")
-                    .font(Theme.korean(22, weight: .semibold))
+                    .font(Theme.korean(.heading, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                 Text("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓입니다.")
-                    .font(Theme.korean(15))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey2)
             }
             // 온보딩 2장과 같은 이유로 낡았던 말이다. 날짜는 어느 화를 봤는지 앱이
             // 몰라서 쓰던 대용품인데, 이제 담을 때 어느 묶음에 넣을지 직접 고른다.
             Text("묶음은 마음대로 만들고, 담은 뒤에도 옮길 수 있어요.")
-                .font(Theme.korean(13))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey3)
 
             // **보기 전에 자리를 먼저 만들 수 있다.**
@@ -674,7 +677,7 @@ struct LibraryView: View {
             // 그래서 두되 **작게** 둔다. 채우지 않은 알약이라 위의 글과 겨루지 않는다.
             Button { naming = true } label: {
                 Text("묶음 만들어 두기")
-                    .font(Theme.korean(14))
+                    .font(Theme.korean(.sub))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 9)
                     .background(Theme.grey4, in: Capsule())

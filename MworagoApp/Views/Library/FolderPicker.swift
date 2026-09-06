@@ -136,7 +136,7 @@ struct FolderPicker: View {
         HStack(spacing: 10) {
             Button { pick(picked.name) } label: {
                 Text("저장")
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background(Theme.ink, in: Capsule())
@@ -146,7 +146,7 @@ struct FolderPicker: View {
 
             Button(action: onClose) {
                 Text("그만두기")
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background(Theme.grey4, in: Capsule())
@@ -165,18 +165,18 @@ struct FolderPicker: View {
     private var head: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(prompt)
-                .font(Theme.korean(17))
+                .font(Theme.korean(.title))
                 .foregroundStyle(Theme.ink)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(word.reading)
-                    .font(Theme.japanese(15))
+                    .font(Theme.japanese(.body))
                     .foregroundStyle(Theme.grey1)
                     .lineLimit(1)
                 // 무엇을 담는지 화면마다 같은 말로 알린다 — 카드·책장·연습이 다 이 꼬리표를 쓴다.
                 if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                 if !word.gloss.isEmpty {
                     Text(word.gloss)
-                        .font(Theme.korean(12))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .lineLimit(1)
                 }
@@ -205,18 +205,18 @@ struct FolderPicker: View {
                     .background(Circle().fill(picked ? Theme.ink : .clear).padding(3.5))
                     .frame(width: 16, height: 16)
                 Text(name)
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(dim ? Theme.grey1 : Theme.ink)
                 Spacer(minLength: 10)
                 // **지난번 자리는 고른 것과 따로 말한다.** 다른 곳을 골라도 이 표는
                 // 그 자리에 남아, 원래 어디에 넣어 왔는지가 화면에서 안 사라진다.
                 if isNew {
                     Text("새 묶음")
-                        .font(Theme.korean(11))
+                        .font(Theme.korean(.tag))
                         .foregroundStyle(Theme.grey2)
                 } else if name == lastFolder || (name == "나중에 정하기" && lastFolder == nil) {
                     Text(markLabel)
-                        .font(Theme.korean(11))
+                        .font(Theme.korean(.tag))
                         .foregroundStyle(Theme.grey2)
                 }
             }
@@ -243,7 +243,7 @@ struct FolderPicker: View {
             // 여기서 무르는 것은 "이름 짓기를 접는" 작은 일이라 작은 자리에 둔다.
             HStack(spacing: 8) {
                 TextField("예) 일상생활", text: $newName)
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(Theme.ink)
                     .textFieldStyle(.plain)
                     .focused($nameFocused)
@@ -257,7 +257,7 @@ struct FolderPicker: View {
                 // 만들기는 고를 자리를 하나 늘리는 일이고, 담는 것은 여전히 `저장` 이다.
                 Button { createAndPick() } label: {
                     Text("만들기")
-                        .font(Theme.korean(15))
+                        .font(Theme.korean(.body))
                         .foregroundStyle(Theme.ink)
                         .padding(.horizontal, 15)
                         .frame(height: Self.rowHeight - 6)
@@ -299,7 +299,7 @@ struct FolderPicker: View {
                         .font(.system(size: 13, weight: .medium))
                         .frame(width: 16)
                     Text("새 묶음 만들기")
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(.body))
                     Spacer(minLength: 0)
                 }
                 .foregroundStyle(Theme.grey1)

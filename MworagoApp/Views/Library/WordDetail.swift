@@ -96,7 +96,7 @@ struct WordDetail: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("닫기") { dismiss() }
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(.body))
                         .foregroundStyle(Theme.ink)
                 }
             }
@@ -122,14 +122,14 @@ struct WordDetail: View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(word.reading)
-                    .font(Theme.japanese(34, weight: .medium))
+                    .font(Theme.japanese(.display, weight: .medium))
                     .foregroundStyle(Theme.ink)
                 if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                 SpeakButton(text: word.reading, size: 18)
             }
 
             Text(word.hangul)
-                .font(Theme.korean(15))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey3)
         }
     }
@@ -141,10 +141,10 @@ struct WordDetail: View {
         if !word.gloss.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("뜻")
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.tag))
                     .foregroundStyle(Theme.grey3)
                 Text(word.gloss)
-                    .font(Theme.korean(17))
+                    .font(Theme.korean(.title))
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -155,10 +155,10 @@ struct WordDetail: View {
     private func collectedAt(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("담은 날")
-                .font(Theme.korean(12))
+                .font(Theme.korean(.tag))
                 .foregroundStyle(Theme.grey3)
             Text(word.collectedAt, format: .dateTime.year().month(.wide).day().locale(Theme.locale))
-                .font(Theme.korean(15))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey1)
         }
     }
@@ -173,7 +173,7 @@ struct WordDetail: View {
                     onFind(word.hangul)
                 } label: {
                     Text("찾기에서 보기")
-                        .font(Theme.korean(15))
+                        .font(Theme.korean(.body))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 9)
                         .background(Theme.ink, in: Capsule())
@@ -186,7 +186,7 @@ struct WordDetail: View {
                     dismiss()
                 } label: {
                     Text("교재에서 빼기")
-                        .font(Theme.korean(15))
+                        .font(Theme.korean(.body))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 9)
                         .background(Theme.grey4, in: Capsule())
@@ -204,17 +204,17 @@ struct WordDetail: View {
     private func folderRow(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("묶음")
-                .font(Theme.korean(12))
+                .font(Theme.korean(.tag))
                 .foregroundStyle(Theme.grey2)
             // **누르면 담기와 같은 모달이 열린다.** 메뉴였을 때는 이미 있는 묶음으로만
             // 옮길 수 있어서, 새 자리로 보내려면 먼저 딴 낱말을 담아 묶음을 만들어야 했다.
             Button { moving = true } label: {
                 HStack(spacing: 6) {
                     Text(word.folder ?? "아직 안 넣음")
-                        .font(Theme.korean(15))
+                        .font(Theme.korean(.body))
                         .foregroundStyle(word.folder == nil ? Theme.grey3 : Theme.ink)
                     Text("옮기기")
-                        .font(Theme.korean(12))
+                        .font(Theme.korean(.sub))
                         .padding(.horizontal, 9)
                         .padding(.vertical, 3)
                         .background(Theme.grey4, in: Capsule())

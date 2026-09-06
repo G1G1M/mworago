@@ -46,7 +46,7 @@ struct Feedback: View {
                     이 앱이 내놓는 답은 사전과 규칙이 함께 만든 것이라 틀리는 자리가 \
                     반드시 있습니다. 무엇을 치고 무엇이 나왔는지 알려 주시면 고칩니다.
                     """)
-                    .font(Theme.korean(15))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey1)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
@@ -64,7 +64,7 @@ struct Feedback: View {
                         // 메일 앱이 없을 때. 주소를 보여 주기만 하면 옮겨 적어야 하므로
                         // 붙여 넣을 수 있게 해 두고 그 사실만 알린다.
                         Text("메일 앱을 열 수 없어 주소를 복사했습니다 — \(Self.address)")
-                            .font(Theme.korean(12))
+                            .font(Theme.korean(.sub))
                             .foregroundStyle(Theme.grey2)
                             .padding(.bottom, 14)
                             .fixedSize(horizontal: false, vertical: true)
@@ -84,13 +84,13 @@ struct Feedback: View {
                 // 적어야 할지 몰라 대개 "안 돼요" 한 줄이 온다. 그 한 줄로는 고칠 수 없다.
                 VStack(alignment: .leading, spacing: 7) {
                     Text("이렇게 적어 주시면 가장 빠릅니다")
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.ink)
                     Text("""
                         무엇을 치셨는지 · 무엇이 나왔는지 · 무엇이 나오길 기대하셨는지.
                         친 글자를 그대로 적어 주시면 같은 자리를 다시 만들어 볼 수 있습니다.
                         """)
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
@@ -112,10 +112,10 @@ struct Feedback: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.title))
                     .foregroundStyle(Theme.ink)
                 Text(detail)
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey2)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)

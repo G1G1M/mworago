@@ -198,13 +198,13 @@ struct FolderDetail: View {
                 // 이름과 개수는 서로 밑줄을 맞추고, 동그란 단추는 그 줄에 가운데로 선다.
                 HStack(alignment: .firstTextBaseline, spacing: 9) {
                     Text(title)
-                        .font(Theme.korean(22, weight: .semibold))
+                        .font(Theme.korean(.heading, weight: .semibold))
                         .foregroundStyle(Theme.ink)
                     // 개수는 담긴 것이 있을 때만 적는다. `0개` 는 아래 안내가 이미 하는 말이고,
                     // 이름 옆에 붙으면 빈 자리를 세어 보라는 말처럼 읽힌다.
                     if !words.isEmpty {
                         Text("\(words.count)개")
-                            .font(Theme.korean(13))
+                            .font(Theme.korean(.sub))
                             .foregroundStyle(Theme.grey3)
                     }
                 }
@@ -292,7 +292,7 @@ struct FolderDetail: View {
         } label: {
             HStack(spacing: 12) {
                 Text(title)
-                    .font(Theme.korean(15))
+                    .font(Theme.korean(.body))
                 Spacer(minLength: 8)
                 Image(systemName: symbol)
                     .font(.system(size: 13, weight: .medium))
@@ -313,12 +313,12 @@ struct FolderDetail: View {
     private var emptyWords: some View {
         VStack(alignment: .leading, spacing: 9) {
             Text(folder == nil ? "아직 담은 것이 없어요" : "이 묶음은 아직 비어 있어요")
-                .font(Theme.korean(17, weight: .medium))
+                .font(Theme.korean(.title, weight: .medium))
                 .foregroundStyle(Theme.grey1)
             Text(folder == nil
                  ? "찾기에서 낱말 옆의 갈피표를 누르면 여기 모입니다."
                  : "찾기에서 낱말 옆의 갈피표를 누르고 이 묶음을 고르면 여기 모입니다.")
-                .font(Theme.korean(14))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
         }
         .padding(.horizontal, Theme.gutter)
@@ -337,7 +337,7 @@ struct FolderDetail: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(word.reading)
-                            .font(Theme.japanese(21, weight: .medium))
+                            .font(Theme.japanese(.word, weight: .medium))
                             .foregroundStyle(Theme.ink)
                         if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                     }
@@ -345,7 +345,7 @@ struct FolderDetail: View {
                 if !word.gloss.isEmpty {
                     Spacer(minLength: 12)
                     Text(word.gloss)
-                        .font(Theme.korean(13))
+                        .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .lineLimit(2)
                         .multilineTextAlignment(.trailing)

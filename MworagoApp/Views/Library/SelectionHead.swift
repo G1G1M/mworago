@@ -43,7 +43,7 @@ struct SelectionHead: View {
 
     private var status: some View {
         Text(count == 0 ? "고를 낱말을 누르세요" : "\(count)개 골랐어요")
-            .font(Theme.korean(17, weight: count == 0 ? .regular : .semibold))
+            .font(Theme.korean(.title, weight: count == 0 ? .regular : .semibold))
             .foregroundStyle(count == 0 ? Theme.grey2 : Theme.ink)
             .lineLimit(1)
     }
@@ -62,14 +62,14 @@ struct SelectionHead: View {
                             disabled: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(Theme.korean(13.5, weight: filled ? .medium : .regular))
+                .font(Theme.korean(.sub, weight: filled ? .medium : .regular))
                 // **접히지 않는다.** 자리가 모자랄 때 접히라고 두면 알약이 동그라미가 된다.
                 // 모자라면 줄을 나눌 일이지 글자를 접을 일이 아니다.
                 .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, filled ? 14 : 6)
                 .padding(.vertical, filled ? 8 : 0)
                 .background(filled ? Theme.ink : .clear, in: Capsule())
-                .foregroundStyle(filled ? Theme.paper : (destructive ? Color.red : Theme.grey1))
+                .foregroundStyle(filled ? Theme.paper : (destructive ? Theme.destructive : Theme.grey1))
         }
         .buttonStyle(.plain)
         .disabled(disabled)

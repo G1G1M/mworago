@@ -61,7 +61,7 @@ struct KanaDetail: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("닫기") { dismiss() }
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(.body))
                         .foregroundStyle(Theme.ink)
                 }
             }
@@ -75,13 +75,13 @@ struct KanaDetail: View {
             Button { speaker.speak(kana, pace: .kana) } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(katakana ? katakanaForm(kana) : hiragana(kana))
-                        .font(Theme.japanese(84, weight: .medium))
+                        .font(Theme.japanese(.glyph, weight: .medium))
                         .foregroundStyle(Theme.ink)
                     HStack(spacing: 9) {
                         Image(systemName: "speaker.wave.2")
                             .font(.system(size: 15))
                         Text(hangul(kana))
-                            .font(Theme.korean(20))
+                            .font(Theme.korean(.title))
                     }
                     .foregroundStyle(Theme.grey1)
                 }
@@ -93,7 +93,7 @@ struct KanaDetail: View {
             pair(kana)
 
             Text("소리 글자예요.\n이 글자 하나에는 뜻이 없고, 모여야 낱말이 됩니다.")
-                .font(Theme.korean(13))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -113,7 +113,7 @@ struct KanaDetail: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 7) {
                 Text("같은 소리")
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.tag))
                     .tracking(0.6)
                     .foregroundStyle(Theme.grey2)
                 Theme.rule()
@@ -126,10 +126,10 @@ struct KanaDetail: View {
     private func form(_ label: String, _ glyph: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label)
-                .font(Theme.korean(12))
+                .font(Theme.korean(.tag))
                 .foregroundStyle(Theme.grey3)
             Text(glyph)
-                .font(Theme.japanese(40))
+                .font(Theme.japanese(.display))
                 .foregroundStyle(Theme.ink)
         }
     }
@@ -262,7 +262,7 @@ struct KanaQuiz: View {
                             Image(systemName: "arrow.counterclockwise")
                                 .font(.system(size: 10, weight: .medium))
                             Text("초기화")
-                                .font(Theme.korean(12))
+                                .font(Theme.korean(.sub))
                         }
                         .foregroundStyle(Theme.grey2)
                         .contentShape(Rectangle())
@@ -273,7 +273,7 @@ struct KanaQuiz: View {
                 // "12/46"은 남은 것이 무엇인지 말해 주지 않는다.
                 if order == .inOrder {
                     Text("\(at + 1) / \(deck.count)")
-                        .font(Theme.korean(11))
+                        .font(Theme.korean(.tag))
                         .foregroundStyle(Theme.grey3)
                         .monospacedDigit()
                 }
@@ -351,7 +351,7 @@ struct KanaQuiz: View {
     /// 요음은 두 자(きゃ)라 폭이 배가 되므로 줄이지 않고 넘치게 두면 안 된다.
     private func front(_ item: Card) -> some View {
         Text(item.shown)
-            .font(Theme.japanese(180, weight: .medium))
+            .font(Theme.japanese(.cardFront, weight: .medium))
             .lineLimit(1)
             .minimumScaleFactor(0.4)
             .foregroundStyle(Theme.ink)
@@ -369,7 +369,7 @@ struct KanaQuiz: View {
     private func back(_ item: Card) -> some View {
         VStack(spacing: 22) {
             Text(item.shown)
-                .font(Theme.japanese(56, weight: .medium))
+                .font(Theme.japanese(.cardBack, weight: .medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .foregroundStyle(Theme.grey2)
@@ -378,7 +378,7 @@ struct KanaQuiz: View {
                     Image(systemName: "speaker.wave.2")
                         .font(.system(size: 20))
                     Text(KanaToHangul.transliterate(item.kana))
-                        .font(Theme.korean(34))
+                        .font(Theme.korean(.display))
                 }
                 .foregroundStyle(Theme.ink)
                 .contentShape(Rectangle())
@@ -404,7 +404,7 @@ struct KanaQuiz: View {
                     // 범위 다이얼과 같은 문법이되 **한 단계 작다.** 같은 일을 하지만
                     // 덜 중요한 결정이라는 것이 크기로 드러난다.
                     Text(option.label)
-                        .font(Theme.korean(11.5, weight: selected ? .semibold : .regular))
+                        .font(Theme.korean(.tag, weight: selected ? .semibold : .regular))
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(selected ? Theme.ink : .clear, in: Capsule())
@@ -426,7 +426,7 @@ struct KanaQuiz: View {
                     }
                 } label: {
                     Text(option.label)
-                        .font(Theme.korean(13, weight: selected ? .semibold : .regular))
+                        .font(Theme.korean(.sub, weight: selected ? .semibold : .regular))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .background(selected ? Theme.ink : .clear, in: Capsule())
@@ -440,7 +440,7 @@ struct KanaQuiz: View {
     private func button(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(Theme.korean(17))
+                .font(Theme.korean(.title))
                 .padding(.horizontal, 28)
                 .padding(.vertical, 14)
                 .background(filled ? Theme.ink : Theme.grey4, in: Capsule())

@@ -60,10 +60,10 @@ struct FolderNameDialog: View {
     private var head: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(Theme.korean(17))
+                .font(Theme.korean(.title))
                 .foregroundStyle(Theme.ink)
             Text(hint)
-                .font(Theme.korean(12))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey2)
         }
         .padding(.horizontal, 20)
@@ -74,7 +74,7 @@ struct FolderNameDialog: View {
     private var field: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField(placeholder, text: $name)
-                .font(Theme.korean(16))
+                .font(Theme.korean(.body))
                 .foregroundStyle(Theme.ink)
                 .textFieldStyle(.plain)
                 .focused($focused)
@@ -89,7 +89,7 @@ struct FolderNameDialog: View {
             // 둘이 합쳐지는 것이 뜻한 일일 수도 아닐 수도 있다.
             if duplicate {
                 Text(mergesOnDuplicate ? "이미 있는 묶음과 합쳐져요" : "이미 있는 묶음이에요")
-                    .font(Theme.korean(12))
+                    .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey2)
             }
         }
@@ -105,7 +105,7 @@ struct FolderNameDialog: View {
         HStack(spacing: 10) {
             Button(action: confirm) {
                 Text(confirmLabel)
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background(Theme.ink, in: Capsule())
@@ -117,7 +117,7 @@ struct FolderNameDialog: View {
 
             Button(action: close) {
                 Text("그만두기")
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background(Theme.grey4, in: Capsule())

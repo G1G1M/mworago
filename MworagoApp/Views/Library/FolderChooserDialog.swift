@@ -66,7 +66,7 @@ struct FolderChooserDialog: View {
                     isPresented = false
                 } label: {
                     Text("저장")
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(.body))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .background(Theme.ink, in: Capsule())
@@ -78,7 +78,7 @@ struct FolderChooserDialog: View {
 
                 Button { isPresented = false } label: {
                     Text("그만두기")
-                        .font(Theme.korean(16))
+                        .font(Theme.korean(.body))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .background(Theme.grey4, in: Capsule())
@@ -115,10 +115,10 @@ struct FolderChooserDialog: View {
     private var head: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(Theme.korean(17))
+                .font(Theme.korean(.title))
                 .foregroundStyle(Theme.ink)
             Text(hint)
-                .font(Theme.korean(12))
+                .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey2)
         }
         .padding(.horizontal, 20)
@@ -137,13 +137,13 @@ struct FolderChooserDialog: View {
                     .background(Circle().fill(picked ? Theme.ink : .clear).padding(3.5))
                     .frame(width: 16, height: 16)
                 Text(name)
-                    .font(Theme.korean(16))
+                    .font(Theme.korean(.body))
                     .foregroundStyle(dim ? Theme.grey1 : Theme.ink)
                     .lineLimit(1)
                 Spacer(minLength: 10)
                 if here {
                     Text("지금")
-                        .font(Theme.korean(11))
+                        .font(Theme.korean(.tag))
                         .foregroundStyle(Theme.grey2)
                 }
             }

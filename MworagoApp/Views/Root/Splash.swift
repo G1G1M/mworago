@@ -121,7 +121,7 @@ struct Splash: View {
     /// 아이콘의 `あ`. 밑줄 위에 선다.
     private func glyph(in geo: GeometryProxy) -> some View {
         Text("あ")
-            .font(Theme.japanese(glyphSize, weight: .medium))
+            .font(Theme.japanese(growing: glyphSize, weight: .medium))
             .foregroundStyle(Theme.ink)
             // 글자는 제 상자보다 작게 앉는다. 밑줄과의 사이를 눈으로 맞추려면
             // 상자가 아니라 잉크를 기준으로 재야 하는데, 화면에서는 그 값을 얻기
@@ -209,7 +209,7 @@ struct Splash: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(Theme.grey2)
                     Text("콘니치와")
-                        .font(Theme.korean(19))
+                        .font(Theme.korean(.field))
                         // 진짜 자리표시와 같은 색이다. 회색 넷 중 하나를 고르면
                         // 마지막 프레임에서 글자 색만 달라 보인다.
                         .foregroundStyle(Theme.placeholder)
