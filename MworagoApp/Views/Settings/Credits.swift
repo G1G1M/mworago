@@ -41,6 +41,18 @@ struct Credits: View {
     /// (`Settings.feedbackAddress` 와 같은 규칙이다).
     private static let sourceAddress = URL(string: "https://github.com/G1G1M/mworago")
 
+    /// **개인정보 처리방침 원문이 있는 자리.**
+    ///
+    /// 심사 지침 5.1.1 은 방침 링크를 App Store Connect 칸에 **그리고 앱 안에서 쉽게
+    /// 닿는 자리에** 두라고 한다. 아래 「개인정보」 절은 요약이라, 지침이 방침에
+    /// 적으라고 못 박은 셋 — 무엇을 모으는가 · 제3자와 어떻게 나누는가 · 보관과
+    /// 삭제와 동의 철회 — 을 다 담지 않는다. 그것은 `docs/privacy.md` 에 있다.
+    ///
+    /// `sourceAddress` 와 같은 규칙이다 — 이 주소가 닫히면 지침을 지키지 못하는
+    /// 것이므로, 저장소를 옮길 때는 이 한 줄도 함께 옮긴다.
+    private static let privacyAddress =
+        URL(string: "https://github.com/G1G1M/mworago/blob/main/docs/privacy.md")
+
     private static let sources: [Source] = [
         Source(role: "일본어 사전",
                name: "JMdict",
@@ -165,6 +177,17 @@ struct Credits: View {
                         .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    // **위는 요약이고 원문은 밖에 있다.** 요약만 두면 보관·삭제·철회를
+                    // 어디서 읽는지 알 길이 없다. 자료 절의 링크와 같은 꼴로 둔다.
+                    if let address = Self.privacyAddress {
+                        Link(destination: address) {
+                            Text("개인정보 처리방침 전문이 여기에 있습니다")
+                                .font(Theme.korean(.sub))
+                                .foregroundStyle(Theme.grey1)
+                                .underline(pattern: .solid)
+                        }
+                    }
                 }
             }
             .padding(.horizontal, Theme.gutter)
