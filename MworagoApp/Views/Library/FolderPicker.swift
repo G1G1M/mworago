@@ -42,6 +42,14 @@ struct FolderPicker: View {
     /// 화면 위에 덧그린 판이라, 그 길로 닫으면 판이 아니라 뒤에 있는 화면이 닫힌다.
     var onClose: () -> Void = {}
 
+    /// 줄 하나의 높이.
+    ///
+    /// **접힌 줄과 펼친 줄이 같은 높이여야 한다.** 판은 화면 한가운데 서므로 안이
+    /// 자라면 위아래로 함께 벌어진다 — `새 묶음 만들기` 를 누르는 순간 판 전체가
+    /// 들썩이고 아래 단추가 제자리를 옮긴다. 누른 것은 줄 하나인데 화면이 통째로
+    /// 움직이는 셈이다. 두 상태를 같은 높이에 묶어 그 일이 아예 안 일어나게 한다.
+    private static let rowHeight: CGFloat = 45
+
     /// 지금 고른 자리. **`nil` 과 "안 고름"이 다르므로** 옵셔널을 겹쳐 쓰지 않고
     /// 갈래로 적는다 — `nil` 은 "나중에 정하기"라는 **고른 값**이다.
     enum Pick: Equatable {
@@ -70,7 +78,9 @@ struct FolderPicker: View {
         self.onClose = onClose
         self.prompt = prompt
         self.markLabel = markLabel
-        _naming = State(initialValue: folderNames.isEmpty)
+        // `--naming` 은 이름 받는 칸을 펼친 채 띄운다. `--collecting` 과 같은 취지 —
+        // 시뮬레이터는 손으로 두드릴 수 없어 이 상태를 눈으로 볼 길이 없다.
+        _naming = State(initialValue: folderNames.isEmpty || LaunchOptions.current.has("naming"))
         _picked = State(initialValue: lastFolder.map(Pick.folder) ?? .later)
     }
 
@@ -86,15 +96,19 @@ struct FolderPicker: View {
             } else {
                 folderRows
             }
-            if !folderNames.isEmpty { line }
-            newFolder
-            line
             // 묶음을 정하지 않고 담는다. **첫 낱말을 담으려고 폴더부터 만들게 하지
             // 않는다.** 이렇게 담은 것은 책장의 "아직 안 넣은 것"으로 모이고,
             // 상세에서 나중에 옮길 수 있다 — 이름이 그것을 말해 준다.
+            //
+            // **묶음 줄에 바로 이어 붙인다.** 점이 있는 것은 고를 수 있는 것이라는 게
+            // 이 판의 문법인데, 사이에 선을 그으면 같은 문법을 쓰는 줄들이 다른 무리로
+            // 보인다. 고를 것은 한 덩어리로 두고, 선은 **고르는 일과 만드는 일** 사이에
+            // 한 번만 긋는다.
             row(name: "나중에 정하기",
                 picked: picked == .later,
                 dim: true) { picked = .later }
+            line
+            newFolder
             confirm
         }
         .padding(.vertical, 20)
@@ -141,7 +155,9 @@ struct FolderPicker: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 14)
+        // 만드는 줄과 조금 더 벌린다. 위는 판 안에서 고르고 만드는 일이고 여기는
+        // 판을 닫는 일이라, 줄 사이 간격과 같으면 한 목록의 마지막 줄로 읽힌다.
+        .padding(.top, 20)
     }
 
     /// 무엇을 담는 중인지 말해 준다. 갈피표를 누른 뒤 모달이 뜨는 사이에 시선이
@@ -219,7 +235,10 @@ struct FolderPicker: View {
     @ViewBuilder
     private var newFolder: some View {
         if naming {
-            VStack(alignment: .leading, spacing: 10) {
+            // **한 줄에 담는다.** 칸 아래에 단추 둘을 세우면 그 `그만두기` 가 판 아래의
+            // `그만두기` 와 나란히 서서, 어느 것이 무엇을 무르는지 알 수 없게 된다.
+            // 여기서 무르는 것은 "이름 짓기를 접는" 작은 일이라 작은 자리에 둔다.
+            HStack(spacing: 8) {
                 TextField("예) 일상생활", text: $newName)
                     .font(Theme.korean(16))
                     .foregroundStyle(Theme.ink)
@@ -228,41 +247,44 @@ struct FolderPicker: View {
                     .submitLabel(.done)
                     .onSubmit { createAndPick() }
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
+                    .frame(height: Self.rowHeight - 6)
                     .background(Theme.grey4, in: RoundedRectangle(cornerRadius: 10))
 
-                // 이름 받는 칸과 같은 폭·같은 세로 여백으로 선다 — 새 묶음 판과 같은 문법이다.
-                HStack(spacing: 10) {
-                    Button { createAndPick() } label: {
-                        Text("만들기")
-                            .font(Theme.korean(16))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 11)
-                            .background(Theme.ink, in: Capsule())
-                            .foregroundStyle(Theme.paper)
+                // **검게 채우지 않는다.** 이 판에서 검게 채워지는 것은 아래 `저장` 하나다.
+                // 만들기는 고를 자리를 하나 늘리는 일이고, 담는 것은 여전히 `저장` 이다.
+                Button { createAndPick() } label: {
+                    Text("만들기")
+                        .font(Theme.korean(15))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 15)
+                        .frame(height: Self.rowHeight - 6)
+                        .overlay(Capsule().strokeBorder(Theme.grey3, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedName.isEmpty)
+                .opacity(trimmedName.isEmpty ? 0.4 : 1)
+
+                // 묶음이 하나도 없으면 접을 자리가 없다 — 그때는 이름을 짓는 것이
+                // 이 판에서 할 수 있는 유일한 일이다.
+                if !folderNames.isEmpty {
+                    Button {
+                        naming = false
+                        nameFocused = false
+                        newName = ""
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Theme.grey2)
+                            .frame(width: 28, height: Self.rowHeight - 6)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(trimmedName.isEmpty)
-                    .opacity(trimmedName.isEmpty ? 0.4 : 1)
-
-                    if !folderNames.isEmpty {
-                        Button {
-                            naming = false
-                            newName = ""
-                        } label: {
-                            Text("그만두기")
-                                .font(Theme.korean(16))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 11)
-                                .background(Theme.grey4, in: Capsule())
-                                .foregroundStyle(Theme.grey1)
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    .accessibilityLabel("이름 짓기 그만두기")
                 }
+
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 10)
+            .frame(height: Self.rowHeight)
             .onAppear { nameFocused = true }
         } else {
             Button {
@@ -279,7 +301,7 @@ struct FolderPicker: View {
                 }
                 .foregroundStyle(Theme.grey1)
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .frame(height: Self.rowHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
