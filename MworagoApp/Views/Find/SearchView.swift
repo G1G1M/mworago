@@ -108,6 +108,7 @@ struct SearchView: View {
                 // 읽던 자리를 눈이 다시 찾아야 한다.
                 content
                     .ignoresSafeArea(.keyboard, edges: .bottom)
+                savedNotice
                 inputBar
                 // 아래쪽은 **손이 얹히는 순간에도** 닫는다. 그래야 바가 바닥까지 내려가
                 // 키보드가 그 자리에서 곧바로 밀어 올린다 — 키보드 바로 위가 바의 자리다.
@@ -190,12 +191,44 @@ struct SearchView: View {
             FolderPicker(word: word,
                          folderNames: collection.folderNames,
                          lastFolder: collection.lastFolder,
-                         onPick: { collection.add(word, to: $0) },
+                         onPick: { folder in
+                             collection.add(word, to: folder)
+                             justSaved = folder ?? "아직 안 넣은 것"
+                         },
                          onClose: { collecting = nil })
         }
     }
 
+    /// 담긴 자리를 알리는 한 줄. 입력 바 바로 위에 선다 — 갈피표에서 눈이 옮겨 온
+    /// 자리이면서, 다음에 칠 자리이기도 하다.
+    @ViewBuilder
+    private var savedNotice: some View {
+        if let folder = justSaved {
+            Text("「\(folder)」에 담았어요")
+                .font(Theme.korean(13))
+                .foregroundStyle(Theme.grey1)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(Theme.grey4, in: Capsule())
+                .padding(.bottom, 8)
+                .transition(.opacity)
+                // **스스로 물러난다.** 닫는 단추를 두면 알림 하나에 할 일이 하나 는다.
+                .task(id: folder) {
+                    try? await Task.sleep(for: .seconds(2.4))
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.2)) { justSaved = nil }
+                }
+        }
+    }
+
     // MARK: 결과
+
+    /// 방금 담은 곳. **어디로 들어갔는지 화면에 남긴다.**
+    ///
+    /// 판을 닫고 나면 갈피표가 채워지는 것 말고는 아무 흔적이 없었다. 묶음이 여럿인
+    /// 사람은 자기가 무엇을 골랐는지 곧 잊는다 — 고른 것이 판과 함께 사라지기 때문이다.
+    /// 몇 초 떠 있다 스스로 물러난다. 무를 수 있는 일이라 확인을 받지 않는다.
+    @State private var justSaved: String?
 
     /// 돌려줄 답이 있는가.
     private var hasResults: Bool {

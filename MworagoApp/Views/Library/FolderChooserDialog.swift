@@ -22,6 +22,29 @@ struct FolderChooserDialog: View {
     @Binding var isPresented: Bool
     var onPick: (String?) -> Void
 
+    /// 지금 고른 자리. **담기 판과 같은 문법이다** — 줄을 누르면 골라지기만 하고,
+    /// 옮기는 것은 `저장` 이 한다. 누르는 순간 옮겨지던 때는 점이 "지금 있는 자리"와
+    /// "고른 것" 둘을 한꺼번에 뜻해서, 이미 찍힌 줄을 다시 눌러야 하는 화면이었다.
+    /// **`아직 안 고름`이 따로 있어야 한다.** 여러 묶음에서 골라 왔으면 열 때 놓을
+    /// 자리가 없는데(`marksCurrent` 가 꺼진다), 그것을 `none`(아직 안 넣은 것으로)과
+    /// 같은 값으로 두면 아무것도 안 고른 사람이 낱말을 묶음 밖으로 빼게 된다.
+    enum Pick: Equatable {
+        case folder(String)
+        case none
+        case unset
+        var name: String? { if case .folder(let n) = self { n } else { nil } }
+    }
+    @State private var picked: Pick = .unset
+
+    /// 저장이 할 일이 있는가. 아직 안 골랐거나 있던 자리 그대로면 없다.
+    private var canSave: Bool {
+        switch picked {
+        case .unset: false
+        case .none: !(marksCurrent && current == nil)
+        case .folder(let name): !(marksCurrent && name == current)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             head
@@ -35,33 +58,57 @@ struct FolderChooserDialog: View {
                 rows
             }
 
-            Button { isPresented = false } label: {
-                Text("그만두기")
-                    .font(Theme.korean(16))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Theme.grey4, in: Capsule())
-                    .foregroundStyle(Theme.grey1)
+            HStack(spacing: 10) {
+                // 있던 자리 그대로면 옮길 것이 없다. 막아 두면 "무엇이 달라지는가"를
+                // 단추가 대신 말해 준다.
+                Button {
+                    onPick(picked.name)
+                    isPresented = false
+                } label: {
+                    Text("저장")
+                        .font(Theme.korean(16))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(Theme.ink, in: Capsule())
+                        .foregroundStyle(Theme.paper)
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSave)
+                .opacity(canSave ? 1 : 0.4)
+
+                Button { isPresented = false } label: {
+                    Text("그만두기")
+                        .font(Theme.korean(16))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(Theme.grey4, in: Capsule())
+                        .foregroundStyle(Theme.grey1)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(.horizontal, 20)
             .padding(.top, 14)
         }
         .padding(.vertical, 20)
+        // 열 때는 지금 있는 자리에 놓는다. 여러 묶음에서 골라 왔으면 지금이 하나가
+        // 아니므로(`marksCurrent`) 아무 데도 안 놓는다.
+        .onAppear { picked = marksCurrent ? (current.map(Pick.folder) ?? .none) : .unset }
     }
 
     private var rows: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(folderNames, id: \.self) { name in
-                row(name: name, here: marksCurrent && name == current) { onPick(name) }
+                row(name: name, picked: picked == .folder(name),
+                    here: marksCurrent && name == current) { picked = .folder(name) }
             }
             Divider().overlay(Theme.grey4)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 5)
             // 묶음에서 빼기. 지우는 것이 아니라 **아직 안 넣은 것으로 되돌리는** 일이라
             // 책장에 그대로 남는다 — 이름이 그것을 말해 준다.
-            row(name: "아직 안 넣은 것으로", here: marksCurrent && current == nil,
-                dim: true) { onPick(nil) }
+            row(name: "아직 안 넣은 것으로", picked: picked == .none,
+                here: marksCurrent && current == nil,
+                dim: true) { picked = .none }
         }
     }
 
@@ -78,17 +125,16 @@ struct FolderChooserDialog: View {
         .padding(.bottom, 12)
     }
 
-    /// 묶음 한 줄. 담기 모달과 같은 문법이다 — 왼쪽 점이 **지금 있는 자리**를 가리킨다.
-    private func row(name: String, here: Bool, dim: Bool = false,
+    /// 묶음 한 줄. 담기 모달과 같은 문법이다 — 왼쪽 점이 **지금 고른 자리**를 가리키고,
+    /// 오른쪽 `지금` 이 **원래 있던 자리**를 말한다. 둘을 갈라 두어야 무엇이 달라지는지가
+    /// 화면에 남는다.
+    private func row(name: String, picked: Bool, here: Bool, dim: Bool = false,
                      action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-            isPresented = false
-        } label: {
+        Button(action: action) {
             HStack(spacing: 11) {
                 Circle()
-                    .strokeBorder(here ? Theme.ink : Theme.grey3, lineWidth: 1.5)
-                    .background(Circle().fill(here ? Theme.ink : .clear).padding(3.5))
+                    .strokeBorder(picked ? Theme.ink : Theme.grey3, lineWidth: 1.5)
+                    .background(Circle().fill(picked ? Theme.ink : .clear).padding(3.5))
                     .frame(width: 16, height: 16)
                 Text(name)
                     .font(Theme.korean(16))
@@ -106,8 +152,7 @@ struct FolderChooserDialog: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // 있던 자리로 다시 옮기는 것은 아무 일도 아니다. 막지는 않되 흐리게 둔다.
-        .opacity(here ? 0.55 : 1)
-        .accessibilityHint(here ? "지금 있는 자리입니다" : "")
+        .accessibilityAddTraits(picked ? [.isSelected] : [])
+        .accessibilityHint(here ? "원래 있던 자리입니다" : "")
     }
 }

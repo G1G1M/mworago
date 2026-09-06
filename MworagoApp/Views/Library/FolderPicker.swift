@@ -11,8 +11,13 @@ import MworagoCore
 /// 대신 **지난번에 넣은 곳이 이미 골라져 있다.** 한 화를 몰아 담는 동안은 같은 곳이
 /// 계속 위에 있으므로, 고르는 일이 확인하는 일이 된다.
 ///
-/// **고르면 곧 담기고 닫힌다.** 확인 버튼을 따로 두면 탭이 하나 더 늘고, 그 버튼이
-/// 하는 일도 방금 누른 것과 같다.
+/// **고르고 나서 저장한다.** 한때는 줄을 누르는 순간 담기고 닫혔다 — 탭 하나를 아끼는
+/// 쪽이었는데, 쓰는 사람에게는 **폼처럼 생긴 것이 메뉴로 동작하는** 화면이었다.
+/// 지난번 자리에 점이 이미 찍혀 있으니 "골라져 있다"로 읽히는데, 그 줄을 다시 눌러야
+/// 담긴다. 점의 뜻이 둘(기억한 자리 · 지금 고른 것)로 갈려 있던 것이다.
+///
+/// 이제 점은 **지금 고른 것** 하나만 가리키고(열 때 지난번 자리로 놓인다), 담는 것은
+/// `저장` 이 한다. 탭이 하나 늘지만 "무엇이 담길지"가 누르기 전에 화면에 있다.
 ///
 /// **화면 가운데 뜨는 판이다.** 아래에서 올라오는 시트는 "다음 화면"의 몸짓인데,
 /// 이것은 갈피표를 누른 그 자리에서 한 가지를 묻고 곧 물러나는 일이다.
@@ -37,6 +42,15 @@ struct FolderPicker: View {
     /// 화면 위에 덧그린 판이라, 그 길로 닫으면 판이 아니라 뒤에 있는 화면이 닫힌다.
     var onClose: () -> Void = {}
 
+    /// 지금 고른 자리. **`nil` 과 "안 고름"이 다르므로** 옵셔널을 겹쳐 쓰지 않고
+    /// 갈래로 적는다 — `nil` 은 "나중에 정하기"라는 **고른 값**이다.
+    enum Pick: Equatable {
+        case folder(String)
+        case later
+        var name: String? { if case .folder(let n) = self { n } else { nil } }
+    }
+    @State private var picked: Pick
+
     /// 새 묶음 이름을 받는 중인가.
     ///
     /// **묶음이 하나도 없으면 펼친 채로 연다.** "폴더가 없으면 거기서 만든다"는 것이
@@ -57,6 +71,7 @@ struct FolderPicker: View {
         self.prompt = prompt
         self.markLabel = markLabel
         _naming = State(initialValue: folderNames.isEmpty)
+        _picked = State(initialValue: lastFolder.map(Pick.folder) ?? .later)
     }
 
     var body: some View {
@@ -78,8 +93,9 @@ struct FolderPicker: View {
             // 않는다.** 이렇게 담은 것은 책장의 "아직 안 넣은 것"으로 모이고,
             // 상세에서 나중에 옮길 수 있다 — 이름이 그것을 말해 준다.
             row(name: "나중에 정하기",
-                picked: lastFolder == nil && !folderNames.isEmpty,
-                dim: true) { pick(nil) }
+                picked: picked == .later,
+                dim: true) { picked = .later }
+            confirm
         }
         .padding(.vertical, 20)
     }
@@ -87,9 +103,45 @@ struct FolderPicker: View {
     private var folderRows: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(folderNames, id: \.self) { name in
-                row(name: name, picked: name == lastFolder) { pick(name) }
+                row(name: name, picked: picked == .folder(name)) { picked = .folder(name) }
+            }
+            // **방금 만든 자리도 줄로 선다.** 이름을 적어 만들면 그 자리가 골라지는데,
+            // 목록은 아직 그것을 모른다(밖에서 받은 값이고 저장할 때 비로소 생긴다).
+            // 줄이 없으면 점이 어디에도 안 찍혀, 고른 것이 화면에서 사라진 것처럼 보인다.
+            if let name = picked.name, !folderNames.contains(name) {
+                row(name: name, picked: true, isNew: true) { }
             }
         }
+    }
+
+    /// 담기와 그만두기.
+    ///
+    /// **`저장` 만 검게 채운다.** 이 판에서 검게 채워지는 것은 고른 자리의 점과 이 단추
+    /// 둘인데, 하나는 "무엇을"이고 하나는 "그래서 어떻게"라 겹치지 않는다.
+    private var confirm: some View {
+        HStack(spacing: 10) {
+            Button { pick(picked.name) } label: {
+                Text("저장")
+                    .font(Theme.korean(16))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Theme.ink, in: Capsule())
+                    .foregroundStyle(Theme.paper)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onClose) {
+                Text("그만두기")
+                    .font(Theme.korean(16))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Theme.grey4, in: Capsule())
+                    .foregroundStyle(Theme.grey1)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 14)
     }
 
     /// 무엇을 담는 중인지 말해 준다. 갈피표를 누른 뒤 모달이 뜨는 사이에 시선이
@@ -121,11 +173,11 @@ struct FolderPicker: View {
             .padding(.vertical, 5)
     }
 
-    /// 묶음 한 줄. 왼쪽 점이 **지난번에 넣은 곳**을 가리킨다.
+    /// 묶음 한 줄. 왼쪽 점이 **지금 고른 자리**를 가리킨다.
     ///
-    /// 고른 상태가 아니라 기억한 자리라서, 검게 채우되 크기는 작게 둔다 —
-    /// 이 화면에서 검게 채워지는 것은 이것 하나뿐이다.
-    private func row(name: String, picked: Bool, dim: Bool = false,
+    /// 열 때는 지난번에 넣은 곳에 놓여 있다. 그래서 한 화를 몰아 담는 동안은
+    /// 고르는 일이 없고 `저장` 만 누르면 된다.
+    private func row(name: String, picked: Bool, dim: Bool = false, isNew: Bool = false,
                      action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 11) {
@@ -137,7 +189,13 @@ struct FolderPicker: View {
                     .font(Theme.korean(16))
                     .foregroundStyle(dim ? Theme.grey1 : Theme.ink)
                 Spacer(minLength: 10)
-                if picked {
+                // **지난번 자리는 고른 것과 따로 말한다.** 다른 곳을 골라도 이 표는
+                // 그 자리에 남아, 원래 어디에 넣어 왔는지가 화면에서 안 사라진다.
+                if isNew {
+                    Text("새 묶음")
+                        .font(Theme.korean(11))
+                        .foregroundStyle(Theme.grey2)
+                } else if name == lastFolder || (name == "나중에 정하기" && lastFolder == nil) {
                     Text(markLabel)
                         .font(Theme.korean(11))
                         .foregroundStyle(Theme.grey2)
@@ -148,13 +206,15 @@ struct FolderPicker: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint(picked ? "\(markLabel) 자리입니다" : "")
+        .accessibilityAddTraits(picked ? [.isSelected] : [])
+        .accessibilityHint(picked ? "지금 고른 자리입니다" : "")
     }
 
     /// 새 묶음. 접혀 있을 때는 한 줄, 펼치면 그 자리가 이름 받는 칸이 된다.
     ///
-    /// **만들면 곧 담긴다.** 여기는 낱말을 손에 들고 온 화면이라, 만들기와 담기를
-    /// 나누면 방금 만든 자리에 그 낱말을 다시 넣으라고 시키는 꼴이 된다.
+    /// **만들면 그 자리가 골라진다.** 담기는 아래 `저장` 이 한다 — 여기서 곧바로
+    /// 담아 버리면 판에 `저장` 을 두고도 어떤 길로는 그것을 건너뛰게 되어,
+    /// 같은 화면이 두 가지 문법으로 도는 셈이 된다.
     /// 담을 것 없이 자리만 만드는 일은 책장에서 한다.
     @ViewBuilder
     private var newFolder: some View {
@@ -174,7 +234,7 @@ struct FolderPicker: View {
                 // 이름 받는 칸과 같은 폭·같은 세로 여백으로 선다 — 새 묶음 판과 같은 문법이다.
                 HStack(spacing: 10) {
                     Button { createAndPick() } label: {
-                        Text("만들어 담기")
+                        Text("만들기")
                             .font(Theme.korean(16))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
@@ -230,9 +290,13 @@ struct FolderPicker: View {
         newName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// 이름을 받아 그 자리를 고른 상태로 만든다. 담기는 `저장` 이 한다.
     private func createAndPick() {
         guard !trimmedName.isEmpty else { return }
-        pick(trimmedName)
+        picked = .folder(trimmedName)
+        naming = false
+        nameFocused = false
+        newName = ""
     }
 
     private func pick(_ folder: String?) {

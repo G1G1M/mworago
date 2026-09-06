@@ -184,6 +184,10 @@ struct SegmentCard: View {
                 .foregroundStyle(held ? Theme.ink : Theme.grey3)
         }
         .buttonStyle(.plain)
+        // **손끝에도 알린다.** 갈피표는 그림만 채워지고 마는데, 누른 자리와 바뀌는
+        // 자리가 같아서 눈으로는 "됐나?" 가 남는다. 담을 때와 뺄 때의 결을 나눈다 —
+        // 담기는 무언가 얹히는 일이고 빼기는 도로 무르는 일이다.
+        .sensoryFeedback(held ? .increase : .decrease, trigger: held)
         .accessibilityLabel(held ? "\(result.reading) 빼기" : "\(result.reading) 담기")
     }
 

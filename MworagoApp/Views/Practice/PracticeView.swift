@@ -196,6 +196,9 @@ struct PracticeView: View {
             }
             button("다음", filled: false) { next() }
         }
+        // 뒤집는 것이 이 화면에서 하는 일이다. 카드가 넘어가는 결로 한 번 알린다 —
+        // 답을 맞혔는지 틀렸는지를 말하지 않으므로 성공·실패의 결은 쓰지 않는다.
+        .sensoryFeedback(.selection, trigger: revealed)
         .padding(.top, 26)
     }
 

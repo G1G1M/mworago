@@ -12,7 +12,7 @@ public extension Lexicon {
     ///
     /// 무거운 일은 여기 없다. 색인은 파일이라 여는 순간 아무것도 읽지 않고,
     /// 빈도표만 한 번 훑는다.
-    public init(locating locator: some ResourceLocating) throws {
+    init(locating locator: some ResourceLocating) throws {
         let names = Self.dictionaryResource
         guard let path = locator.path(forResource: names.name, ofType: names.ext) else {
             throw LoadError.missing("\(names.name).\(names.ext)")

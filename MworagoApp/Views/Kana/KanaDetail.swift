@@ -303,6 +303,8 @@ struct KanaQuiz: View {
             .padding(.bottom, Theme.screenBottom)
         }
         .frame(maxWidth: .infinity)
+        // 연습 카드와 같은 결로 알린다. 두 화면이 하는 일이 같으므로 손끝도 같아야 한다.
+        .sensoryFeedback(.selection, trigger: revealed)
         // 첫 장. 범위를 바꿔 차례를 다시 짰을 때도 여기서 잡힌다.
         .onAppear { if current.id != currentID { currentID = deck.first?.id } }
         // **장이 바뀌면 도로 덮인다.** 밀어서 넘겼든 단추로 넘겼든 같다.
