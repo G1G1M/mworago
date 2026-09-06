@@ -151,9 +151,21 @@ func translateWithOllama(_ job: Job, model: String, instructions: String,
 
     // 모델이 줄을 여럿 뱉으면 첫 줄만 쓴다. 뒷줄은 대개 자기 설명이다.
     // **빈 줄은 건너뛴다** — 생각을 걷어낸 자리에 줄바꿈이 남아 첫 줄이 빈 칸이 된다.
-    return body부분.split(separator: "\n")
+    let 첫줄 = body부분.split(separator: "\n")
         .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         .first { !$0.isEmpty } ?? ""
+
+    // **물음을 되받아 적은 것은 화살표 뒤만 취한다.**
+    //
+    // 프롬프트가 `표기（읽기）· 품사 · 영어뜻 →` 이라 이어서 답만 적으면 되는데,
+    // 모델이 그 줄을 통째로 다시 적고 그 뒤에 답을 붙이는 일이 있다
+    // (`岐阜（ぎふ）· 명사 · Gifu → 기후`). 그대로 두면 일본어가 섞였다는 이유로
+    // 색인에 실릴 때 통째로 버려진다 — qwen3:8b 를 1,236개로 재니 못 쓰는 꼴 80개 중
+    // **41개가 이것**이었다. 화살표는 우리가 준 글자이고 한국어 뜻에는 올 일이 없다.
+    guard let 화살표 = 첫줄.range(of: "→", options: .backwards) else { return 첫줄 }
+    let 뒤 = 첫줄[화살표.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+    // 화살표로 끝난 것(답을 안 적고 물음만 되뱉은 것)은 앞을 살려 봐야 소용없다.
+    return 뒤.isEmpty ? "" : 뒤
 }
 
 #if canImport(FoundationModels)
@@ -349,8 +361,14 @@ let ollamaInstructions = """
     発電（はつでん）· 명사 · generation of electricity → 발전
     """
 
+// **지시문을 파일로 갈아 끼울 수 있다.** 모델을 바꾸면 잘 듣는 말도 달라지는데,
+// 그때마다 다시 빌드해서는 같은 낱말로 전후를 견줄 수가 없다.
+let instructions = (value("--instructions").flatMap { try? String(contentsOfFile: $0, encoding: .utf8) })
+    ?? ollamaInstructions
+
 if let ollamaModel {
-    log("ollama · \(ollamaModel)")
+    log("ollama · \(ollamaModel)"
+        + (value("--instructions").map { " · 지시문 \($0)" } ?? ""))
     if !FileManager.default.fileExists(atPath: outputPath) {
         // **무엇으로 구웠는지 파일에 적어 둔다.** 대상 집합은 `--limit` 이 정하는데,
         // 그 값을 어디에도 남기지 않아 다시 구울 때 같은 집합을 만들지 못했다.
@@ -367,7 +385,7 @@ if let ollamaModel {
     for job in remaining {
         do {
             let korean = try await translateWithOllama(job, model: ollamaModel,
-                                                       instructions: ollamaInstructions,
+                                                       instructions: instructions,
                                                        temperature: temperature, tokens: tokens)
             guard !korean.isEmpty else { continue }
             try handle.write(contentsOf: Data("\(job.writing)\t\(job.reading)\t\(korean)\n".utf8))
