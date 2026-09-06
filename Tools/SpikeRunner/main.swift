@@ -325,6 +325,7 @@ if let glossTopCount {
     var covered = [Int](repeating: 0, count: bands.count)
     var byHand = [Int](repeating: 0, count: bands.count)   // 기능어·접사 — 손으로 적을 자리
     var byMachine = [Int](repeating: 0, count: bands.count) // 그 밖 — 구워서 메울 자리
+    var katakana = [Int](repeating: 0, count: bands.count)  // 그중 가타카나 외래어
     var notFound = [Int](repeating: 0, count: bands.count)  // 1위가 아예 안 나온 것
     var handList: [(Int, String, String)] = []
     var machineList: [(Int, String, String)] = []
@@ -349,6 +350,11 @@ if let glossTopCount {
             if handList.count < 40 { handList.append((rank, hangul, top.headword)) }
         } else {
             byMachine[band] += 1
+            // **가타카나 표제어는 구우면 메워질 자리다.** 그 밖은 1위가 엉뚱한 낱말이라
+            // 잡힌 것이 섞여 있어(`시테`→`仕手`) 뜻을 구워도 안 나아진다.
+            if top.headword.unicodeScalars.allSatisfy({ $0.value >= 0x30A0 && $0.value <= 0x30FF }) {
+                katakana[band] += 1
+            }
             if machineList.count < 40 { machineList.append((rank, hangul, top.headword)) }
         }
     }
@@ -392,6 +398,10 @@ if let glossTopCount {
             print("  \(String(rank).padded(7))\(hangul.padded(16))\(headword)")
         }
     }
+    let kata = katakana.reduce(0, +)
+    print("\n`구워서` \(m)개 중 가타카나 외래어가 \(kata)개다 — 구우면 메워질 자리.")
+    print("나머지 \(m - kata)개에는 1위가 엉뚱한 낱말이라 잡힌 것이 섞여 있다.")
+
     if !machineList.isEmpty {
         print("\n구워서 메울 자리 — 흔한 것부터 스물")
         for (rank, hangul, headword) in machineList.prefix(20) {
