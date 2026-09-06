@@ -81,6 +81,10 @@ let doSegmentFails = args.contains("--segment-fails")
 let boundPenalty = flagValues("--bound").first.flatMap(Double.init) ?? Segmenter.defaultBoundPenalty
 // 그 벌점만 훑는다. 조각을 찾아본 결과는 벌점과 무관하므로 한 벌을 물려 써서 빠르다.
 let doBoundSweep = args.contains("--bound-sweep")
+// 가나 빈도를 물려받은 동점을 가르는 무게를 훑는다. **낱말과 분절을 함께 재야**
+// 고를 수 있다 — 한쪽만 보면 다른 쪽에서 잃는 것이 안 보인다.
+let doIdentitySweep = args.contains("--identity-sweep")
+let identityWeight = flagValues("--identity").first.flatMap(Double.init)
 // 자립어 뒤에 조사가 서는 경계에 얹는 보너스. 0 이면 그 규칙을 쓰지 않는다.
 let junctionBonus = flagValues("--junction").first.flatMap(Double.init) ?? Segmenter.defaultJunctionBonus
 let doJunctionSweep = args.contains("--junction-sweep")
@@ -99,10 +103,12 @@ let jmdictWeight = flagValues("--jmdict").first.flatMap(Double.init)
 var tunedWeights = Segmenter.defaultWeights
 if let deinflectionPenalty { tunedWeights.deinflectionPenalty = deinflectionPenalty }
 if let jmdictWeight { tunedWeights.jmdictWeight = jmdictWeight }
+if let identityWeight { tunedWeights.kanaIdentityWeight = identityWeight }
 // 낱말 검색은 등재형 쪽에 무게를 두는 본래 값을 쓴다(활용 벌점 25).
 var wordWeights = Ranker.Weights()
 if let deinflectionPenalty { wordWeights.deinflectionPenalty = deinflectionPenalty }
 if let jmdictWeight { wordWeights.jmdictWeight = jmdictWeight }
+if let identityWeight { wordWeights.kanaIdentityWeight = identityWeight }
 // 문장 뜻을 모델에게 물어본다. 앱이 부를 것과 같은 재료를 같은 모델에 태운다 —
 // 도구가 다른 것을 물으면 여기서 본 답이 앱의 답이 아니다.
 let translateInputs = flagValues("--translate")
@@ -130,7 +136,7 @@ let positional: [String] = {
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
                 || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction" || args[i] == "--mt-share"
-                || args[i] == "--gloss-top"
+                || args[i] == "--gloss-top" || args[i] == "--identity"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -529,7 +535,8 @@ if let buildFrequencyLimit {
 //
 // 분절 정답은 Tanaka Corpus 에서 온다. 사람이 손으로 나눈 낱말 경계라 내가 정할 게 없다.
 
-if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep || doJunctionSweep {
+if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep
+    || doJunctionSweep || doIdentitySweep {
     let corpusPath = "Tools/data/examples.utf"
     let count = segmentCaseCount ?? 300
     log("Tanaka Corpus 읽는 중… \(corpusPath)")
@@ -599,6 +606,39 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep |
                                              junctionBonus: bonus, cache: sweepCache)
             print(String(format: "%13.0f   %7.1f%%   %6.3f   %5.1f%%",
                          bonus, score.exactRate * 100, score.f1, score.senseRate * 100))
+        }
+        exit(0)
+    }
+
+    if doIdentitySweep {
+        // **한쪽만 보고 고르면 안 된다.** 이 무게는 낱말 순위와 분절을 함께 움직인다 —
+        // 낱말에서 하나 잃고 분절에서 문장 둘을 얻는 자리가 실제로 있었다.
+        // 그래서 한 줄에 넷을 나란히 찍는다.
+        let cost = flagValues("--cost").first.flatMap(Double.init) ?? Segmenter.defaultSegmentCost
+        print("동점 가르기 무게   낱말1위   낱말3위안   분절완전   경계F1   조각1위")
+        print(String(repeating: "─", count: 66))
+        for w in [0.0, 0.001, 0.005, 0.01, 0.03, 0.1, 0.3, 1.0] {
+            var wordW = wordWeights;  wordW.kanaIdentityWeight = w
+            var segW = tunedWeights;  segW.kanaIdentityWeight = w
+
+            var t1 = 0, t3 = 0
+            for testCase in cases {
+                let results = Ranker.search(testCase.hangul, in: index,
+                                            frequency: frequency, weights: wordW)
+                let matches = makeMatcher(testCase)
+                if results.first.map(matches) ?? false { t1 += 1 }
+                if results.prefix(3).contains(where: matches) { t3 += 1 }
+            }
+            // **캐시를 물려 쓰면 안 된다.** 다른 스윕들과 달리 이 무게는 조각의
+            // **점수**를 바꾸므로, 찾아본 결과를 재어 두면 앞 값의 답을 그대로 쓴다.
+            let sweepCache = SearchCache(limit: .max)
+            let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
+                                             weights: segW, segmentCost: cost,
+                                             boundPenalty: boundPenalty,
+                                             junctionBonus: junctionBonus, cache: sweepCache)
+            print(String(format: "%13.3f   %4d/%d   %5d/%d   %7.1f%%   %6.3f   %5.1f%%",
+                         w, t1, cases.count, t3, cases.count,
+                         score.exactRate * 100, score.f1, score.senseRate * 100))
         }
         exit(0)
     }

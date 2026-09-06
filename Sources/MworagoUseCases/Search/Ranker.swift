@@ -36,6 +36,15 @@ public enum Ranker {
         /// 스윕에서 1 일 때 분절 완전일치가 30.3%에서 32.3%로 올랐고, 3 이면 20.7%,
         /// 8 이면 10.0% 로 무너진다. 거들기만 해야지 도메인을 덮으면 안 된다.
         public var jmdictWeight: Double
+        /// **가나 빈도를 물려받은 낱말끼리의 동점만 가르는 무게.**
+        ///
+        /// `なる` 한 줄(100위·28,341회)을 `成る`(되다)와 `生る`(열매 맺다)가 똑같이
+        /// 물려받아 80.0 대 80.0 이었다. 동점의 순서에는 뜻이 없어서 `生る` 가 먼저
+        /// 나왔다. 말뭉치가 **한자로 적은 적이 있는 쪽**을 앞에 두어 가른다.
+        ///
+        /// 물려받은 점수(80점대)를 덮으면 안 되므로 아주 작아야 한다.
+        /// **손으로 정하지 않는다** — `SpikeRunner --identity-sweep` 이 고른다.
+        public var kanaIdentityWeight: Double
 
         /// 기본값은 손으로 정한 것이 아니라 케이스 50개를 훑어 고른 값이다
         /// (`SpikeRunner --sweep`). 케이스가 늘면 다시 훑어야 한다.
@@ -57,12 +66,14 @@ public enum Ranker {
                     longVowelPenalty: Double = 6,
                     deinflectionPenalty: Double = 25,
                     domainWeight: Double = 1,
-                    jmdictWeight: Double = 1) {
+                    jmdictWeight: Double = 1,
+                    kanaIdentityWeight: Double = 0.01) {
             self.rankPenalty = rankPenalty
             self.longVowelPenalty = longVowelPenalty
             self.deinflectionPenalty = deinflectionPenalty
             self.domainWeight = domainWeight
             self.jmdictWeight = jmdictWeight
+            self.kanaIdentityWeight = kanaIdentityWeight
         }
     }
 
@@ -75,7 +86,8 @@ public enum Ranker {
     /// (`疲れた`·`助けて`)은 그대로 찾으면 0점이 되고, 같은 낱말의 사전형(`疲れる`)에게
     /// 진다. 같은 낱말이 활용됐다는 이유만으로 지는 것은 부당하므로,
     /// **표기와 읽기를 같은 규칙으로 함께 되돌려** 사전형의 빈도를 물려받게 한다.
-    static func domainScore(_ entry: DictEntry, reading: String, in list: FrequencyList) -> Double {
+    static func domainScore(_ entry: DictEntry, reading: String, in list: FrequencyList,
+                            identityWeight: Double = 0.01) -> Double {
         let readingForms = Deinflector.candidates(for: reading)
 
         // 실제로 쓰이는 한자 표기가 없거나, 사전이 "보통 가나로 쓴다"(uk)고 말하면
@@ -105,7 +117,7 @@ public enum Ranker {
                 ? readingForms.map(\.form)
                 : entry.usableWritings.map(\.text)
             let identity = forms.map { list.scoreByWriting($0) }.max() ?? 0
-            best += identity * Self.kanaIdentityWeight
+            best += identity * identityWeight
             if entry.usableWritings.isEmpty { return best }
         }
 
@@ -161,9 +173,6 @@ public enum Ranker {
     /// 표기만으로 물려받은 점수에 실어 줄 무게. 값은 재서 골랐다.
     static let writingOnlyWeight = 0.6
 
-    /// 가나 빈도를 물려받은 낱말끼리의 **동점만 가르는** 무게.
-    /// 물려받은 점수(80점대)를 덮지 않을 만큼 작아야 한다 — 1점 안쪽이다.
-    static let kanaIdentityWeight = 0.01
 
     /// 일상에서 쓰지 않는 말에 매길 벌점.
     ///
@@ -217,7 +226,10 @@ public enum Ranker {
                     // 도메인 점수가 있으면 그것만 쓰고, 없을 때만 JMdict 로 메운다.
                     // "신문 빈도가 잡음"이라는 판단은 도메인 빈도가 말을 할 때의 이야기다.
                     var score = 0.0
-                    let domain = frequency.map { domainScore(hit.entry, reading: hit.reading, in: $0) } ?? 0
+                    let domain = frequency.map {
+                        domainScore(hit.entry, reading: hit.reading, in: $0,
+                                    identityWeight: weights.kanaIdentityWeight)
+                    } ?? 0
                     if domain > 0, weights.domainWeight != 0 {
                         score += weights.domainWeight * domain
                     } else {
