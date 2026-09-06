@@ -55,7 +55,24 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
             $0.reading == entry.reading && !$0.entry.glosses.isEmpty
         }
         let onlyCandidate = byReading.count == 1
+
+        // **외래어는 읽기끼리 안 맞는다.**
+        //
+        // 빈도 목록이 가타카나 낱말을 **히라가나 읽기**로 싣는다 —
+        // `カード / かあど` · `システム / しすてむ` · `チーム / ちいむ`.
+        // 사전은 그 낱말의 읽기를 `カード` 로 싣는다. 그래서 아래 `hit.reading ==
+        // entry.reading` 이 통째로 어긋나 **외래어 968개가 굽기에서 빠져 있었다**
+        // (조회 자체는 닿는다 — 색인 키가 둘 다 `かーど` 로 접히기 때문이다).
+        //
+        // **읽기를 접어서 맞추면 안 된다.** 그러면 `でも`(조사)가 `デモ`(시위)를 물어
+        // 온다 — 아래 주석이 그 자리다. 대신 **빈도 줄의 표기**로 맞춘다. 그 표기가
+        // 가타카나면 그것이 곧 그 낱말의 읽기이므로 어긋날 자리가 없다.
+        let 외래어표기 = !entry.writing.isEmpty && entry.writing.unicodeScalars.allSatisfy {
+            (0x30A0...0x30FF).contains($0.value)
+        }
         guard let hit = store.lookup(entry.reading).first(where: { hit in
+            if 외래어표기, hit.reading == entry.writing, !hit.entry.glosses.isEmpty { return true }
+            return 
             // **가나 종류까지 같아야 한다.** 색인 조회 키는 히라가나로 정규화돼 있어서
             // でも 로 찾으면 デモ(시위)가 함께 걸려 나오고, 표기 없는 항목끼리 비교하면
             // 그대로 통과해 버린다. 실제로 でも 의 뜻이 "demonstration, protest" 였고
@@ -113,10 +130,12 @@ func loadJobs(indexPath: String, frequencyPath: String, limit: Int,
         //
         // 표기 없는 낱말은 읽기가 곧 표기다 — 붙이는 쪽도 그 자리에서는
         // `읽기 + 읽기` 로 찾으므로 그대로 둔다.
-        let writing = hit.entry.usableWritings.first?.text ?? entry.writing
-        let key = "\(writing)\t\(entry.reading)"
+        // **읽기도 사전의 것으로.** 표기와 같은 까닭이다 — 붙이는 쪽이 그것으로 찾는다.
+        // 외래어는 빈도 목록의 읽기가 히라가나(`かあど`)라 그대로 적으면 안 붙는다.
+        let writing = hit.entry.usableWritings.first?.text ?? hit.reading
+        let key = "\(writing)\t\(hit.reading)"
         guard seen.insert(key).inserted else { continue }
-        jobs.append(Job(writing: writing, reading: entry.reading,
+        jobs.append(Job(writing: writing, reading: hit.reading,
                         english: hit.entry.glosses, wordClass: hit.entry.wordClass))
     }
     if !skipped.isEmpty { log("기능어 \(skipped.count)개는 건너뛴다 — 조사·조동사는 뜻으로 옮길 수 없다") }
