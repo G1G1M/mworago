@@ -36,9 +36,9 @@ struct Credits: View {
     /// 있다. **화면 문구도 그렇게 적는다** — "색인이 여기 있다"고 적어 두고 가 보면
     /// 없는 것은, 안 적어 둔 것보다 나쁘다.
     ///
-    /// **앱을 내기 전에 이 자리가 공개되어 있어야 한다** — 지금 레포는 비공개라
-    /// 이 주소가 열리지 않는다. 공개로 돌리거나 GitHub Pages 를 켜서 주소를 만든 뒤
-    /// 이 한 줄을 그것으로 바꾼다(`Settings.feedbackAddress` 와 같은 규칙이다).
+    /// **열려 있는 것을 확인했다(2026-09-06).** 레포를 공개로 돌렸다. 이 주소가
+    /// 닫히면 조건을 지키지 못하는 것이므로, 옮길 때는 이 한 줄도 함께 옮긴다
+    /// (`Settings.feedbackAddress` 와 같은 규칙이다).
     private static let sourceAddress = URL(string: "https://github.com/G1G1M/mworago")
 
     private static let sources: [Source] = [

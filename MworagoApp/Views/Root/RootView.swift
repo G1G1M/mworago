@@ -29,7 +29,7 @@ struct RootView: View {
     /// `FileManager` 로 Application Support 를 찾았다.
     private let preferences: any PreferenceStoring
     /// 어느 탭을 열지 실행 인자로 고를 수 있다 (`--tab=collection`).
-    /// `--query=` · `--select=` · `--aid=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
+    /// `--query=` · `--select=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
     /// 다른 탭에서 찾기로 넘기는 검색어.
     @State private var pendingQuery: String?

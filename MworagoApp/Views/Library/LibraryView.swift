@@ -67,7 +67,7 @@ struct LibraryView: View {
     /// 뷰보다 오래 사는 곳에 둔다.
     private static var openedFromArguments = false
 
-    /// 설정. `--settings` 로 펼친 채 띄운다.
+    /// `--detail` 로 첫 낱말의 상세를 펼친 채 띄운다.
     private var opensFirstDetail: Bool {
         LaunchOptions.current.has("detail")
     }
