@@ -171,6 +171,9 @@ struct FolderPicker: View {
                 Text(word.reading)
                     .font(Theme.japanese(15))
                     .foregroundStyle(Theme.grey1)
+                    .lineLimit(1)
+                // 무엇을 담는지 화면마다 같은 말로 알린다 — 카드·책장·연습이 다 이 꼬리표를 쓴다.
+                if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                 if !word.gloss.isEmpty {
                     Text(word.gloss)
                         .font(Theme.korean(12))

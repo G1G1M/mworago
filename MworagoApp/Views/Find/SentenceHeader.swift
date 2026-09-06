@@ -37,6 +37,14 @@ struct SentenceHeader: View {
     /// 그려져야 폭도 다시 재어진다.
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    /// 담아 둔 것. 갈피표가 채워졌는지 여기서 본다.
+    @Environment(CollectionStore.self) private var collection
+    /// 옮긴 말. 문장을 담을 때 **뜻도 함께 담기 위해** 본다.
+    @Environment(TranslationDesk.self) private var desk
+    /// 담아 달라고 위로 알린다. 카드와 같은 문법이다 — **머리줄이 직접 담지 않는다.**
+    /// 어디에 넣을지 묻는 판은 화면에 하나여야 한다.
+    var onCollect: (CollectedWord) -> Void = { _ in }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // 이 덩어리가 무엇인지 한 낱말로 말해 준다.
@@ -45,10 +53,13 @@ struct SentenceHeader: View {
             // 같아서, 첫 번째 조각으로 보인다. 색을 더하는 길도 있지만 **강조는 반전 하나로만**
             // 쓰기로 했으므로, 이름과 여백으로 가른다.
             HStack(spacing: 9) {
-                Text("문장")
-                    .font(Theme.korean(12))
-                    .foregroundStyle(Theme.grey3)
+                // **낱말 카드와 같은 꼬리표를 단다.** 카드에는 `동사`·`관용구` 가 알약으로
+                // 붙는데 여기만 맨 글씨였다 — 같은 것을 가리키는 자리가 화면마다 다르면
+                // 사용자는 어느 쪽이 진짜 이름인지 매번 판단해야 한다. 문장도 갈래 하나다.
+                PartOfSpeechTag(name: "문장")
                 SpeakButton(text: parts.kana, size: 13, pace: .sentence)
+                Spacer(minLength: 10)
+                bookmark
             }
 
             pieces
@@ -70,6 +81,40 @@ struct SentenceHeader: View {
         // 아래를 카드보다 훨씬 크게 벌린다. 카드끼리는 18 + 18 로 붙어 있고 이쪽은 32 + 18 이라,
         // 같은 굵기의 선을 사이에 두고도 "여기서 한 덩어리가 끝난다"가 읽힌다.
         .padding(.bottom, 32)
+    }
+
+    /// 담을 문장.
+    ///
+    /// **낱말과 같은 칸에 담는다.** 따로 둘 자리를 만들면 책장이 둘로 갈리고, 연습도
+    /// 두 벌이 된다 — 사용자가 모으는 것은 "걸린 말"이지 낱말과 문장이 아니다.
+    /// 갈래는 꼬리표(`문장`)가 말해 준다.
+    ///
+    /// 표제는 **한자를 살린 원문**이다. 화면에 보이는 것은 가나지만, 나중에 다시 만났을 때
+    /// 무엇이었는지 알려 주는 것은 한자 쪽이다(번역기에 넘기는 것과 같은 글자다).
+    private var sentence: CollectedWord {
+        CollectedWord(headword: parts.forTranslation(),
+                      reading: parts.kana,
+                      hangul: parts.map(\.hangul).joined(),
+                      // 아직 안 옮겨졌으면 비운다. **없는 뜻을 지어내지 않는다** —
+                      // 빈 자리는 화면에서 티가 나지만 틀린 뜻은 사용자가 믿는다.
+                      gloss: desk.japanese[parts.forTranslation()] ?? "",
+                      partOfSpeech: "문장")
+    }
+
+    /// 문장 담기. 카드의 갈피표와 같은 문법이다 — 담을 때는 어디에 넣을지 묻고,
+    /// 뺄 때는 묻지 않는다.
+    private var bookmark: some View {
+        let held = collection.contains(sentence)
+        return Button {
+            if held { collection.remove(sentence) } else { onCollect(sentence) }
+        } label: {
+            Image(systemName: held ? "bookmark.fill" : "bookmark")
+                .font(.system(size: 15))
+                .foregroundStyle(held ? Theme.ink : Theme.grey3)
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(held ? .increase : .decrease, trigger: held)
+        .accessibilityLabel(held ? "문장 빼기" : "문장 담기")
     }
 
     /// 조각들을 이어 붙인 한 줄. 일본어는 띄어 쓰지 않으므로 사이를 벌리지 않고,

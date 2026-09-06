@@ -296,7 +296,8 @@ struct SearchView: View {
                         // 문장 뜻은 헤더 **안**에 셋째 층으로 들어 있다. 되살린 문장과
                         // 그것을 옮긴 말은 한 덩어리라, 사이에 덩어리를 닫는 여백이
                         // 끼면 안 된다.
-                        SentenceHeader(segments: engine.segments, selected: $selected)
+                        SentenceHeader(segments: engine.segments, selected: $selected,
+                                       onCollect: { collecting = $0 })
                         Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
                     }
 
