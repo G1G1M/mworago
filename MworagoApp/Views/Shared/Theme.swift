@@ -79,6 +79,23 @@ enum Theme {
     /// 밝기에 따라 갈리는 색 하나.
     ///
     /// 색마다 두 값을 한 줄에 나란히 적어 둔다. 밝은 벌과 어두운 벌을 다른 곳에 두면
+    // MARK: 선
+    //
+    // **선을 긋는 방법이 셋이었다.** `Divider().overlay(색)` · 맨 `Divider()` ·
+    // `Rectangle().fill(색).frame(height: 0.5)` 가 화면마다 섞여 있었다. `Divider` 는
+    // 제 두께와 블렌드를 시스템에서 가져오므로 같은 색을 얹어도 `Rectangle` 과 같은
+    // 진하기로 그려지지 않는다 — 탭을 옮길 때 선만 미묘하게 달라 보인다.
+    //
+    // 그어지는 굵기를 한 자리에서 정한다. 0.5pt 는 2배 화면에서 1px 이다.
+
+    /// 가로로 긋는 실선 하나. **선은 여기서만 그린다.**
+    static func rule(_ color: Color = grey3) -> some View {
+        Rectangle().fill(color).frame(height: ruleWidth)
+    }
+
+    /// 선 하나의 굵기.
+    static let ruleWidth: CGFloat = 0.5
+
     // MARK: 간격
     //
     // **숫자를 화면마다 직접 쓰지 않는다.** 눈대중으로 맞추면 그때는 비슷해 보여도

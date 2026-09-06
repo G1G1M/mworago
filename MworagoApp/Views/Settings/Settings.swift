@@ -128,7 +128,7 @@ struct Settings: View {
                             }
                             .buttonStyle(.plain)
 
-                            Rectangle().fill(Theme.grey3).frame(height: 0.5)
+                            Theme.rule()
 
                             row("버전", detail: Feedback.appVersion, chevron: false)
                         }
@@ -216,7 +216,7 @@ struct Settings: View {
                     .font(Theme.korean(12))
                     .tracking(0.6)
                     .foregroundStyle(Theme.grey2)
-                Rectangle().fill(Theme.grey3).frame(height: 0.5)
+                Theme.rule()
             }
             content()
         }

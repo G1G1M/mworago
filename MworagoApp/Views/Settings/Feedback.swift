@@ -71,7 +71,7 @@ struct Feedback: View {
                     }
 
                     if let form = Self.form {
-                        Divider().overlay(Theme.grey3)
+                        Theme.rule()
                         Link(destination: form) {
                             way(title: "이름 없이 보내기",
                                 detail: "브라우저로 의견 폼이 열립니다. 이름도 메일 주소도 묻지 않습니다.")

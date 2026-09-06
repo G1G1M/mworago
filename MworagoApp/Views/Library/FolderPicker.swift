@@ -187,7 +187,7 @@ struct FolderPicker: View {
     }
 
     private var line: some View {
-        Divider().overlay(Theme.grey4)
+        Theme.rule(Theme.grey4)
             .padding(.horizontal, 20)
             .padding(.vertical, 5)
     }

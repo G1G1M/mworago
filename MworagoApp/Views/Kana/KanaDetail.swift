@@ -116,7 +116,7 @@ struct KanaDetail: View {
                     .font(Theme.korean(12))
                     .tracking(0.6)
                     .foregroundStyle(Theme.grey2)
-                Rectangle().fill(Theme.grey3).frame(height: 0.5)
+                Theme.rule()
             }
             form(katakana ? "히라가나" : "가타카나",
                  katakana ? hiragana(kana) : katakanaForm(kana))

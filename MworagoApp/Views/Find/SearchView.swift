@@ -298,7 +298,7 @@ struct SearchView: View {
                         // 끼면 안 된다.
                         SentenceHeader(segments: engine.segments, selected: $selected,
                                        onCollect: { collecting = $0 })
-                        Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
+                        Theme.rule().padding(.horizontal, Theme.gutter)
                     }
 
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
@@ -306,7 +306,7 @@ struct SearchView: View {
                                     isSelected: selected == index,
                                     onCollect: { collecting = $0 })
                             .id(index)
-                        Divider().overlay(Theme.grey3).padding(.horizontal, Theme.gutter)
+                        Theme.rule().padding(.horizontal, Theme.gutter)
                     }
                 }
                 .padding(.top, 12)

@@ -261,8 +261,7 @@ struct LibraryView: View {
     /// **글이 시작하는 자리에서 함께 시작한다.** 줄 안쪽에서 여백을 주는 탓에
     /// 선만 형제로 남아 기둥 끝까지 뻗었고, 목록이 글보다 넓어 보였다.
     private var rowDivider: some View {
-        Divider()
-            .overlay(Theme.grey3)
+        Theme.rule(Theme.grey3)
             .padding(.horizontal, Theme.gutter)
     }
 

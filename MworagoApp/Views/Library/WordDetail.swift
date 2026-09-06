@@ -165,7 +165,7 @@ struct WordDetail: View {
 
     private func actions(_ word: CollectedWord) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Divider().overlay(Theme.grey3)
+            Theme.rule()
 
             HStack(spacing: 10) {
                 Button {

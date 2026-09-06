@@ -149,7 +149,7 @@ struct KanaView: View {
                     .font(Theme.korean(12))
                     .tracking(0.6)
                     .foregroundStyle(Theme.grey2)
-                Rectangle().fill(Theme.grey3).frame(height: 0.5)
+                Theme.rule()
             }
 
             // 격자로 세운다. 오십음도는 자리가 곧 뜻이라 — 어느 행 어느 단인지가

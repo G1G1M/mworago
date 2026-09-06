@@ -101,7 +101,7 @@ struct FolderChooserDialog: View {
                 row(name: name, picked: picked == .folder(name),
                     here: marksCurrent && name == current) { picked = .folder(name) }
             }
-            Divider().overlay(Theme.grey4)
+            Theme.rule(Theme.grey4)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 5)
             // 묶음에서 빼기. 지우는 것이 아니라 **아직 안 넣은 것으로 되돌리는** 일이라
