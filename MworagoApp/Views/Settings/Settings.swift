@@ -97,10 +97,12 @@ struct Settings: View {
     /// 대신 **밖에 있는 폼**을 브라우저로 연다. 앱이 스스로 보내는 것은 없고,
     /// 무엇을 적을지는 그 화면에서 사용자가 정한다.
     ///
-    /// **앱을 내기 전에 폼 하나를 만들어 그 주소를 여기 적는다**(구글 폼 · Tally 등,
-    /// 로그인 없이 쓸 수 있는 것으로). 비워 두면 이 줄은 화면에 서지 않는다 —
-    /// 눌러도 아무 데도 가지 않는 줄을 두는 것보다 없는 편이 낫다.
-    private static let feedbackForm: URL? = nil
+    /// 비워 두면 이 줄은 화면에 서지 않는다 — 눌러도 아무 데도 가지 않는 줄을 두는
+    /// 것보다 없는 편이 낫다.
+    ///
+    /// 지금 것은 구글 폼이고 **로그인 없이 열리며 이메일을 걷지 않는 것을 확인했다**
+    /// (묻는 것 넷: 무엇을 쳤나 · 무엇이 나왔나 · 무엇을 기대했나 · 기기와 앱 버전).
+    private static let feedbackForm = URL(string: "https://forms.gle/pjN4z7L8Sa3ZNL4T9")
 
     @State private var copiedAddress = false
     @Environment(\.openURL) private var openURL
