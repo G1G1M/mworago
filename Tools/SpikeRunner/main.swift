@@ -388,13 +388,30 @@ if let glossTopCount {
     var notFound = [Int](repeating: 0, count: bands.count)  // 1위가 아예 안 나온 것
     var handList: [(Int, String, String)] = []
     var machineList: [(Int, String, String)] = []
+    // **`다른 뜻 N` 자리도 센다.** 1위만 재면 카드의 절반만 잰 것이다 —
+    // 1위가 헛짚었을 때 사용자가 스스로 찾아낼 길이 그 줄이고, 그 줄에 영어가
+    // 남아 있으면 고를 수가 없다. 카드가 펴 보이는 것은 둘까지다(`alternates(limit:)`).
+    var altShown = [Int](repeating: 0, count: bands.count)
+    var altCovered = [Int](repeating: 0, count: bands.count)
+    var cardsWithAlt = [Int](repeating: 0, count: bands.count)
+    var cardsAllCovered = [Int](repeating: 0, count: bands.count)
 
     for (hangul, rank) in bestRank.sorted(by: { $0.value < $1.value }) {
         let band = bands.firstIndex { rank >= $0.0 && rank < $0.1 } ?? bands.count - 1
         tried[band] += 1
-        guard let top = Ranker.search(hangul, in: index, frequency: frequency).first else {
+        let ranked = Ranker.search(hangul, in: index, frequency: frequency)
+        guard let top = ranked.first else {
             notFound[band] += 1
             continue
+        }
+        // 카드가 실제로 펴 보이는 것만 센다 — 1위와 같은 낱말은 이미 걸러진 채로 온다.
+        let alternates = Segment(hangul: hangul, results: ranked).alternates()
+        if !alternates.isEmpty {
+            cardsWithAlt[band] += 1
+            altShown[band] += alternates.count
+            let 뜻있는것 = alternates.filter { !($0.entry.koreanGloss ?? "").isEmpty }.count
+            altCovered[band] += 뜻있는것
+            if 뜻있는것 == alternates.count { cardsAllCovered[band] += 1 }
         }
         if !(top.entry.koreanGloss ?? "").isEmpty {
             covered[band] += 1
@@ -465,6 +482,36 @@ if let glossTopCount {
             print("  \(String(rank).padded(7))\(hangul.padded(14))\(key)\t\(english)")
         }
     }
+    // ── `다른 뜻 N` 에 무엇이 뜨는가 ──────────────────────────────
+    //
+    // 위 표는 1위만 센다. 카드는 그 아래에 후보를 둘까지 펴 보이는데, 거기 영어가
+    // 남아 있으면 **1위가 헛짚었을 때 사용자가 고를 수가 없다** — 대안이 있는 까닭이
+    // 그것 하나뿐이라 그 줄의 덮음은 1위와 따로 재야 한다.
+    let shown = altShown.reduce(0, +)
+    let shownCovered = altCovered.reduce(0, +)
+    let withAlt = cardsWithAlt.reduce(0, +)
+    let allCovered = cardsAllCovered.reduce(0, +)
+    if shown > 0 {
+        print("\n\n`다른 뜻 N` 에 뜻이 뜨는가 — **펴 보이는 후보만 센다**(카드당 둘까지)\n")
+        print("\("순위 구간".padded(16))\("후보 있는 카드".padded(15))"
+              + "\("펴 보인 후보".padded(14))\("뜻 뜸".padded(9))비율")
+        print(String(repeating: "─", count: 62))
+        for (i, band) in bands.enumerated() where altShown[i] > 0 {
+            let label = band.1 == .max ? "\(band.0.formatted())~"
+                                       : "\(band.0.formatted())~\(band.1.formatted())"
+            print("\(label.padded(16))\(String(cardsWithAlt[i]).padded(15))"
+                  + "\(String(altShown[i]).padded(14))\(String(altCovered[i]).padded(9))"
+                  + String(format: "%5.1f%%", 100 * Double(altCovered[i]) / Double(altShown[i])))
+        }
+        print(String(repeating: "─", count: 62))
+        print("\("합계".padded(16))\(String(withAlt).padded(15))"
+              + "\(String(shown).padded(14))\(String(shownCovered).padded(9))"
+              + String(format: "%5.1f%%", 100 * Double(shownCovered) / Double(shown)))
+        print(String(format: "\n후보가 **전부** 한국어로 뜨는 카드는 %d/%d (%.1f%%) 다.",
+                     allCovered, withAlt, 100 * Double(allCovered) / Double(max(withAlt, 1))))
+        print("한 줄이라도 영어가 남으면 그 카드는 고르는 자리가 반만 열린 것이다.")
+    }
+
     let kata = katakana.reduce(0, +)
     print("\n`구워서` \(m)개 중 가타카나 외래어가 \(kata)개다 — 구우면 메워질 자리.")
     print("나머지 \(m - kata)개에는 1위가 엉뚱한 낱말이라 잡힌 것이 섞여 있다.")

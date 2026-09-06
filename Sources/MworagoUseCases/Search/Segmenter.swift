@@ -17,6 +17,17 @@ public struct Segment: Sendable {
     /// 문장을 이루는 조각이 아니다 — 되살린 원문을 그릴 때 함께 이으면 문장이 두 번 적힌다.
     public var isWhole: Bool = false
 
+    /// **밖에서도 조각을 만들 수 있어야 한다.** 자동으로 생기는 초기자는 모듈 밖으로
+    /// 나가지 않아서, 측정기가 `alternates()` 를 부르려면 조각을 손으로 지어야 했다.
+    /// 재는 쪽과 그리는 쪽이 같은 규칙을 쓰게 하려면 이 문이 열려 있어야 한다.
+    public init(hangul: String, results: [SearchResult],
+                kanjiShareInCorpus: Double = 0, isWhole: Bool = false) {
+        self.hangul = hangul
+        self.results = results
+        self.kanjiShareInCorpus = kanjiShareInCorpus
+        self.isWhole = isWhole
+    }
+
     /// 첫 답 다음에 곁들일 후보들.
     ///
     /// 1위가 정답인 비율은 94%지만 3위 안에 있을 비율은 98%다. 그 4%를 사용자가 직접
