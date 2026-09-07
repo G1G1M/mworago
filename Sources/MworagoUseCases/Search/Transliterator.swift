@@ -90,6 +90,27 @@ public enum Transliterator {
     /// `코트` 를 친 사람이 コート 에 닿지 못했다. 이 자리에만 お단을 함께 연다.
     static let dentalInitials: Set<Character> = ["ㄷ", "ㄸ", "ㅌ"]
 
+    // MARK: 외래어의 확장음
+    //
+    // 일본어가 외래어를 적으려고 나중에 만든 자리다(`ティ` · `ファ` · `ウォ`).
+    // 오십음도에는 없어서 행 × 단으로는 안 나오고, 열어 두지 않으면 애니 자막에 흔한
+    // 외래어가 통째로 안 찾아진다 — `체쿠`(チェック) · `화이루`(ファイル) ·
+    // `오휘스`(オフィス) · `메디아`(メディア).
+    //
+    // **한 소리에 한글이 둘씩 난다.** `ファ` 를 듣고 「화」로 적는 사람과 「파」로 적는
+    // 사람이 갈리기 때문이다. 카드에 적히는 음차는 앞쪽이지만(`KanaToHangul`),
+    // 찾는 길은 둘 다 열어 둔다 — 지어내는 소리가 아니라 **같은 소리를 적는 두 가지 길**
+    // 이라 후보가 늘어도 헛것이 늘지 않는다.
+    static let extendedMorae: [(initial: Character, medial: Character, mora: String)] = [
+        ("ㅌ", "ㅣ", "t.i"),  ("ㄷ", "ㅣ", "d.i"),          // 티 · 디
+        ("ㅌ", "ㅠ", "t.yu"), ("ㄷ", "ㅠ", "d.yu"),         // 튜 · 듀
+        ("ㅎ", "ㅘ", "f.a"),  ("ㅍ", "ㅏ", "f.a"),          // 화 · 파
+        ("ㅎ", "ㅟ", "f.i"),  ("ㅍ", "ㅣ", "f.i"),          // 휘 · 피
+        ("ㅎ", "ㅞ", "f.e"),  ("ㅍ", "ㅔ", "f.e"),          // 훼 · 페
+        ("ㅎ", "ㅝ", "f.o"),  ("ㅍ", "ㅗ", "f.o"),          // 훠 · 포
+        ("ㅇ", "ㅟ", "w.i"),  ("ㅇ", "ㅞ", "w.e"), ("ㅇ", "ㅝ", "w.o"),   // 위 · 웨 · 워
+    ]
+
     // MARK: 쓰는 대로와 읽는 대로가 다른 조사
 
     /// 일본어에서 **표기와 발음이 어긋나는 낱말은 셋뿐**이다 — `は`(와) · `へ`(에) ·
@@ -150,6 +171,13 @@ public enum Transliterator {
         // 쓰·스 → つ
         if isTsuSpelling(syllable), KanaTable.kana(for: "tu") != nil {
             let candidate = ["tu"] + tail
+            if !result.contains(candidate) { result.append(candidate) }
+        }
+        // 외래어의 확장음. 오십음도 밖이라 위의 행 × 단으로는 안 나온다.
+        for extended in Self.extendedMorae
+        where extended.initial == syllable.initial && extended.medial == syllable.medial {
+            guard KanaTable.kana(for: extended.mora) != nil else { continue }
+            let candidate = [extended.mora] + tail
             if !result.contains(candidate) { result.append(candidate) }
         }
         return result
