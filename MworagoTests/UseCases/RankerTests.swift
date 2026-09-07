@@ -175,6 +175,50 @@ struct RankerTests {
         #expect((결과.first?.score ?? 0) > 0)
     }
 
+    @Test("uk 낱말이 가나 빈도 줄을 통째로 가져가지 않는다")
+    func uk가_가나줄을_통째로_가져가지_않는다() {
+        // `쿠세` 를 치면 `曲`(노가쿠의 한 대목)이 `癖`(버릇) 위에 섰다.
+        //
+        // 말뭉치의 가나 줄 `くせ`(1,966위·1,104회)는 사람들이 `癖` 를 가나로 적은
+        // 것이다. 그런데 `曲` 이 `uk` 라 그 줄을 **통째로** 물려받아 54.4 가 되고,
+        // 제 한자 줄로 재는 `癖`(6,612위)는 43.6 에 머물렀다.
+        //
+        // **사전은 알고 있다.** JMdict 가 `癖` 의 `くせ` 읽기에 우선 표시를 달아
+        // 두었고(47), `曲` 의 `くせ` 에는 아무것도 안 달았다(0). 표시가 없는 읽기가
+        // 가나 줄을 가져갈 때는 깎는다 — `何時` 의 `なんじ` 를 다루는 규칙과 같은 잣대다.
+        let index = DictIndex(entries: [
+            DictEntry(readings: [DictForm(text: "くせ", priority: 0)],
+                      writings: [DictForm(text: "曲", priority: 0)],
+                      glosses: ["noh segment"], usuallyKana: true, partsOfSpeech: ["n"]),
+            DictEntry(readings: [DictForm(text: "くせ", priority: 47)],
+                      writings: [DictForm(text: "癖", priority: 47)],
+                      glosses: ["habit"], partsOfSpeech: ["n"]),
+        ])
+        let frequency = FrequencyList(tsv: """
+        term\treading\trank\tcount
+        くせ\tくせ\t1966\t1104
+        癖\tくせ\t6612\t256
+        """)
+        #expect(Ranker.search("쿠세", in: index, frequency: frequency).first?.headword == "癖")
+    }
+
+    @Test("사전이 흔하다고 표시한 읽기면 가나 줄을 그대로 받는다")
+    func 표시된_읽기는_그대로() {
+        // 깎는 근거는 "사전이 이 읽기를 흔하다고 안 했다"는 것뿐이다. 표시가 있으면
+        // 그 근거가 없다 — `ある`(有る) 처럼 늘 가나로 쓰는 흔한 낱말이 여기 걸린다.
+        let index = DictIndex(entries: [
+            DictEntry(readings: [DictForm(text: "ある", priority: 102)],
+                      writings: [DictForm(text: "有る", priority: 47)],
+                      glosses: ["to exist"], usuallyKana: true, partsOfSpeech: ["v5r"]),
+        ])
+        let frequency = FrequencyList(tsv: """
+        term\treading\trank\tcount
+        ある\tある\t100\t28341
+        """)
+        let 점수 = Ranker.search("아루", in: index, frequency: frequency).first?.score ?? 0
+        #expect(점수 > 79)   // 100위 = 80.0. 깎였으면 48 언저리다
+    }
+
     @Test("사전에 없으면 빈 결과")
     func 없는말() {
         #expect(Ranker.search("스고이", in: Self.사전([])).isEmpty)

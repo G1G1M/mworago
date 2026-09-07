@@ -141,6 +141,24 @@ public enum Ranker {
         if entry.usableWritings.isEmpty || entry.usuallyKana {
             best = readingForms.map { list.score(writing: nil, reading: $0.form) }.max() ?? 0
 
+            // **가나 줄을 통째로 가져가면 안 되는 낱말이 있다.**
+            //
+            // `쿠세` 를 치면 `曲`(노가쿠의 한 대목)이 `癖`(버릇) 위에 섰다. 말뭉치의
+            // 가나 줄 `くせ`(1,966위·1,104회)는 사람들이 `癖` 를 가나로 적은 것인데,
+            // `曲` 이 `uk` 라 그 줄을 그대로 물려받아 54.4 가 되고 제 한자 줄로 재는
+            // `癖`(6,612위)는 43.6 에 머물렀다.
+            //
+            // **말뭉치는 못 가르지만 사전은 이미 갈라 두었다.** JMdict 가 `癖` 의
+            // `くせ` 읽기에 우선 표시를 달았고(47) `曲` 의 `くせ` 에는 안 달았다(0).
+            // 표시가 없는 읽기가 가나 줄을 가져갈 때는 깎는다 — 표기만으로 물려받은
+            // 점수를 깎는 아래 규칙과 같은 잣대다(`何時` 의 `なんじ`).
+            //
+            // **표기가 없는 낱말은 안 깎는다.** 가나가 곧 제 꼴이라 그 줄이 제 것이고,
+            // 깎으면 기댈 곳이 아예 없어진다.
+            if !entry.usableWritings.isEmpty, !Self.dictionaryCallsItCommon(entry, readingForms) {
+                best *= Self.unmarkedKanaWeight
+            }
+
             // **가나 빈도를 물려받는 낱말이 여럿이면 동점이 된다.**
             //
             // `なる` 는 말뭉치에 100위(28,341회)로 실려 있는데, 그 한 줄을 `成る`(되다)와
@@ -202,11 +220,8 @@ public enum Ranker {
             //
             // 사전이 아무 표시도 안 단 읽기는 벌점을 그대로 문다 — 그쪽은 원래 근거가
             // 살아 있다(`何時` 의 `なんじ` 처럼).
-            let forms = Set(readingForms.map(\.form))
-            let dictionaryCallsItCommon = entry.readings.contains {
-                forms.contains($0.text) && $0.priority > 0
-            }
-            let weight = dictionaryCallsItCommon ? 1.0 : Self.writingOnlyWeight
+            let weight = Self.dictionaryCallsItCommon(entry, readingForms)
+                       ? 1.0 : Self.writingOnlyWeight
             for writing in entry.usableWritings {
                 best = max(best, list.scoreByWriting(writing.text) * weight)
             }
@@ -216,6 +231,36 @@ public enum Ranker {
 
     /// 표기만으로 물려받은 점수에 실어 줄 무게. 값은 재서 골랐다.
     static let writingOnlyWeight = 0.6
+
+    /// **사전이 이 읽기를 흔하다고 표시했는가.**
+    ///
+    /// 물려받은 점수를 깎을지 정하는 두 자리가 같은 물음을 쓴다 — 가나 줄을
+    /// 물려받는 `uk` 낱말과, 짝이 없어 표기만으로 물려받는 낱말. 근거가 같으니
+    /// 묻는 자리도 하나여야 한다.
+    static func dictionaryCallsItCommon(_ entry: DictEntry,
+                                        _ readingForms: [Deinflection]) -> Bool {
+        let forms = Set(readingForms.map(\.form))
+        return entry.readings.contains { forms.contains($0.text) && $0.priority > 0 }
+    }
+
+    /// 사전이 표시하지 않은 읽기가 **가나 빈도 줄**을 물려받을 때의 무게.
+    ///
+    /// **손으로 정하지 않았다.** 낱말 150개로는 0.8 아래가 전부 같아서(137/150 ·
+    /// 147/150) 못 고른다 — 이 규칙이 갈라야 할 자리가 그 표본에 하나뿐이라서다.
+    /// 분절 300개가 갈라 준다(같은 문장 위에서 상수만 바꾼 값이라 흔들림이 없다):
+    ///
+    ///     무게   틀린 것   경계를 맞힌 조각   조각 1위
+    ///     1.0    160/300   741               93.1%
+    ///     0.8    159/300   749               93.2%
+    ///     0.6    159/300   749               93.2%   ← 골랐다
+    ///     0.4    160/300   743               93.1%
+    ///     0.2    160/300   743               93.1%
+    ///     0.0    160/300   743               93.1%
+    ///
+    /// **깎되 지우지는 않는다.** 0.4 아래로 내리면 도로 나빠진다 — 표시가 없다고
+    /// 가나 줄을 통째로 버리면, 정말 그 줄이 제 것인 낱말까지 기댈 데를 잃는다.
+    /// 0.8 과 비긴다. `writingOnlyWeight` 와 같은 값을 쓴다 — 근거가 같은 규칙이다.
+    static let unmarkedKanaWeight = 0.6
 
 
     /// 일상에서 쓰지 않는 말에 매길 벌점.
