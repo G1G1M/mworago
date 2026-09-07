@@ -2,7 +2,7 @@
 
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-136%2F150%20%2890%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-145%2F150%20%2896%25%29-171717?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-323%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-325%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -80,7 +80,7 @@
 |---|---|---|
 | 굽기의 진도 — 빈도 목록의 표기·읽기 쌍 | **100.0%** (구멍 0/45,483) | `gloss-holes.sh` |
 | 화면에 나올 수 있는 것 전부 — 읽기로 닿는 표제항 | **73.3%** (38,026/51,896) | `gloss-holes.sh` |
-| **소리대로 쳤을 때 1위 카드에 뜻이 뜨는가** | **97.5%** | `SpikeRunner --gloss-top` |
+| **소리대로 쳤을 때 1위 카드에 뜻이 뜨는가** | **97.6%** | `SpikeRunner --gloss-top` |
 | 그 카드의 `다른 뜻 N` 에도 뜻이 뜨는가 | **100.0%** | `SpikeRunner --gloss-top` |
 
 **셋째가 사용자가 겪는 값이다.** 앞의 둘은 각각 위·아래로 치우쳐 있다 — 첫째는
@@ -93,16 +93,16 @@
 
 ```
 순위 구간       쳐 봄    뜻 뜸    손으로   구워서   못 찾음  비율
-1~1,000         868      832      0        5        31       99.4%
-1,000~5,000     3240     2941     0        59       240      98.0%
-5,000~10,000    3946     3388     0        118      440      96.6%
-합계            8054     7161     0        182      711      97.5%
+1~1,000         868      833      0        4        31       99.5%
+1,000~5,000     3240     2944     0        56       240      98.1%
+5,000~10,000    3946     3389     0        117      440      96.7%
+합계            8054     7166     0        177      711      97.6%
 ```
 
 `손으로` 는 조사·조동사·접사다 — 낱말 뜻으로 옮길 수가 없어 굽기가 **일부러**
 건너뛴다(`の` → "indicates possessive"). **이 자리는 0 이 됐다** — 마지막까지 남아
 있던 43개를 9월 7일 밤에 `function-gloss.tsv` 에 적었다. `구워서` 는 기계가 옮길 수
-있는데 아직 안 된 것이거나, 한 읽기에 후보가 여럿이라 막아 둔 것이다. 남은 182개는
+있는데 아직 안 된 것이거나, 한 읽기에 후보가 여럿이라 막아 둔 것이다. 남은 177개는
 대부분 **1위가 엉뚱한 낱말이라 잡힌 것**이라 뜻을 구워도 안 나아진다 — 순위 쪽이다.
 `못 찾음` 은 뜻이 아니라 검색 쪽이다 — 빈도 목록에 토크나이저가 흘린 활용
 조각(`잇` · `낫` · `얏`)이 섞여 있다.
@@ -308,7 +308,7 @@ MworagoApp/               앱
     Kana/                 가나표
     Settings/             설정과 만든 것들
     Shared/               화면들이 나눠 쓰는 것 — 색·글자 크기·판·넘기기·소리·품사표
-MworagoTests/             테스트 323개. 층으로 나눈다
+MworagoTests/             테스트 325개. 층으로 나눈다
   Domain/  UseCases/  Infra/
 Tools/                    앱에 실리지 않는 것들
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
@@ -323,7 +323,7 @@ docs/                     기록
 ## 실행
 
 ```sh
-swift test                  # 테스트 323개
+swift test                  # 테스트 325개
 ./Tools/fetch/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```

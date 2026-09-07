@@ -122,7 +122,17 @@ public enum Ranker {
     /// **표기와 읽기를 같은 규칙으로 함께 되돌려** 사전형의 빈도를 물려받게 한다.
     static func domainScore(_ entry: DictEntry, reading: String, in list: FrequencyList,
                             identityWeight: Double = 0.01) -> Double {
+        // **명사와 부사는 빈도도 활용해서 물려받지 않는다.**
+        //
+        // `쿠로` 를 치면 `畦`(논두렁)가 `黒`(검정) 위에 섰다. `畦` 는 `uk` 라 가나 빈도로
+        // 재는데, 그 읽기 `くろ` 를 한 번 더 되돌려 `くる` 를 만들고 말뭉치의
+        // `くる`(333위·7,381회 — 「오다」다)를 물려받았다. 69.6 대 51.8 이었다.
+        //
+        // `search` 는 이미 같은 규칙을 지키고 있었다(`WordClass.inflects`). 그런데
+        // 조회만 막고 **점수는 활용형에서 가져오게 두어**, 사전이 한 적 없는 말을
+        // 점수만 듣고 있었다. 규칙이 한 자리에만 있으면 다른 자리로 새어 나간다.
         let readingForms = Deinflector.candidates(for: reading)
+            .filter { entry.wordClass.inflects || $0.rule == nil }
 
         // 실제로 쓰이는 한자 표기가 없거나, 사전이 "보통 가나로 쓴다"(uk)고 말하면
         // 가나 빈도로 재야 한다. 아무도 안 쓰는 한자 표기의 빈도로 재면
@@ -247,8 +257,7 @@ public enum Ranker {
                     //
                     // `勉強` 처럼 `n·vs`(する가 붙는 명사)는 이 검사에 걸리지 않는다 —
                     // `벤쿄시타` 는 `勉強` + `する` 로 갈라져 명사 쪽에는 활용이 안 붙는다.
-                    if deinflection.rule != nil,
-                       hit.entry.wordClass == .noun || hit.entry.wordClass == .adverb { continue }
+                    if deinflection.rule != nil, !hit.entry.wordClass.inflects { continue }
                     // **도메인 빈도가 아무 말도 하지 않을 때만 JMdict 를 듣는다.**
                     //
                     // 신문 빈도는 애니에서 잡음이라 스윕이 늘 jmdictWeight 0 을 골랐다.

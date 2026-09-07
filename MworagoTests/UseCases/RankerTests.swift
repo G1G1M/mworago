@@ -25,6 +25,16 @@ struct RankerTests {
         })
     }
 
+    /// `uk`(보통 가나로 씀) 여부까지 달아 만드는 사전.
+    /// (표기, 읽기, 점수, 품사 태그, 가나로 쓰는가)
+    static func 사전(가나여부: [(String, String, Int, [String], Bool)]) -> DictIndex {
+        DictIndex(entries: 가나여부.map { 표기, 읽기, 점수, 태그, 가나 in
+            DictEntry(readings: [DictForm(text: 읽기, priority: 점수)],
+                      writings: [DictForm(text: 표기, priority: 0)],
+                      glosses: [], usuallyKana: 가나, partsOfSpeech: 태그)
+        })
+    }
+
     /// 품사까지 달아 만드는 사전. (표기, 읽기, 점수, 품사 태그)
     static func 사전(품사: [(String, String, Int, [String])]) -> DictIndex {
         DictIndex(entries: 품사.map { 표기, 읽기, 점수, 태그 in
@@ -127,6 +137,42 @@ struct RankerTests {
         let 결과 = Ranker.search("야메로", in: index)
         #expect(결과.first?.deinflection == "명령형")
         #expect(결과.first?.matchedKana == "やめろ")
+    }
+
+    @Test("명사는 빈도도 활용해서 물려받지 않는다")
+    func 명사는_빈도를_활용해_물려받지_않는다() {
+        // `쿠로` 를 치면 `畦`(논두렁)가 `黒`(검정) 위에 섰다.
+        //
+        // `畦` 는 `uk` 라 가나 빈도로 재는데, 그 읽기 `くろ` 를 **한 번 더 되돌려**
+        // `くる` 를 만들고 말뭉치의 `くる`(333위·7,381회 — 「오다」다)를 물려받았다.
+        // 69.6 대 51.8 로 이겼다.
+        //
+        // `search` 는 이미 "명사와 부사는 활용하지 않는다"를 지키고 있었다. 그런데
+        // **빈도를 물려받는 자리에는 그 규칙이 없었다** — 조회는 안 해 주면서
+        // 점수는 활용형에서 가져온 것이라, 사전이 한 적 없는 말을 점수만 듣고 있었다.
+        let index = Self.사전(가나여부: [("畦", "くろ", 0, ["n"], true),
+                                      ("黒", "くろ", 0, ["n"], false)])
+        let frequency = FrequencyList(tsv: """
+        term\treading\trank\tcount
+        くる\tくる\t333\t7381
+        黒\tくろ\t2578\t810
+        くろ\tくろ\t63814\t5
+        """)
+        let 결과 = Ranker.search("쿠로", in: index, frequency: frequency)
+        #expect(결과.first?.entry.headword == "黒")
+    }
+
+    @Test("동사는 그대로 물려받는다")
+    func 동사는_빈도를_활용해_물려받는다() {
+        // 위 규칙이 활용하는 갈래까지 막으면 안 된다. `疲れた`(사전에 활용형으로 실린
+        // 표제항)가 `疲れる` 의 빈도를 물려받는 길이 이 자리다.
+        let index = Self.사전(품사: [("食べろ", "たべろ", 0, ["v1"])])
+        let frequency = FrequencyList(tsv: """
+        term\treading\trank\tcount
+        食べる\tたべる\t500\t3000
+        """)
+        let 결과 = Ranker.search("타베로", in: index, frequency: frequency)
+        #expect((결과.first?.score ?? 0) > 0)
     }
 
     @Test("사전에 없으면 빈 결과")

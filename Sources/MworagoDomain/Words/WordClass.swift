@@ -35,6 +35,22 @@ public enum WordClass: String, Sendable {
         }
     }
 
+    /// **활용하는 갈래인가.** 명사와 부사는 활용하지 않는다.
+    ///
+    /// 되돌려 만든 꼴에 명사가 걸렸다면 그것은 뜻이 맞은 것이 아니라 **글자가 우연히
+    /// 맞은 것**이다 — `도코에`(どこへ)가 `同校`(どうこう)로, `쿠로`(くろ)가
+    /// `くる` 의 빈도를 물려받아 `畦`(논두렁)로 떴다.
+    ///
+    /// **부르는 자리가 둘이다.** 조회할 때(`Ranker.search`)와 빈도를 물려받을 때
+    /// (`Ranker.domainScore`). 한쪽에만 걸어 두었더니 조회는 막으면서 점수는
+    /// 활용형에서 가져오는 자리가 남았다.
+    public var inflects: Bool {
+        switch self {
+        case .noun, .adverb: false
+        case .verb, .adjective, .function, .expression, .affix, .other: true
+        }
+    }
+
     /// 프롬프트에 적어 줄 이름. 모르면 적지 않는 편이 낫다.
     public var koreanName: String? {
         switch self {
