@@ -108,25 +108,46 @@ struct Onboarding: View {
     ///
     /// **아이콘 크기는 바뀌지 않는다.** 포커스를 크기로도 말하면 장을 넘길 때마다
     /// 줄의 높이가 흔들려, 아래 글이 위아래로 뛴다. 채우는 것 하나로 충분하다.
+    ///
+    /// **눌러서도 간다.** 지도가 "어디에 무엇이 있는지"를 말하는 그림이기만 하면,
+    /// 눌러 본 사람에게는 아무 일도 안 일어나는 그림이다. 다섯 자리가 곧 다섯 장이라
+    /// 짚은 자리로 바로 넘어간다 — 뒤로 가는 길이 `이전` 하나뿐이던 것도 함께 풀린다.
     private var tabMap: some View {
-        HStack(alignment: .top, spacing: 18) {
+        // **사이를 단추가 나눠 갖는다.** 칸 사이 18pt 를 좌우 9pt 씩 단추 안으로 넣으면
+        // 줄의 폭도, 알약이 서는 자리도 그대로인데 누를 수 있는 넓이만 46 → 64pt 가 된다.
+        HStack(alignment: .top, spacing: 0) {
             ForEach(Self.tabs.indices, id: \.self) { i in
                 let focused = i == pages[page].tab
-                VStack(spacing: 9) {
-                    Image(systemName: Self.tabs[i].symbol)
-                        .font(.system(size: 21))
-                        .foregroundStyle(focused ? Theme.paper : Theme.grey3)
-                        .frame(width: 46, height: 36)
-                        .background(focused ? Theme.ink : .clear, in: Capsule())
-                    Text(Self.tabs[i].name)
-                        .font(Theme.korean(.tag))
-                        .foregroundStyle(focused ? Theme.ink : Theme.grey3)
+                Button {
+                    guard let target = pages.firstIndex(where: { $0.tab == i }) else { return }
+                    withAnimation(.snappy(duration: 0.18)) { page = target }
+                } label: {
+                    VStack(spacing: 9) {
+                        Image(systemName: Self.tabs[i].symbol)
+                            .font(.system(size: 21))
+                            .foregroundStyle(focused ? Theme.paper : Theme.grey3)
+                            .frame(width: 46, height: 36)
+                            .background(focused ? Theme.ink : .clear, in: Capsule())
+                        Text(Self.tabs[i].name)
+                            .font(Theme.korean(.tag))
+                            .foregroundStyle(focused ? Theme.ink : Theme.grey3)
+                    }
+                    .padding(.horizontal, Self.tabGap / 2)
+                    // 알약과 글자 사이의 빈 자리까지 한 단추다. 없으면 그 틈에서 손이 샌다.
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Self.tabs[i].name)
+                .accessibilityAddTraits(focused ? [.isSelected] : [])
             }
         }
         // 알약은 도형이라 제 여백이 없어 글보다 밖에서 선다. 스크린샷을 픽셀로 재서 당긴다.
-        .padding(.leading, -Self.mapLeading)
+        // 단추가 안으로 9pt 를 물었으므로 그만큼 되돌려야 알약이 재 둔 자리에 그대로 선다.
+        .padding(.leading, -Self.mapLeading - Self.tabGap / 2)
     }
+
+    /// 지도의 칸과 칸 사이(pt). 절반씩 양옆 단추가 나눠 갖는다.
+    private static let tabGap: CGFloat = 18
 
     /// 지도가 글보다 밖에서 시작하는 만큼(pt). 음수라 안쪽으로 민다.
     ///
@@ -143,6 +164,39 @@ struct Onboarding: View {
     /// 보인다. 빈 화면들의 `Theme.emptyBlockHeight` 와 같은 취지다.
     private static let textHeight: CGFloat = 150
 
+    /// 한 장의 세로 뼈대 — 위 여백 · 지도 · 글 자리 · 아래 여백.
+    ///
+    /// **페이지 속과 붙박이 지도가 같은 뼈대를 쓴다.** 페이지는 여기 지도를 `hidden` 으로
+    /// 넣어 자리만 비워 두고, 진짜 지도는 같은 뼈대로 그 위에 얹는다(`overlay`). 같은
+    /// 것으로 재니 두 자리가 픽셀까지 맞고, 넘어가는 것은 글뿐이라는 규칙도 그대로다.
+    ///
+    /// **이 뼈대가 화면을 다 차지하는 것이 요점이다.** 예전에는 글 자리(150pt)만
+    /// `TabView` 였고 위아래 여백은 그 밖이라, 손가락이 **글 위에 있을 때만** 넘어갔다.
+    /// 이제 여백까지 한 장 안에 있어 빈 자리를 밀어도 넘어간다 — 글이 서는 높이는
+    /// 그대로다(여백 둘이 남는 자리를 반씩 갈라 갖는 것이 예전과 같다).
+    private func column<Map: View, Words: View>(
+        @ViewBuilder map: () -> Map,
+        @ViewBuilder words: () -> Words
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 0)
+            map()
+                // **왼쪽에서 시작한다.** 안 주면 줄이 제 폭만큼만 차지하고
+                // 기둥 안에서 가운데로 밀려, 글만 왼쪽에 서고 지도는 가운데에 선다.
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Theme.gutter)
+                .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 30)
+            // **글이 설 자리를 붙박아 둔다.** 남는 자리를 다 차지하게 두면 제목이
+            // 화면 가운데로 떠올라, 붙박이인 지도와 사이가 장마다 달라 보인다.
+            // 가장 긴 덩어리(제목 두 줄 + 설명 두 줄)가 들어갈 만큼 잡는다.
+            words()
+                .frame(height: Self.textHeight)
+            Spacer(minLength: 0)
+        }
+    }
+
     var body: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
@@ -154,58 +208,54 @@ struct Onboarding: View {
                 //
                 // 점은 우리 것을 쓴다(`indexDisplayMode: .never`). 시스템 점은 색을
                 // 맞추기 번거롭고, 아래 줄에 이미 자리를 잡고 있다.
-                Spacer(minLength: 0)
-
-                // **지도는 붙박이다.** 넘어가는 것은 글뿐이라, 포커스가 자리에서
-                // 자리로 옮겨 가는 것이 보인다.
-                tabMap
-                    // **왼쪽에서 시작한다.** 안 주면 줄이 제 폭만큼만 차지하고
-                    // 기둥 안에서 가운데로 밀려, 글만 왼쪽에 서고 지도는 가운데에 선다.
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, Theme.gutter)
-                    .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
-                    .frame(maxWidth: .infinity)
-                    .animation(.snappy(duration: 0.22), value: page)
-                    .padding(.bottom, 30)
-
-                // **넘기는 일은 시스템에 맡긴다.** 손가락으로 미는 것은 이 화면에서
-                // 가장 먼저 해 보는 몸짓인데, 직접 만들면 속도·되돌아옴·경계에서
-                // 멈추는 것까지 다시 만들어야 한다.
                 //
-                // 점은 우리 것을 쓴다(`indexDisplayMode: .never`). 시스템 점은 색을
-                // 맞추기 번거롭고, 아래 줄에 이미 자리를 잡고 있다.
+                // **한 장이 점·버튼 줄 위를 통째로 차지한다.** 글 자리만 페이지였을 때는
+                // 손가락이 글 위에 있을 때만 넘어갔다 — 화면의 대부분인 빈 자리는
+                // 밀어도 아무 일도 안 일어났다.
                 TabView(selection: $page) {
                     ForEach(pages.indices, id: \.self) { i in
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(pages[i].title)
-                                .font(Theme.korean(.hero, weight: .semibold))
-                                .foregroundStyle(Theme.ink)
-                            Text(pages[i].detail)
-                                .font(Theme.korean(.body))
-                                .foregroundStyle(Theme.grey2)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 0)
+                        column {
+                            // **지도는 자리만 비워 둔다.** 진짜 지도는 아래 `overlay` 가
+                            // 같은 뼈대로 그 위에 얹는다 — 넘어가는 것은 글뿐이다.
+                            tabMap.hidden()
+                        } words: {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(pages[i].title)
+                                    .font(Theme.korean(.hero, weight: .semibold))
+                                    .foregroundStyle(Theme.ink)
+                                Text(pages[i].detail)
+                                    .font(Theme.korean(.body))
+                                    .foregroundStyle(Theme.grey2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                            }
+                            // 폭은 여기서 재지 않는다. 바깥 기둥이 이미 정해 준다 —
+                            // 페이지 안에서 다시 가운데를 잡으면 아래 점·버튼 줄과 어긋난다.
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, Theme.gutter)
+                            // **기둥은 페이지 안에 있다.** 바깥에 두면 `TabView` 자체가
+                            // 좁아져서, 넘길 때 그 폭의 경계에서 옆 페이지가 잘려 나타난다 —
+                            // 미끄러지는 내내 세로선 하나가 서 있는 것처럼 보인다.
+                            // 페이지는 화면 끝까지 흐르고, 글만 기둥 안에 선다.
+                            .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
+                            .frame(maxWidth: .infinity)
                         }
-                        // 폭은 여기서 재지 않는다. 바깥 기둥이 이미 정해 준다 —
-                        // 페이지 안에서 다시 가운데를 잡으면 아래 점·버튼 줄과 어긋난다.
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, Theme.gutter)
-                        // **기둥은 페이지 안에 있다.** 바깥에 두면 `TabView` 자체가
-                        // 좁아져서, 넘길 때 그 폭의 경계에서 옆 페이지가 잘려 나타난다 —
-                        // 미끄러지는 내내 세로선 하나가 서 있는 것처럼 보인다.
-                        // 페이지는 화면 끝까지 흐르고, 글만 기둥 안에 선다.
-                        .frame(maxWidth: Theme.readWidth + Theme.gutter * 2)
-                        .frame(maxWidth: .infinity)
                         .tag(i)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                // **글이 설 자리를 붙박아 둔다.** 남는 자리를 다 차지하게 두면 제목이
-                // 화면 가운데로 떠올라, 붙박이인 지도와 사이가 장마다 달라 보인다.
-                // 가장 긴 덩어리(제목 두 줄 + 설명 두 줄)가 들어갈 만큼 잡는다.
-                .frame(height: Self.textHeight)
-
-                Spacer(minLength: 0)
+                // **지도는 붙박이다.** 넘어가는 것은 글뿐이라, 포커스가 자리에서
+                // 자리로 옮겨 가는 것이 보인다. 페이지 속의 `hidden` 지도와 같은
+                // 뼈대를 쓰므로 자리가 정확히 겹친다.
+                .overlay {
+                    column {
+                        tabMap.animation(.snappy(duration: 0.22), value: page)
+                    } words: {
+                        // 글 자리는 빈 채로 둔다. **손을 안 받아야** 그 위를 밀 때
+                        // 페이지가 넘어간다 — `Color.clear` 도 그냥 두면 손을 받는다.
+                        Color.clear.allowsHitTesting(false)
+                    }
+                }
 
                 HStack(spacing: 8) {
                     ForEach(pages.indices, id: \.self) { i in
