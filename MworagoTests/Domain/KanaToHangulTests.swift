@@ -90,6 +90,43 @@ struct KanaToHangulTests {
         #expect(KanaToHangul.transliterate("を", asParticle: false) == "오")
     }
 
+    /// 외래어의 확장음. **작은 가나가 앞 글자와 합쳐진다.**
+    ///
+    /// 합치지 못하면 그 글자가 **음차에 일본어로 그대로 남는다** — 화면에
+    /// `푸로지ぇ쿠토` 가 적힌다. 사전의 읽기 265,528개 중 15,427개(5.8%)에
+    /// 작은 모음이 들어 있다.
+    @Test("외래어의 작은 가나는 앞 글자와 합쳐진다", arguments: [
+        ("チェック", "쳇쿠"),          // い단 + ぇ → 평모음 ㅔ
+        ("プロジェクト", "푸로제쿠토"),
+        ("ジェーン", "젠"),            // 장음은 버리므로 ん 이 앞 음절에 붙는다
+        ("パーティー", "파티"),        // え단 + ぃ → ㅣ
+        ("メディア", "메디아"),
+        ("ファイル", "화이루"),        // う단 + 작은 모음 → w 계열
+        ("フィルム", "휘루무"),
+        ("ウォルター", "워루타"),
+        ("デュエル", "듀에루"),        // え단 + ゅ → 요음 ㅠ
+        ("ヴァン", "반"),              // ヴ 는 ば행으로 적는다
+        ("ねぇ", "네"),                // え단 + ぇ → 같은 모음이라 겹치지 않는다
+        ("さぁ", "사"),
+        ("かなぁ", "카나"),
+    ])
+    func 외래어확장음(_ 가나: String, _ 기대: String) {
+        #expect(KanaToHangul.transliterate(가나) == 기대)
+    }
+
+    @Test("음차에 일본어를 남기지 않는다")
+    func 일본어를_남기지_않는다() {
+        // **이 규칙이 곧 잣대다.** 어떤 가나가 오든 한글만 나와야 한다 —
+        // 표에 없는 글자를 그대로 흘리면 화면에 일본어가 섞인다.
+        let 가나범위: ClosedRange<UInt32> = 0x3041...0x3096      // 히라가나
+        for scalar in 가나범위 {
+            guard let unicode = Unicode.Scalar(scalar) else { continue }
+            let 음차 = KanaToHangul.transliterate(String(Character(unicode)))
+            #expect(음차.unicodeScalars.allSatisfy { !가나범위.contains($0.value) },
+                    "\(Character(unicode)) → \(음차)")
+        }
+    }
+
     @Test("조사라도 は·へ 하나가 아니면 표대로 적는다")
     func 다른조사() {
         // 표는 글자 하나에만 걸린다. `には`·`まで` 처럼 여러 자인 것을
