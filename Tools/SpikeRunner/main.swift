@@ -404,7 +404,7 @@ if let glossTopCount {
     var notFound = [Int](repeating: 0, count: bands.count)  // 1위가 아예 안 나온 것
     var missingList: [(Int, String, String, String)] = []   // 그 목록 (순위·소리·표기·읽기)
     var handList: [(Int, String, String)] = []
-    var machineList: [(Int, String, String)] = []
+    var machineList: [(Int, String, String, String, Bool)] = []   // 순위·소리·열쇠·표제어·가타카나
     // **`다른 뜻 N` 자리도 센다.** 1위만 재면 카드의 절반만 잰 것이다 —
     // 1위가 헛짚었을 때 사용자가 스스로 찾아낼 길이 그 줄이고, 그 줄에 영어가
     // 남아 있으면 고를 수가 없다. 카드가 펴 보이는 것은 둘까지다(`alternates(limit:)`).
@@ -466,10 +466,13 @@ if let glossTopCount {
             byMachine[band] += 1
             // **가타카나 표제어는 구우면 메워질 자리다.** 그 밖은 1위가 엉뚱한 낱말이라
             // 잡힌 것이 섞여 있어(`시테`→`仕手`) 뜻을 구워도 안 나아진다.
-            if top.headword.unicodeScalars.allSatisfy({ $0.value >= 0x30A0 && $0.value <= 0x30FF }) {
-                katakana[band] += 1
-            }
-            if machineList.count < 40 { machineList.append((rank, hangul, top.headword)) }
+            let 가타카나 = top.headword.unicodeScalars
+                .allSatisfy { $0.value >= 0x30A0 && $0.value <= 0x30FF }
+            if 가타카나 { katakana[band] += 1 }
+            // **적을 자리의 열쇠까지 찍는다.** 손으로 적는 쪽과 같은 까닭이다 —
+            // 굽는 대상 목록을 만들려면 `표기⇥읽기` 가 있어야 한다.
+            let key = (top.entry.usableWritings.first?.text ?? top.reading) + "\t" + top.reading
+            machineList.append((rank, hangul, key, top.headword, 가타카나))
         }
     }
 
@@ -582,9 +585,19 @@ if let glossTopCount {
     print("나머지 \(m - kata)개에는 1위가 엉뚱한 낱말이라 잡힌 것이 섞여 있다.")
 
     if !machineList.isEmpty {
-        print("\n구워서 메울 자리 — 흔한 것부터 스물")
-        for (rank, hangul, headword) in machineList.prefix(20) {
-            print("  \(String(rank).padded(7))\(hangul.padded(16))\(headword)")
+        // **가타카나만 따로 낸다.** 그쪽은 구우면 메워지고, 나머지는 1위가 엉뚱한
+        // 낱말이라 잡힌 것이라 구워도 안 나아진다. 한 목록에 섞어 두면 굽는 쪽이
+        // 안 될 것까지 대상으로 삼는다.
+        let machineLimit = args.contains("--gloss-top-machine") ? machineList.count : 20
+        for (label, list) in [("가타카나 — 구우면 메워진다", machineList.filter(\.4)),
+                              ("그 밖 — 1위가 엉뚱한 낱말이라 잡힌 것이 섞여 있다",
+                               machineList.filter { !$0.4 })] {
+            guard !list.isEmpty else { continue }
+            print("\n구워서 메울 자리 · \(label) — 흔한 것부터 \(min(machineLimit, list.count))개")
+            print("(순위 · 친 소리 · **적을 열쇠**(표기⇥읽기) · 표제어)")
+            for (rank, hangul, key, headword, _) in list.prefix(machineLimit) {
+                print("  \(String(rank).padded(7))\(hangul.padded(16))\(key)\t\(headword)")
+            }
         }
     }
     exit(0)
