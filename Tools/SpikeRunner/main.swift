@@ -327,7 +327,15 @@ if !explainWords.isEmpty {
         let preview = candidates.prefix(10).map { "\($0.kana)\($0.longVowelsAdded > 0 ? "(장음+\($0.longVowelsAdded))" : "")" }
         print("가나 후보 \(candidates.count)개: \(preview.joined(separator: " · "))\(candidates.count > 10 ? " …" : "")")
 
-        let results = Ranker.search(word, in: index, frequency: frequency)
+        // **가중치를 넘겨야 한다.** 안 넘기면 `Ranker.Weights()` 기본값으로 재므로
+        // `--deinf-penalty` · `--jmdict` · `--identity` 가 통째로 무시된다.
+        // 그 탓에 `이타` 가 65.6 으로 보였는데 분절이 실제로 보는 값은 85.6 이었다
+        // (분절은 활용 벌점 5 를 쓴다). **측정기가 앱과 다른 숫자를 보이면
+        // 그것으로 한 계산이 전부 어긋난다** — 같은 병을 전에도 겪었다(전역 초기화 차례).
+        let results = Ranker.search(word, in: index, frequency: frequency, weights: wordWeights)
+        print("활용 벌점 \(wordWeights.deinflectionPenalty) · JMdict \(wordWeights.jmdictWeight)"
+              + " · 동점 가르기 \(wordWeights.kanaIdentityWeight)"
+              + "   (분절은 활용 벌점 \(Segmenter.defaultWeights.deinflectionPenalty) 를 쓴다)")
         print("표제어        읽기          점수   활용     뜻")
         print(String(repeating: "─", count: 76))
         for (i, result) in results.prefix(10).enumerated() {

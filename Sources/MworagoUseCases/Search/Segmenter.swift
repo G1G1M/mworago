@@ -87,6 +87,10 @@ public enum Segmenter {
         /// 자립어. **갈래를 모르는 것도 여기다** — 모르는 것을 부착어로 몰면
         /// 멀쩡한 낱말이 벌을 받는다.
         case content
+        /// **활용을 되돌려 찾은 자립어.** 자립어인 것은 같은데, 사전에 그대로 실려
+        /// 있던 것이 아니라 우리가 만들어 낸 형태다. 그 뒤의 조사 경계를 그냥
+        /// 자립어와 같게 볼 수 없어 따로 둔다 — `junction` 에 까닭을 적었다.
+        case inflected
         /// 조사·조동사·계사. 앞에 기댈 자립어가 있어야 한다.
         case bound
         /// 사전에 없는 조각.
@@ -98,7 +102,9 @@ public enum Segmenter {
         /// 같은 점수의 명사로 갈아타서 벌점을 피해 버린다.
         init(_ top: SearchResult?) {
             guard let top else { self = .unknown; return }
-            self = top.entry.isBound ? .bound : .content
+            if top.entry.isBound { self = .bound }
+            else if top.deinflection != nil { self = .inflected }
+            else { self = .content }
         }
     }
 
@@ -118,10 +124,36 @@ public enum Segmenter {
                                  boundPenalty: Double, junctionBonus: Double) -> Double {
         guard current == .bound else { return 0 }
         switch previous {
-        case .start:   return -boundPenalty
-        case .content: return junctionBonus
+        case .start:     return -boundPenalty
+        case .content:   return junctionBonus
+        case .inflected: return Self.junctionBonus(afterDeinflection: true, bonus: junctionBonus)
         case .bound, .unknown: return 0
         }
+    }
+
+    /// **되돌려 만든 조각 뒤에는 조사 경계 보너스를 주지 않는다.**
+    ///
+    /// `이타이야메로`(README 의 대표 예문)가 `痛い やめろ` 가 아니라
+    /// `いる い やめろ` 로 갈렸다. 숫자를 보면 이렇다.
+    ///
+    ///     痛い 한 조각          57.3
+    ///     いた(いる 과거형)     85.6   ← 「있었다」는 최상위 빈도다
+    ///     い(조사)              92.5
+    ///     조사 경계 보너스      +20
+    ///
+    /// 앞 두 글자가 하필 최상위 빈도 낱말의 활용형이라 쪼개는 쪽이 이겼다.
+    /// **い형용사 전반의 병은 아니다** — `寒い`·`高い`·`早い`·`大きい` 는 멀쩡하다.
+    /// `さむ`·`たか` 가 `いた` 만큼 흔하지 않기 때문이다.
+    ///
+    /// `Ranker` 는 "추측이 과감할수록 깎는다"는 태도로 서 있는데, 이 보너스만은
+    /// 앞 조각이 사전에 그대로 실린 것인지 **되돌려 만든 것인지**를 가리지 않고
+    /// 똑같이 얹어 주고 있었다. 되돌리기도 추측이라, 그 위에 보너스를 또 얹으면
+    /// 추측이 겹친다.
+    ///
+    /// **손잡이를 새로 만들지 않았다.** 0 이냐 그대로냐의 두 갈래이고, 스윕할 값이
+    /// 늘면 재야 할 조합도 함께 는다.
+    public static func junctionBonus(afterDeinflection: Bool, bonus: Double) -> Double {
+        afterDeinflection ? 0 : bonus
     }
 
     /// **빈도 목록에 없는 낱말을 편들어 보았지만, 재서 넣지 않았다.**
@@ -292,14 +324,30 @@ public enum Segmenter {
     ///       12        146/300        87/300
     ///       16        148            89
     ///       18        147            85
-    ///       20        147            82     ← 고른 값
+    ///       20        147            82     ← 그때 고른 값
     ///       22        147            83
     ///       24        151            88
     ///       30        170            94
     ///
-    /// 18~22 가 평평하고 그 밖은 나빠진다. Tanaka 쪽은 그 구간에서 움직이지 않으므로
-    /// 이 값은 채점표를 내주지 않고 얻는 것이다.
-    public static let defaultJunctionBonus = 20.0
+    /// 18~22 가 평평하고 그 밖은 나빠진다.
+    ///
+    /// **되돌린 조각 뒤에 보너스를 끊고 나서 다시 훑었다**(2026-09-07). 그 규칙이
+    /// 경계의 성질을 바꾸므로 20 이 여전히 최선이라는 보장이 없었고, 실제로 곡선이
+    /// 통째로 올라가면서 고를 자리도 옮겨 갔다.
+    ///
+    ///     보너스   완전일치(규칙 전 → 후)   경계F1(전 → 후)
+    ///        0        52.0% → 52.0%         0.909 → 0.909
+    ///        6        52.0% → 52.7%         0.909 → 0.912
+    ///        8        52.3% → **53.0%**     0.909 → 0.912     ← 고른 값
+    ///       12        52.3% → 52.7%         0.911 → 0.915
+    ///       20        52.0% → 52.0%         0.911 → 0.913
+    ///       25        50.0% → 51.0%         0.906 → 0.911
+    ///
+    /// 예전 자리(규칙 없이 20)와 견주면 완전일치 52.0 → 53.0% · 경계 F1 0.911 →
+    /// 0.912 · 조각 1위 92.8 → 93.3% 로 **셋이 함께 오른다.**
+    /// 12 가 F1 은 더 높지만(0.915) 완전일치가 낮아, 아침에 동점 무게를 고를 때 쓴
+    /// 잣대 그대로 완전일치를 먼저 본다.
+    public static let defaultJunctionBonus = 8.0
 
     /// 분절이 쓰는 가중치. 낱말 검색과 한 가지가 다르다 — **활용을 되돌린 것에 무는 벌점**.
     ///
