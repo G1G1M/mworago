@@ -26,22 +26,59 @@ struct Headword: View {
     var tint: Color = Theme.ink
 
     var body: some View {
-        // **한 덩어리로 접힌다.** 따로 놓으면 좁은 화면에서 가나만 남고 괄호가
-        // 다음 줄로 떨어지는데, 그 줄바꿈은 낱말이 둘인 것처럼 읽힌다.
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(reading)
-                .font(Theme.japanese(size, weight: weight))
-                .foregroundStyle(tint)
-            if let kanji {
-                Text("(\(kanji))")
-                    .font(Theme.japanese(size.beside))
-                    .foregroundStyle(Theme.grey2)
+        // **한 줄에 안 들어가면 괄호가 아래로 내려간다.**
+        //
+        // 긴 관용구에서 `いってきます (行って来ます)` 가 한 줄을 넘긴다. 그대로 두면
+        // SwiftUI 가 가장 잘 접히는 것을 접는데, 그게 하필 **가나 쪽**이라 낱말이
+        // 두 줄로 끊기고 괄호는 멀쩡히 붙어 있는 꼴이 됐다. 접혀야 하는 것은
+        // 딸린 쪽이다.
+        //
+        // 폭을 재서 기기로 가르지 않고 `ViewThatFits` 에 맡긴다 — 고르기 머리줄이
+        // 쓰는 것과 같은 문법이다(`SelectionHead`). 들어가면 한 줄, 안 들어가면
+        // 두 줄이고, 글자 크기를 키운 사람도 알아서 두 줄로 내려간다.
+        //
+        // **한 줄짜리는 `fixedSize` 여야 한다.** 그러지 않으면 줄여서라도 들어가므로
+        // `ViewThatFits` 가 늘 첫 번째를 고른다.
+        Group {
+            if kanji == nil {
+                kana
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        kana
+                        parenthesis
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                    // 두 줄일 때 괄호는 **가나 아래 왼쪽**에서 시작한다. 이 앱의 글이
+                    // 다 그 자리에서 시작하므로 여기만 들여쓰면 줄이 어긋나 보인다.
+                    // 사이는 3 — 두 줄이지만 한 낱말이라 층으로 갈려 보이면 안 된다.
+                    VStack(alignment: .leading, spacing: 3) {
+                        kana
+                        parenthesis
+                    }
+                }
             }
         }
-        .fixedSize(horizontal: false, vertical: true)
         // 읽는 기계에는 괄호를 읽히지 않는다 — 소리로 찾아온 사람에게 필요한 것은
         // 가나이고, 한자는 눈으로 가리키는 표시다.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(reading)
+    }
+
+    private var kana: some View {
+        Text(reading)
+            .font(Theme.japanese(size, weight: weight))
+            .foregroundStyle(tint)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var parenthesis: some View {
+        if let kanji {
+            Text("(\(kanji))")
+                .font(Theme.japanese(size.beside))
+                .foregroundStyle(Theme.grey2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
