@@ -404,7 +404,8 @@ if let glossTopCount {
     var notFound = [Int](repeating: 0, count: bands.count)  // 1위가 아예 안 나온 것
     var missingList: [(Int, String, String, String)] = []   // 그 목록 (순위·소리·표기·읽기)
     var handList: [(Int, String, String)] = []
-    var machineList: [(Int, String, String, String, Bool)] = []   // 순위·소리·열쇠·표제어·가타카나
+    // 순위·소리·열쇠·표제어·가타카나·말뭉치가 그 소리로 센 것
+    var machineList: [(Int, String, String, String, Bool, String)] = []
     // **`다른 뜻 N` 자리도 센다.** 1위만 재면 카드의 절반만 잰 것이다 —
     // 1위가 헛짚었을 때 사용자가 스스로 찾아낼 길이 그 줄이고, 그 줄에 영어가
     // 남아 있으면 고를 수가 없다. 카드가 펴 보이는 것은 둘까지다(`alternates(limit:)`).
@@ -472,7 +473,8 @@ if let glossTopCount {
             // **적을 자리의 열쇠까지 찍는다.** 손으로 적는 쪽과 같은 까닭이다 —
             // 굽는 대상 목록을 만들려면 `표기⇥읽기` 가 있어야 한다.
             let key = (top.entry.usableWritings.first?.text ?? top.reading) + "\t" + top.reading
-            machineList.append((rank, hangul, key, top.headword, 가타카나))
+            machineList.append((rank, hangul, key, top.headword, 가타카나,
+                                target.writing + "\t" + target.reading))
         }
     }
 
@@ -595,8 +597,9 @@ if let glossTopCount {
             guard !list.isEmpty else { continue }
             print("\n구워서 메울 자리 · \(label) — 흔한 것부터 \(min(machineLimit, list.count))개")
             print("(순위 · 친 소리 · **적을 열쇠**(표기⇥읽기) · 표제어)")
-            for (rank, hangul, key, headword, _) in list.prefix(machineLimit) {
-                print("  \(String(rank).padded(7))\(hangul.padded(16))\(key)\t\(headword)")
+            for (rank, hangul, key, headword, _, target) in list.prefix(machineLimit) {
+                print("  \(String(rank).padded(7))\(hangul.padded(16))\(key)\t\(headword)"
+                      + "\t→ 과녁 \(target)")
             }
         }
     }
