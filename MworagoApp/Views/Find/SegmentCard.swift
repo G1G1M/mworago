@@ -31,7 +31,10 @@ struct SegmentCard: View {
     /// 그렇다고 버릴 수도 없다. 1위가 정답일 확률은 93.8%지만 3위 안에 있을 확률은
     /// 97.8%다 — 그 4%가 사전이 헛짚었을 때 사용자가 스스로 찾아낼 유일한 길이다.
     /// **접어 두고 누르면 편다.** 기본은 세 층이고, 더 볼 사람만 한 번 더 누른다.
-    @State private var expanded = false
+    ///
+    /// **`--expanded` 로 펴 둘 수 있다.** 시뮬레이터는 두드릴 수가 없어서, 접혀 있는
+    /// 자리는 눈으로 볼 길이 없다 — `--picking` · `--menu` 와 같은 까닭이다.
+    @State private var expanded = LaunchOptions.current.has("expanded")
 
     /// 담아 두는 곳. 갈피표가 이것을 쓴다.
     ///
