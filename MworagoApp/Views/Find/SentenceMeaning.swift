@@ -28,7 +28,20 @@ struct SentenceMeaning: View {
     /// 조각이 하나뿐이면 묻지 않는다. 그때는 카드에 뜬 뜻이 이미 답이다.
     private var hasSentence: Bool { parts.count >= 2 }
 
-    private var korean: String? { hasSentence ? desk.japanese[source] : nil }
+    /// **사전이 통째로 아는 것이 번역기보다 먼저다.**
+    ///
+    /// `콘니치와` 를 치면 문장 뜻에 "오늘은"이 떴다. 사전에는 `今日は`(uk)가
+    /// "안녕하세요"로 실려 있는데, 조각(`今日`+`は`)을 도로 이어 번역기에 넘기니
+    /// 그 글자를 인사말이 아니라 `今日`(오늘)+`は`(은)로 읽은 것이다.
+    /// 번역기가 틀린 것이 아니라 우리가 아는 것을 안 준 것이다.
+    ///
+    /// 통째로 잡힌 뜻은 사람이 다듬은 값이라 기계가 문맥 없이 옮긴 것보다 낫다.
+    /// 한국어 뜻이 아직 없으면 그때는 번역기에 맡긴다 — 영어를 이 자리에 올리느니
+    /// 한국어를 돌려주는 쪽이 낫다.
+    private var korean: String? {
+        if let whole = segments.wholeKoreanGloss { return whole }
+        return hasSentence ? desk.japanese[source] : nil
+    }
 
     /// 뜻이 안 뜨는 까닭. 언어팩이 있는 기기에서는 늘 `nil` 이라 아무것도 안 그린다.
     ///

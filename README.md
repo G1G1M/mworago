@@ -2,7 +2,7 @@
 
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-136%2F150%20%2890%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-145%2F150%20%2896%25%29-171717?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-315%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-319%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -55,6 +55,13 @@
 갈아타니 60/60 · 0.32초 · 거부 0 이다. iOS 18 부터라 Apple Intelligence 가 없는
 기기에서도 돈다. **번역기에는 한자를 살려 넘긴다** — 가나로 주면 `品がない` 가
 "시간이 없다"로 직독된다.
+
+**사전이 통째로 아는 말은 번역기에 안 묻는다.** `콘니치와` 를 치면 문장 뜻에
+"오늘은"이 떴었다 — 사전에 `今日は`(uk)가 "안녕하세요"로 실려 있는데도 조각
+(`今日`+`は`)을 도로 이어 번역기에 넘겼기 때문이다. 번역기가 틀린 것이 아니라
+그 글자만 보고는 인사말인 줄 알 길이 없다. 통째로 잡힌 뜻이 있으면 그것이 곧
+문장 뜻이다(`[Segment].wholeKoreanGloss`) — 사람이 다듬은 값이라 기계가 문맥
+없이 옮긴 것보다 낫고, 번역기를 안 부르므로 언어팩이 없는 기기에서도 뜬다.
 
 언어팩이 없으면 문장 뜻 자리가 비는 대신 무엇을 해야 하는지 적는다
 (`TranslationPack`). 받을 수 있는 기기와 아예 못 하는 기기를 갈라 말하고,
@@ -284,7 +291,7 @@ MworagoApp/               앱
     Kana/                 가나표
     Settings/             설정과 만든 것들
     Shared/               화면들이 나눠 쓰는 것 — 색·글자 크기·판·넘기기·소리·품사표
-MworagoTests/             테스트 315개. 층으로 나눈다
+MworagoTests/             테스트 319개. 층으로 나눈다
   Domain/  UseCases/  Infra/
 Tools/                    앱에 실리지 않는 것들
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
@@ -299,7 +306,7 @@ docs/                     기록
 ## 실행
 
 ```sh
-swift test                  # 테스트 315개
+swift test                  # 테스트 319개
 ./Tools/fetch/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```

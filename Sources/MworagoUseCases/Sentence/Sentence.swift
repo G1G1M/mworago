@@ -156,4 +156,23 @@ extension Array where Element == Segment {
 
     /// 되살린 원문의 소리.
     public var kana: String { map(\.kana).joined() }
+
+    /// **사전이 입력 전체를 한 낱말로 알고 있을 때 그 한국어 뜻.**
+    ///
+    /// 조각을 도로 이어 번역기에 넘기면 통째로 아는 말이 조각으로 읽힌다.
+    /// `콘니치와` 가 그랬다 — 사전에 `今日は`(uk)가 "안녕하세요"로 실려 있는데,
+    /// 문장 뜻은 `今日`+`は` 를 이어 번역기에 주고 **"오늘은"** 을 받아 왔다.
+    /// 번역기가 틀린 것이 아니다. 그 글자만 보고는 인사말인 줄 알 길이 없다.
+    ///
+    /// **이 레포에서 세 번째 보는 모양이다** — 사전이 이미 알려 준 것을 안 듣던 문제.
+    /// 통째로 잡힌 뜻은 사람이 다듬은 값이라 기계가 문맥 없이 옮긴 것보다 낫다.
+    ///
+    /// 한국어 뜻이 아직 없으면 nil 이다. 영어를 문장 뜻 자리에 올리느니 번역기에
+    /// 맡긴다 — 그쪽은 적어도 한국어를 돌려준다.
+    public var wholeKoreanGloss: String? {
+        guard let gloss = first(where: \.isWhole)?.results.first?.entry.koreanGloss,
+              !gloss.isEmpty
+        else { return nil }
+        return gloss
+    }
 }
