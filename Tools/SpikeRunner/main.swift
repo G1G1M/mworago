@@ -395,6 +395,10 @@ if let glossTopCount {
     var altCovered = [Int](repeating: 0, count: bands.count)
     var cardsWithAlt = [Int](repeating: 0, count: bands.count)
     var cardsAllCovered = [Int](repeating: 0, count: bands.count)
+    // **빈 자리를 목록으로도 뽑는다.** 개수만 알면 어디를 메울지 모른다.
+    // 1위 쪽에서 쓴 길과 같다 — 열쇠(표기⇥읽기)까지 찍어야 손으로 적을 수 있다.
+    var altList: [(Int, String, String, String, Bool)] = []
+    var altSeen = Set<String>()
 
     for (hangul, rank) in bestRank.sorted(by: { $0.value < $1.value }) {
         let band = bands.firstIndex { rank >= $0.0 && rank < $0.1 } ?? bands.count - 1
@@ -412,6 +416,17 @@ if let glossTopCount {
             let 뜻있는것 = alternates.filter { !($0.entry.koreanGloss ?? "").isEmpty }.count
             altCovered[band] += 뜻있는것
             if 뜻있는것 == alternates.count { cardsAllCovered[band] += 1 }
+            for alternate in alternates where (alternate.entry.koreanGloss ?? "").isEmpty {
+                // 같은 낱말이 여러 카드의 후보로 걸린다(`し` 는 어디에나 붙는다).
+                // 한 번만 적으면 되므로 한 번만 센다.
+                let key = (alternate.entry.usableWritings.first?.text ?? alternate.reading)
+                        + "\t" + alternate.reading
+                guard altSeen.insert(key).inserted else { continue }
+                let 손 = alternate.entry.wordClass == .function
+                      || alternate.entry.wordClass == .affix
+                altList.append((rank, hangul, key,
+                                alternate.entry.glosses.prefix(2).joined(separator: " / "), 손))
+            }
         }
         if !(top.entry.koreanGloss ?? "").isEmpty {
             covered[band] += 1
@@ -510,6 +525,23 @@ if let glossTopCount {
         print(String(format: "\n후보가 **전부** 한국어로 뜨는 카드는 %d/%d (%.1f%%) 다.",
                      allCovered, withAlt, 100 * Double(allCovered) / Double(max(withAlt, 1))))
         print("한 줄이라도 영어가 남으면 그 카드는 고르는 자리가 반만 열린 것이다.")
+
+        // **어디를 메울지까지 준다.** 1위 쪽과 같은 갈래로 나눈다 — 조사·접사는
+        // 낱말 뜻으로 옮길 수 없어 손으로 적을 자리이고, 나머지는 구워서 메울 자리다.
+        altList.sort { $0.0 < $1.0 }
+        let 손목록 = altList.filter(\.4)
+        let 기계목록 = altList.filter { !$0.4 }
+        print("\n빈 후보 \(altList.count)개(같은 낱말은 한 번만) — 손으로 \(손목록.count) · "
+              + "구워서 \(기계목록.count)")
+        let altLimit = args.contains("--gloss-alt-all") ? Int.max : 30
+        for (label, list) in [("손으로", 손목록), ("구워서", 기계목록)] {
+            guard !list.isEmpty else { continue }
+            print("\n\(label) — 흔한 것부터 \(min(altLimit, list.count))개")
+            print("(그 후보를 달고 있는 카드의 순위 · 친 소리 · 열쇠(표기⇥읽기) · 영어 뜻)")
+            for (rank, hangul, key, english, _) in list.prefix(altLimit) {
+                print("  \(String(rank).padded(7))\(hangul.padded(14))\(key)\t\(english)")
+            }
+        }
     }
 
     let kata = katakana.reduce(0, +)
