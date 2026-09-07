@@ -378,12 +378,20 @@ if let glossTopCount {
     }
 
     // 같은 음차로 겹치는 줄이 있다(`私·わたし` 와 `渡し·わたし`). 가장 높은 순위로 센다.
-    var bestRank: [String: Int] = [:]
+    //
+    // **어느 줄에서 왔는지도 들고 다닌다.** 음차만 남기면 `못 찾음` 을 볼 때
+    // 말뭉치가 무엇을 그 소리로 세었는지 알 길이 없다 — 토크나이저가 흘린 활용
+    // 조각인지 사전에 정말 없는 낱말인지가 거기서 갈린다.
+    struct Target { let rank: Int, writing: String, reading: String }
+    var bestRank: [String: Target] = [:]
     for entry in frequency.sortedEntries() {
         guard entry.rank <= glossTopCount else { break }
         let hangul = KanaToHangul.transliterate(entry.reading)
         guard !hangul.isEmpty else { continue }
-        if bestRank[hangul].map({ entry.rank < $0 }) ?? true { bestRank[hangul] = entry.rank }
+        if bestRank[hangul].map({ entry.rank < $0.rank }) ?? true {
+            bestRank[hangul] = Target(rank: entry.rank, writing: entry.writing,
+                                      reading: entry.reading)
+        }
     }
     log("음차해서 쳐 볼 낱말 \(bestRank.count)개 (빈도 1~\(glossTopCount)위)\n")
 
@@ -394,6 +402,7 @@ if let glossTopCount {
     var byMachine = [Int](repeating: 0, count: bands.count) // 그 밖 — 구워서 메울 자리
     var katakana = [Int](repeating: 0, count: bands.count)  // 그중 가타카나 외래어
     var notFound = [Int](repeating: 0, count: bands.count)  // 1위가 아예 안 나온 것
+    var missingList: [(Int, String, String, String)] = []   // 그 목록 (순위·소리·표기·읽기)
     var handList: [(Int, String, String)] = []
     var machineList: [(Int, String, String)] = []
     // **`다른 뜻 N` 자리도 센다.** 1위만 재면 카드의 절반만 잰 것이다 —
@@ -408,12 +417,14 @@ if let glossTopCount {
     var altList: [(Int, String, String, String, Bool)] = []
     var altSeen = Set<String>()
 
-    for (hangul, rank) in bestRank.sorted(by: { $0.value < $1.value }) {
+    for (hangul, target) in bestRank.sorted(by: { $0.value.rank < $1.value.rank }) {
+        let rank = target.rank
         let band = bands.firstIndex { rank >= $0.0 && rank < $0.1 } ?? bands.count - 1
         tried[band] += 1
         let ranked = Ranker.search(hangul, in: index, frequency: frequency)
         guard let top = ranked.first else {
             notFound[band] += 1
+            missingList.append((rank, hangul, target.writing, target.reading))
             continue
         }
         // 카드가 실제로 펴 보이는 것만 센다 — 1위와 같은 낱말은 이미 걸러진 채로 온다.
@@ -494,6 +505,20 @@ if let glossTopCount {
         `구워서` 는 기계가 옮길 수 있는데 아직 안 된 것이거나, 한 읽기에 후보가
         여럿이라 굽기가 막아 둔 것이다(`guardrail-gloss.tsv` 자리).
         """)
+
+    // ── `못 찾음` — 뜻이 아니라 검색 쪽 ──────────────────────────
+    //
+    // 여기 잡힌 것은 **친 소리로 사전이 아무것도 못 내놓은 것**이다. 뜻을 아무리
+    // 구워도 안 메워진다. 무엇이 그런지는 말뭉치가 그 소리로 무엇을 세었는지를
+    // 봐야 알 수 있어서, 빈도 줄의 표기·읽기를 함께 찍는다.
+    if !missingList.isEmpty {
+        let missingLimit = args.contains("--gloss-top-missing") ? missingList.count : 20
+        print("\n\n못 찾음 — 흔한 것부터 \(min(missingLimit, missingList.count))개")
+        print("(순위 · 친 소리 · 말뭉치가 그 소리로 센 것(표기⇥읽기))")
+        for (rank, hangul, writing, reading) in missingList.prefix(missingLimit) {
+            print("  \(String(rank).padded(7))\(hangul.padded(14))\(writing)\t\(reading)")
+        }
+    }
 
     if !handList.isEmpty {
         let handLimit = args.contains("--gloss-top-hand") ? handList.count : 20
