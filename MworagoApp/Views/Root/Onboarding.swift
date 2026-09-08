@@ -37,6 +37,16 @@ enum OnboardingSeen {
 
     /// `--onboarding` 으로 언제든 다시 띄운다. 봤는지와 무관하게 화면을 확인하려는 것이다.
     static var forced: Bool { LaunchOptions.current.has("onboarding") }
+
+    /// `--onboarded` 로 건너뛴다 — **다른 화면을 찍으려는데 앞을 막고 서 있을 때**다.
+    ///
+    /// 새 시뮬레이터는 아무것도 안 봤으므로 무엇을 띄우든 온보딩이 먼저 뜬다.
+    /// `--query=` 도 `--tab=` 도 그 뒤에서 조용히 흘러가 버려서, 등록용 스크린샷을
+    /// 찍으려면 다섯 장을 손으로 넘겨야 했다. `--no-splash` 와 같은 취지다.
+    ///
+    /// **적어 두지는 않는다.** 이 인자로 건너뛴 것은 본 것이 아니므로, 인자 없이
+    /// 다시 열면 온보딩이 그대로 나온다.
+    static var skipped: Bool { LaunchOptions.current.has("onboarded") }
 }
 
 struct Onboarding: View {

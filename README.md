@@ -428,6 +428,8 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 #   --no-splash                   스플래시 건너뛰기
 #   --onboarding                  온보딩을 봤는지와 무관하게 다시 띄운다
 #   --onboarding-page=<N>         온보딩의 N 번째 장(0부터, 탭 차례대로 다섯 장)
+#   --onboarded                   온보딩을 건너뛴다(적어 두지는 않는다).
+#                                 새 시뮬레이터는 무엇을 띄우든 온보딩이 먼저 뜬다
 ```
 
 **이름이 앞에서 겹쳐도 켜지지 않는다** — `--picking`(묶음 화면)과

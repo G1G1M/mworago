@@ -58,8 +58,8 @@ struct RootView: View {
     init(preferences: any PreferenceStoring = FilePreferences()) {
         self.preferences = preferences
         _appearance = State(initialValue: Appearance.saved(in: preferences))
-        _showOnboarding = State(initialValue:
-            OnboardingSeen.forced || !preferences.isMarked(OnboardingSeen.key))
+        _showOnboarding = State(initialValue: OnboardingSeen.forced
+            || (!OnboardingSeen.skipped && !preferences.isMarked(OnboardingSeen.key)))
     }
 
     /// 낱말을 들고 찾기로 건너간다.
