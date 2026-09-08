@@ -15,6 +15,25 @@
 기존 한글-일본어 변환기는 "다이죠부"에 `ダイジョブ`를 뱉는다.
 `大丈夫`를 찾아주는 도구가 없어서 만든다.
 
+## 화면
+
+<table>
+  <tr>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-1-찾기.png" alt="찾은 순간" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-2-문장.png" alt="문장 뜻까지" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-3-책장.png" alt="책장" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-4-연습.png" alt="연습 카드" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-5-글자.png" alt="오십음도" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>찾기</b><br><sub>들린 대로 치면<br>원문이 나온다</sub></td>
+    <td align="center"><b>문장</b><br><sub>조각으로 갈라 주고<br>문장 뜻까지</sub></td>
+    <td align="center"><b>책장</b><br><sub>담은 것이<br>교재가 된다</sub></td>
+    <td align="center"><b>연습</b><br><sub>가나를 보고<br>뜻을 떠올린다</sub></td>
+    <td align="center"><b>글자</b><br><sub>가나를 못 읽어도<br>괜찮다</sub></td>
+  </tr>
+</table>
+
 ## 현재 상태
 
 **검색기가 돈다.** iPad 시뮬레이터에서 한글로 치면 일본어가 나온다.
