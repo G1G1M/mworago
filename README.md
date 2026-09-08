@@ -2,7 +2,7 @@
 
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-137%2F150%20%2891%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-147%2F150%20%2898%25%29-171717?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-327%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-329%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -353,7 +353,7 @@ MworagoApp/               앱
     Kana/                 가나표
     Settings/             설정과 만든 것들
     Shared/               화면들이 나눠 쓰는 것 — 색·글자 크기·판·넘기기·소리·품사표
-MworagoTests/             테스트 327개. 층으로 나눈다
+MworagoTests/             테스트 329개. 층으로 나눈다
   Domain/  UseCases/  Infra/
 Tools/                    앱에 실리지 않는 것들
   SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
@@ -362,13 +362,26 @@ Tools/                    앱에 실리지 않는 것들
   bake/                   받은 것을 앱이 실을 모양으로 굽는다
   inspect/                찍은 화면과 구운 것을 재는 것들
   data/                   원본과 측정 케이스 (큰 것은 레포에 없다)
-docs/                     기록
+docs/                     기록 — 무엇이 문제였고 무엇을 재서 어떻게 정했나
 ```
+
+기록은 날짜순이다. 지금 자리를 알고 싶으면 최근 것부터 읽으면 된다.
+
+| 문서 | 무엇 |
+|---|---|
+| [2026-09-08-JMnedict.md](docs/2026-09-08-JMnedict.md) | 사람 이름을 실을 것인가 — 재기만 했다 |
+| [2026-09-06-뜻재굽기.md](docs/2026-09-06-뜻재굽기.md) | 한국어 뜻을 다시 굽고 구멍을 메운 기록 |
+| [2026-09-04-분절측정.md](docs/2026-09-04-분절측정.md) | 문장을 어디서 끊을지 재는 잣대를 세운 기록 |
+| [2026-09-03-책장UX.md](docs/2026-09-03-책장UX.md) | 묶음·고르기·대화상자를 손본 기록 |
+| [M0-결과.md](docs/M0-결과.md) | 첫 판정 — 규칙과 사전만으로 어디까지 되나 |
+| [앱스토어-심사.md](docs/앱스토어-심사.md) | 내기 전에 막는 것과 준비할 것 |
+| [앱스토어-등록문안.md](docs/앱스토어-등록문안.md) | 등록 칸에 그대로 넣을 문안 |
+| [privacy.md](docs/privacy.md) · [support.md](docs/support.md) | 심사에 내는 두 주소 |
 
 ## 실행
 
 ```sh
-swift test                  # 테스트 327개
+swift test                  # 테스트 329개
 ./Tools/fetch/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```

@@ -3,29 +3,29 @@
 *.xcodeproj
 *.xcworkspace
 
-# 사전 원본은 용량이 커서 받아 쓴다 (Tools/fetch-jmdict.sh)
+# 사전 원본은 용량이 커서 받아 쓴다 (Tools/fetch/fetch-jmdict.sh)
 Tools/data/JMdict_e
 Tools/data/JMdict_e.gz
 # JPDB 빈도 목록. 재배포 조건이 불분명해 저장소에 넣지 않는다
 Tools/data/jpdb_freq.csv
 
-# 예문 코퍼스도 받아 쓴다 (Tools/fetch-tanaka.sh)
+# 예문 코퍼스도 받아 쓴다 (Tools/fetch/fetch-tanaka.sh)
 Tools/data/examples.utf
 Tools/data/examples.utf.gz
 
-# 자막 코퍼스와 거기서 만든 빈도 목록 (Tools/fetch-jesc.sh)
+# 자막 코퍼스와 거기서 만든 빈도 목록 (Tools/fetch/fetch-jesc.sh)
 Tools/data/jesc-split.tar.gz
 Tools/data/split/
 Tools/data/jesc_freq*.tsv
 
-# 구운 사전 색인 (Tools/build-index.sh)
+# 구운 사전 색인 (Tools/bake/build-index.sh)
 Tools/data/mworago-dict.db
 
 # xcodegen 이 만드는 것들 (project.yml 만 관리한다)
 Mworago.xcodeproj/
 .build-ios/
 
-# 앱 번들에 넣는 자료는 Tools 에서 구워 복사한다 (Tools/setup-app-resources.sh)
+# 앱 번들에 넣는 자료는 Tools 에서 구워 복사한다 (Tools/bake/setup-app-resources.sh)
 MworagoApp/Resources/*.db
 MworagoApp/Resources/*.tsv
 
@@ -39,7 +39,7 @@ Tools/data/korean-gloss-exaone*.tsv
 Tools/data/korean-gloss.clean.tsv
 Tools/data/korean-gloss.redo.tsv
 
-# 폰트는 Google Fonts(OFL)에서 받는다 (Tools/fetch-fonts.sh)
+# 폰트는 Google Fonts(OFL)에서 받는다 (Tools/fetch/fetch-fonts.sh)
 MworagoApp/Resources/Fonts/
 MworagoApp/Resources/hanja-reading.tsv
 Tools/data/*.log
@@ -47,6 +47,7 @@ Tools/data/*.log
 # Xcode 개인 설정 — 사람마다 다르고 공유할 것이 없다
 xcuserdata/
 *.xcuserdatad
+.swiftpm/
 
 # 클로드 코드가 쓰는 자리(워크트리 327MB 가 들어 있다). 레포에 올릴 것이 아니다.
 .claude/
