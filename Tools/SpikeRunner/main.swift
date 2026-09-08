@@ -389,18 +389,111 @@ if let glossTopCount {
     // **어느 줄에서 왔는지도 들고 다닌다.** 음차만 남기면 `못 찾음` 을 볼 때
     // 말뭉치가 무엇을 그 소리로 세었는지 알 길이 없다 — 토크나이저가 흘린 활용
     // 조각인지 사전에 정말 없는 낱말인지가 거기서 갈린다.
+    // ── 토크나이저가 흘린 활용 조각 ────────────────────────────
+    //
+    // 빈도 목록은 말뭉치를 토크나이저로 썰어 센 것이라 **낱말이 아닌 것이 섞여 있다** —
+    // `言っ`(85위) · `分から` · `望ん` 은 `言った` · `分からない` · `望んだ` 에서
+    // 어미가 떨어져 나간 어간이다. 사람은 `잇` 을 치지 않고 `잇타` 를 친다.
+    //
+    // **그런데 잣대는 그것을 과녁으로 삼고 있었다.** `못 찾음` 552개 중 288개가
+    // 이것이었다 — 못 고칠 것을 성적표에서 깎고 있었던 셈이다.
+    //
+    // **빼되 몇 개를 뺐는지 반드시 찍는다.** 표본에서 무언가를 빼는 일은 잣대가
+    // 제 약점을 숨기는 길이기도 하다(이 레포에서 한 번 겪었다 — 음차에 일본어가
+    // 남는 문장이 분절 케이스에서 통째로 빠져 있었다). 조용히 빼면 그다음 사람이
+    // 성적을 믿을 근거가 없어지므로, 수를 찍고 `--gloss-top-keep-stems` 로
+    // 되돌려 볼 수 있게 둔다.
+    //
+    // 가르는 잣대는 하나다 — **그 자체로는 사전에 없는데 어미를 되돌리면 있는가.**
+    // 이름(`サスケ`)은 되돌려도 안 나오므로 남는다. 그쪽은 진짜 구멍이다.
+    /// **표기와 읽기가 둘 다 사전과 맞는가.** 되돌린 꼴이 진짜 사전형인지 볼 때 쓴다.
+    func 사전에있는가(_ writing: String, _ reading: String) -> Bool {
+        index.lookup(reading).contains { hit in
+            hit.entry.usableWritings.contains { $0.text == writing }
+                || (hit.entry.usableWritings.isEmpty && hit.reading == reading)
+        }
+    }
+    /// **과녁 자체가 낱말일 수 있는가.** 여기서는 관대해야 한다 — 빼는 쪽이라
+    /// 틀리면 멀쩡한 낱말이 성적표에서 사라진다.
+    ///
+    /// **말뭉치가 가나로 적은 낱말은 표기가 안 만난다.** `なん`(139위)은 사전에
+    /// `何`(なん)으로 실려 있어 표기로는 못 만나는데 읽기는 그대로다. 이것을 안
+    /// 열어 두면 `何` 가 조각으로 몰려 과녁에서 빠진다.
+    func 낱말일수있는가(_ writing: String, _ reading: String) -> Bool {
+        if 사전에있는가(writing, reading) { return true }
+        let 가나표기 = writing.unicodeScalars.allSatisfy {
+            (0x3040...0x30FF).contains($0.value) || $0.value == 0x30FC
+        }
+        return 가나표기 && index.lookup(reading).contains { $0.reading == reading }
+    }
+    /// 어간에 어미를 되돌려 붙인 사전형 후보들. 표기와 읽기를 **같은 규칙으로** 되돌린다.
+    func 사전형후보(_ writing: String, _ reading: String) -> [(String, String)] {
+        let 오단: [Character: Character] = ["ら": "る", "わ": "う", "さ": "す", "か": "く",
+                                          "が": "ぐ", "ま": "む", "ば": "ぶ", "た": "つ",
+                                          "な": "ぬ"]
+        guard let last = reading.last, writing.hasSuffix(String(last)) else { return [] }
+        let 표기줄기 = String(writing.dropLast()), 읽기줄기 = String(reading.dropLast())
+        var 꼬리: [String] = []
+        switch last {
+        case "っ": 꼬리 = ["る", "う", "つ"]                       // 촉음편 — 言っ · 待っ · 入っ
+        case "ん": 꼬리 = ["ぬ", "ぶ", "む"]                       // 발음편 — 望ん · 頼ん
+        case "い": 꼬리 = ["く", "ぐ"]                             // 이음편 — 働い · 急い
+        case "て", "で": 꼬리 = ["る", "う", "つ", "く", "ぐ", "ぬ", "ぶ", "む", "す"]
+        default: 꼬리 = 오단[last].map { [String($0)] } ?? []      // 미연형 — 分から · 使わ
+        }
+        var 후보 = 꼬리.map { (표기줄기 + $0, 읽기줄기 + $0) }
+        // 형용사 어간(`よかっ` → `よい`)과 일단 어간(`続け` → `続ける`)
+        if reading.hasSuffix("かっ"), writing.hasSuffix("かっ") {
+            후보.append((String(writing.dropLast(2)) + "い", String(reading.dropLast(2)) + "い"))
+        }
+        후보.append((writing + "る", reading + "る"))
+        return 후보
+    }
+    /// **두 잣대를 다르게 쓴다.** 과녁이 낱말일 수 있으면 안 뺀다(관대하게), 되돌린
+    /// 꼴은 표기까지 맞아야 사전형으로 친다(엄격하게). 둘 다 빼는 쪽을 줄이는 방향이다 —
+    /// 잘못 빼는 것이 잘못 남기는 것보다 나쁘다.
+    func 활용조각인가(_ writing: String, _ reading: String) -> Bool {
+        guard !낱말일수있는가(writing, reading) else { return false }
+        // **말뭉치가 가나로 적은 어간은 되돌린 꼴도 표기가 안 만난다.**
+        // `よかっ` 을 되돌리면 `よい` 인데 사전은 `良い` 로 싣는다. 원래 줄이 가나면
+        // 되돌린 쪽도 읽기로 맞춘다 — `わから`(548위) · `もらっ`(755위)가 이 자리다.
+        let 가나표기 = writing.unicodeScalars.allSatisfy {
+            (0x3040...0x30FF).contains($0.value) || $0.value == 0x30FC
+        }
+        return 사전형후보(writing, reading).contains {
+            가나표기 ? 낱말일수있는가($0.0, $0.1) : 사전에있는가($0.0, $0.1)
+        }
+    }
+
     struct Target { let rank: Int, writing: String, reading: String }
     var bestRank: [String: Target] = [:]
+    var 뺀조각: [(Int, String, String)] = []
+    let 조각도센다 = args.contains("--gloss-top-keep-stems")
     for entry in frequency.sortedEntries() {
         guard entry.rank <= glossTopCount else { break }
         let hangul = KanaToHangul.transliterate(entry.reading)
         guard !hangul.isEmpty else { continue }
+        if !조각도센다, 활용조각인가(entry.writing, entry.reading) {
+            뺀조각.append((entry.rank, entry.writing, entry.reading))
+            continue
+        }
         if bestRank[hangul].map({ entry.rank < $0.rank }) ?? true {
             bestRank[hangul] = Target(rank: entry.rank, writing: entry.writing,
                                       reading: entry.reading)
         }
     }
-    log("음차해서 쳐 볼 낱말 \(bestRank.count)개 (빈도 1~\(glossTopCount)위)\n")
+    log("음차해서 쳐 볼 낱말 \(bestRank.count)개 (빈도 1~\(glossTopCount)위)"
+        + (!뺀조각.isEmpty ? " · 토크나이저가 흘린 활용 조각 \(뺀조각.count)개는 뺐다"
+                       + "(`--gloss-top-keep-stems` 로 다시 넣는다)" : "") + "\n")
+
+    // **뺀 것을 보여 준다.** 수만 적으면 잘못 뺀 것이 섞여도 알 길이 없다.
+    if !뺀조각.isEmpty {
+        let limit = args.contains("--gloss-top-stems") ? 뺀조각.count : 20
+        print("뺀 활용 조각 — 흔한 것부터 \(min(limit, 뺀조각.count))개")
+        print(뺀조각.prefix(limit)
+            .map { "  \(String($0.0).padded(7))\($0.1)(\($0.2))" }
+            .joined(separator: "\n") + "\n")
+    }
 
     let bands: [(Int, Int)] = [(1, 1000), (1000, 5000), (5000, 10000), (10000, 30000), (30000, .max)]
     var tried = [Int](repeating: 0, count: bands.count)
