@@ -3,11 +3,11 @@
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-137%2F150%20%2891%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-147%2F150%20%2898%25%29-171717?style=flat-square)
 ![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-329%EA%B0%9C-4a4a4a?style=flat-square)
-![플랫폼](https://img.shields.io/badge/iPadOS%20%C2%B7%20iOS-18%2B-b0b0b0?style=flat-square)
+![플랫폼](https://img.shields.io/badge/iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
 
-한글로 들리는 대로 치면 원래 일본어를 찾아주는 iPadOS 앱.
+한글로 들리는 대로 치면 원래 일본어를 찾아주는 iOS 앱.
 
 애니를 보다 걸린 대사를 한글로 검색하면 원문이 나오고, 그게 모여 그 화의 교재가 되고,
 쉐도잉해서 결국 자막 없이 알아듣게 되는 것을 목표로 한다.
@@ -87,7 +87,7 @@
 
 | | |
 |---|---|
-| 언어 · 화면 | Swift 6.2 · SwiftUI (iPadOS · iOS 18+) |
+| 언어 · 화면 | Swift 6.2 · SwiftUI (iOS 18+ · 아이폰) |
 | 사전 | JMdict 를 SQLite 색인 하나로 미리 구워 싣는다 |
 | 빈도 | 자막 말뭉치(JESC)에서 직접 센 목록 |
 | 문장 뜻 | Apple `Translation` — 기기 안에서 돈다 |
@@ -156,7 +156,7 @@ swift run SpikeRunner       # 측정
 ./Tools/bake/setup-app-resources.sh   # 색인·빈도·폰트를 굽고 번들 폴더에 넣는다
 xcodegen generate
 xcodebuild -project Mworago.xcodeproj -scheme Mworago \
-  -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M5)' build
+  -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 시뮬레이터에 한글을 타이핑하지 않고 화면을 확인하려고 실행 인자를 두었다.
