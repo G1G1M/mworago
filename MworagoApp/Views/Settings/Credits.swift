@@ -44,23 +44,28 @@ struct Credits: View {
     /// 없다 — 코드는 자료의 2차적 저작물이 아니라 단순 결합이다. 지금 저장소가
     /// 열려 있는 것은 의무가 아니라 고른 것이다.
     ///
-    /// 이 주소가 닫히면 조건을 지키지 못하는 것이므로, 옮길 때는 이 한 줄도 함께
-    /// 옮긴다(`Settings.feedbackAddress` 와 같은 규칙이다). **저장소를 비공개로
-    /// 돌리면 릴리스도 함께 닫힌다** — 그때는 파일을 다른 자리에 두고 여기를 고친다.
+    /// **자료는 코드와 다른 저장소에 둔다(2026-09-08).** 한동안은 코드 저장소의
+    /// 릴리스를 가리켰는데, 그러면 저장소를 비공개로 돌리는 순간 릴리스도 함께 닫혀
+    /// 조건을 못 지킨다. 자료와 문서만 담은 공개 저장소(`G1G1M/mworago-data`)를
+    /// 따로 두어, **코드를 닫아도 이 길은 열려 있다.**
+    ///
+    /// 대신 이음매가 하나 생겼다 — **색인을 다시 구우면 그쪽에 새 릴리스를 올려야 한다.**
+    /// 여기는 `releases/latest` 라 주소는 안 바뀐다.
     private static let sourceAddress =
-        URL(string: "https://github.com/G1G1M/mworago/releases/latest")
+        URL(string: "https://github.com/G1G1M/mworago-data/releases/latest")
 
     /// **개인정보 처리방침 원문이 있는 자리.**
     ///
     /// 심사 지침 5.1.1 은 방침 링크를 App Store Connect 칸에 **그리고 앱 안에서 쉽게
     /// 닿는 자리에** 두라고 한다. 아래 「개인정보」 절은 요약이라, 지침이 방침에
     /// 적으라고 못 박은 셋 — 무엇을 모으는가 · 제3자와 어떻게 나누는가 · 보관과
-    /// 삭제와 동의 철회 — 을 다 담지 않는다. 그것은 `docs/privacy.md` 에 있다.
+    /// 삭제와 동의 철회 — 을 다 담지 않는다. 그것은 자료 저장소의 `privacy.md` 에 있다.
     ///
-    /// `sourceAddress` 와 같은 규칙이다 — 이 주소가 닫히면 지침을 지키지 못하는
-    /// 것이므로, 저장소를 옮길 때는 이 한 줄도 함께 옮긴다.
+    /// `sourceAddress` 와 같은 규칙이고, 같은 까닭으로 **자료 저장소 쪽에 둔다** —
+    /// 코드 저장소를 비공개로 돌려도 이 주소는 열려 있어야 한다. 심사에 등록하는
+    /// 주소와 여기가 같아야 하므로, 옮길 때는 App Store Connect 칸도 함께 옮긴다.
     private static let privacyAddress =
-        URL(string: "https://github.com/G1G1M/mworago/blob/main/docs/privacy.md")
+        URL(string: "https://github.com/G1G1M/mworago-data/blob/main/privacy.md")
 
     private static let sources: [Source] = [
         Source(role: "일본어 사전",
