@@ -50,7 +50,8 @@
 
 **돌아가는 것을 숫자로 적어 둔다.** 케이스 150개 기준 1위가 정답인 것 137개,
 3위 안 147개. 소리대로 쳤을 때 맨 위 카드에 한국어 뜻이 뜨는 비율 98.3%.
-어떤 잣대로 어떻게 쟀는지는 [설계와 측정](docs/설계와-측정.md)에 있다.
+케이스와 잣대는 손으로 정하지 않는다 — 빈도 목록이 낱말을 고르고,
+문장 분절의 정답은 Tanaka Corpus 에서 온다.
 
 ## 왜 어려운가
 
@@ -75,106 +76,70 @@
 
 ## 구성
 
-층을 폴더가 아니라 **SPM 타깃**으로 나눈다. 폴더로만 나누면 "무엇이 무엇을 불러도
-되는가"가 문서에 남고, 그 문서는 언젠가 어긋난다. 타깃으로 나누면 도메인에서 SQLite 를
+**층을 폴더가 아니라 SPM 타깃으로 나눈다.** 폴더로만 나누면 "무엇이 무엇을 불러도
+되는가"가 문서에 남고 그 문서는 언젠가 어긋난다. 타깃으로 나누면 도메인에서 SQLite 를
 부르는 순간 빌드가 멎는다.
 
-의존은 한 방향으로만 흐른다 — `Domain ← UseCases ← Infra`. 도메인이 위를 모르므로
-사전이 SQLite 든 메모리든 검색 코드는 달라지지 않고, 실제로 앱은 구운 색인 파일을,
-시험은 메모리 색인을 꽂아 같은 코드를 돌린다.
+의존은 한 방향으로만 흐른다 — `Domain ← UseCases ← Infra`. 앱과 측정 도구가 같은
+코드를 쓰므로, 도구로 잰 숫자가 그대로 앱의 숫자다.
 
-앱과 측정 도구가 **같은 로직**을 쓰므로 스파이크에서 잰 숫자가 그대로 앱의 숫자다.
+### 무엇으로 만들었나
+
+| | |
+|---|---|
+| 언어 · 화면 | Swift 6.2 · SwiftUI (iPadOS · iOS 18+) |
+| 사전 | JMdict 를 SQLite 색인 하나로 미리 구워 싣는다 |
+| 빈도 | 자막 말뭉치(JESC)에서 직접 센 목록 |
+| 문장 뜻 | Apple `Translation` — 기기 안에서 돈다 |
+| 소리 | `AVSpeechSynthesizer` |
+| 빌드 | SwiftPM(코어) · XcodeGen(앱) |
+| 네트워크 | **없다.** 앱이 바깥과 통신하지 않는다 |
+
+### 코어 — 세 층
 
 ```
 Sources/
-  MworagoDomain/          엔티티와 포트. Foundation 밖을 모른다
-    Kana/
-      Hangul.swift        한글 음절 분해. U+AC00 기반 나눗셈 세 번
-      KanaTable.swift     훈령식 로마자 ↔ 가나
-      KanaToHangul.swift  반대 방향. 답이 하나라 케이스 생성에 쓴다
-      JapaneseReading.swift  macOS 토크나이저로 일본어 분절 + 읽기
-      InflectedReading.swift 활용형의 읽기
-    Words/
-      DictEntry.swift     사전 표제항과 읽기 색인
-      CollectedWord.swift 담아 둔 낱말. 담을 때 화면에 있던 것을 그대로 붙든다
-      FrequencyList.swift 애니 도메인 빈도 목록
-      Lexicon.swift       검색에 드는 재료 한 벌 — 사전과 빈도
-      WordClass.swift     품사. 옮길 수 있는 낱말인가를 여기서 가른다
-      KoreanGloss.swift   모델이 준 뜻을 화면에 올릴 만한 것으로 다듬기
-      HanjaReading.swift  한자의 한국 독음 (kanjidic2)
-    Ports/                바깥에 무엇을 요구하는지
-      DictionaryLookup.swift  읽기로 표제항을 찾는 것
-      ResourceLocating.swift  자원이 어디 있는지 대답하는 것
-      PreferenceStoring.swift 작은 값을 적어 두는 것
-      Speaking.swift          소리 내어 읽는 것
-    LaunchOptions.swift   실행 인자. 화면을 손으로 두드리지 않고 세운다
+  MworagoDomain/      엔티티와 포트. Foundation 밖을 모른다
+    Kana/               한글 ↔ 가나, 일본어 읽기
+    Words/              표제항 · 담은 낱말 · 빈도 · 품사 · 뜻
+    Ports/              바깥에 무엇을 요구하는지
 
-  MworagoUseCases/        찾고 나누고 줄 세우는 일. 도메인만 안다
-    Search/               한 줄을 받아 낱말 후보까지
-      Transliterator.swift  한글 → 가나 후보 생성
-      Deinflector.swift     활용형을 사전형으로 되돌리기
-      Segmenter.swift       띄어 쓰지 않은 문장을 낱말로 나누기
-      Ranker.swift          살아남은 후보 줄 세우기
-      SearchCache.swift     조각의 답을 재어 둔다. 글자마다 다시 찾지 않으려고
-    Sentence/             조각을 도로 문장으로, 그리고 그 뜻
-      Sentence.swift        조각들을 도로 한 문장으로 잇기
-      SentencePrompt.swift  뜻을 물을 때 무엇을 어떻게 물을지
-      TranslationQueue.swift 옮길 것이 서는 줄. 세션이 물러나도 줄은 다시 열린다
+  MworagoUseCases/    찾고 나누고 줄 세우는 일. 도메인만 안다
+    Search/             한 줄을 받아 낱말 후보까지
+    Sentence/           조각을 도로 문장으로, 그리고 그 뜻
 
-  MworagoInfra/           바깥과 닿는 것들
-    Dictionary/           사전과 빈도를 여는 일
-      DictionaryStore.swift 미리 구운 SQLite 색인. 여는 데 0.001초
-      JMDictParser.swift    JMdict XML 스트리밍 파서
-      LexiconLoading.swift  재료를 여는 일. 무엇으로 여는지는 여기만 안다
-      FrequencyListFile.swift 빈도 목록 파일에서 읽기
-    Storage/              기기에 남는 것
-      WordCollection.swift  담은 낱말을 파일에 적는다
-      Preferences.swift     설정을 파일 하나에 값 하나로
-    Translation/          가 보고 접은 길 — **앱은 이것을 부르지 않는다**
-      SentenceTranslator.swift 문장 뜻을 생성 모델에게 묻던 자리. 지금은
-                               측정기(`SpikeRunner --mt-cases`)만 쓴다
+  MworagoInfra/       바깥과 닿는 것들
+    Dictionary/         구운 색인과 빈도를 여는 일
+    Storage/            기기에 남는 것 — 담은 낱말 · 설정
 
-  MworagoCore/            셋을 한 이름으로 내보내는 우산
-
-MworagoApp/               앱
-  App/                    조립이 시작되는 자리
-  Composition/            무엇을 세워 어디로 내려보낼지
-  Store/                  화면이 지켜보는 것들
-  Views/                  화면. **탭이 곧 폴더다**
-    Root/                 탭 다섯과 그 앞의 두 장 — 스플래시·온보딩
-    Find/                 찾기. 입력 바, 조각 카드, 문장 머리와 뜻
-    Library/              책장. 묶음, 낱말 상세, 여러 개 고르기
-    Practice/             연습
-    Kana/                 가나표
-    Settings/             설정과 만든 것들
-    Shared/               화면들이 나눠 쓰는 것 — 색·글자 크기·판·넘기기·소리·품사표
-MworagoTests/             테스트 329개. 층으로 나눈다
-  Domain/  UseCases/  Infra/
-Tools/                    앱에 실리지 않는 것들
-  SpikeRunner/            측정 도구. 색인 굽기·가중치 스윕·케이스 생성
-  Translator/             한국어 뜻을 온디바이스 모델로 미리 굽는다
-  fetch/                  사전·빈도·폰트·예문 내려받기
-  bake/                   받은 것을 앱이 실을 모양으로 굽는다
-  inspect/                찍은 화면과 구운 것을 재는 것들
-  data/                   원본과 측정 케이스 (큰 것은 레포에 없다)
-docs/                     기록 — 무엇이 문제였고 무엇을 재서 어떻게 정했나
+  MworagoCore/        셋을 한 이름으로 내보내는 우산
 ```
 
-기록은 날짜순이다. 지금 자리를 알고 싶으면 최근 것부터 읽으면 된다.
+### 앱
 
-| 문서 | 무엇 |
-|---|---|
-| [설계와-측정.md](docs/설계와-측정.md) | **어떻게 풀었고 무엇으로 쟀나** — 규칙 · 가중치 · 잣대 |
-| [2026-09-08-JMnedict.md](docs/2026-09-08-JMnedict.md) | 사람 이름을 실을 것인가 — 재기만 했다 |
-| [2026-09-06-뜻재굽기.md](docs/2026-09-06-뜻재굽기.md) | 한국어 뜻을 다시 굽고 구멍을 메운 기록 |
-| [2026-09-04-분절측정.md](docs/2026-09-04-분절측정.md) | 문장을 어디서 끊을지 재는 잣대를 세운 기록 |
-| [2026-09-03-책장UX.md](docs/2026-09-03-책장UX.md) | 묶음·고르기·대화상자를 손본 기록 |
-| [M0-결과.md](docs/M0-결과.md) | 첫 판정 — 규칙과 사전만으로 어디까지 되나 |
-| [앱스토어-심사.md](docs/앱스토어-심사.md) | 내기 전에 막는 것과 준비할 것 |
-| [앱스토어-등록문안.md](docs/앱스토어-등록문안.md) | 등록 칸에 그대로 넣을 문안 |
-| [privacy.md](docs/privacy.md) · [support.md](docs/support.md) | 심사에 내는 두 주소 |
+```
+MworagoApp/
+  App/                조립이 시작되는 자리
+  Composition/        무엇을 세워 어디로 내려보낼지
+  Store/              화면이 지켜보는 것들
+  Views/              화면. 탭이 곧 폴더다
+    Root/               탭 다섯과 그 앞의 두 장 — 스플래시 · 온보딩
+    Find/               찾기
+    Library/            책장
+    Practice/           연습
+    Kana/               가나표
+    Settings/           설정
+    Shared/             화면들이 나눠 쓰는 것 — 색 · 글자 크기 · 판 · 소리
+```
 
-각 층이 무엇을 맡고 왜 그렇게 갈랐는지는 [설계와 측정](docs/설계와-측정.md)에 있다.
+### 시험과 도구
+
+```
+MworagoTests/         테스트 329개. 코어와 같은 층으로 나눈다
+Tools/                앱에 실리지 않는다
+  fetch/                사전 · 빈도 · 글꼴 · 예문 내려받기
+  bake/                 받은 것을 앱이 실을 모양으로 굽기
+```
 
 ## 실행
 
@@ -280,9 +245,9 @@ CC BY-SA 4.0)을 "도입 예정"으로 적어 두었는데 **도입하지 않았
 처음에 **EXAONE 3.5 7.8B** 로 구웠는데 `EXAONE AI Model License Agreement 1.1 - NC`
 라, **출력물까지 조건이 붙어 앱스토어에 낼 수 없다.** 재배포가 자유로운 쪽으로
 다시 굽는다 — **Qwen3(Apache 2.0)**. 고르기 전에 사람이 손으로 적은 정답지로 재 보고
-골랐고, 그 표와 까닭은 [docs/2026-09-06-뜻재굽기.md](docs/2026-09-06-뜻재굽기.md).
+골랐다.
 
-손으로 적은 표(`guardrail-gloss` 931 · `corrected-gloss` 703 · `function-gloss` 294)는
+손으로 적은 표는
 사람이 쓴 것이라 이 문제와 무관하고, 색인을 구울 때 기계 뜻 위에 덮어쓴다.
 
 ## 라이선스
