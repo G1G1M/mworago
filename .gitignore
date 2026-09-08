@@ -51,3 +51,14 @@ xcuserdata/
 
 # 클로드 코드가 쓰는 자리(워크트리 327MB 가 들어 있다). 레포에 올릴 것이 아니다.
 .claude/
+
+# 만들면서 남긴 기록 — 저장소에 올리지 않는다.
+#
+# **셋은 예외다.** 앱과 심사가 그 주소를 가리키고 있어, 닫히면 지키지 못하는 것이 생긴다.
+#   privacy.md    앱 안의 링크(`Credits.privacyAddress`)와 심사 5.1.1 의 등록 주소
+#   support.md    등록의 지원 주소이자 저장소 About 의 Website
+#   screenshots/  README 의 화면 다섯
+docs/*
+!docs/privacy.md
+!docs/support.md
+!docs/screenshots/
