@@ -99,16 +99,22 @@ let deinflectionPenalty = flagValues("--deinf-penalty").first.flatMap(Double.ini
 // 측정기가 **앱과 다른 가중치**로 재고 있었다 — 분절 완전일치가 2.4%p 낮게 나왔다.
 // 빈도 목록에 없는 낱말이 통째로 0점이 되는 설정이라 차이가 컸다.
 let jmdictWeight = flagValues("--jmdict").first.flatMap(Double.init)
+// 한글에 없던 장음을 지어낼 때마다 무는 벌점. **기본값 6은 JPDB 로 고른 것이고
+// 앱이 싣는 것은 JESC 다** — 배포판 자료로 다시 훑으려고 손잡이를 뺐다.
+// 촉음 벌점이 이 값의 세 배라 함께 움직인다.
+let longVowelPenalty = flagValues("--longvowel").first.flatMap(Double.init)
 // 분절은 앱과 같은 기본값에서 출발한다 — 도구가 다른 값을 쓰면 여기 숫자가 앱 숫자가 아니다.
 var tunedWeights = Segmenter.defaultWeights
 if let deinflectionPenalty { tunedWeights.deinflectionPenalty = deinflectionPenalty }
 if let jmdictWeight { tunedWeights.jmdictWeight = jmdictWeight }
 if let identityWeight { tunedWeights.kanaIdentityWeight = identityWeight }
+if let longVowelPenalty { tunedWeights.longVowelPenalty = longVowelPenalty }
 // 낱말 검색은 등재형 쪽에 무게를 두는 본래 값을 쓴다(활용 벌점 25).
 var wordWeights = Ranker.Weights()
 if let deinflectionPenalty { wordWeights.deinflectionPenalty = deinflectionPenalty }
 if let jmdictWeight { wordWeights.jmdictWeight = jmdictWeight }
 if let identityWeight { wordWeights.kanaIdentityWeight = identityWeight }
+if let longVowelPenalty { wordWeights.longVowelPenalty = longVowelPenalty }
 // 문장 뜻을 모델에게 물어본다. 앱이 부를 것과 같은 재료를 같은 모델에 태운다 —
 // 도구가 다른 것을 물으면 여기서 본 답이 앱의 답이 아니다.
 let translateInputs = flagValues("--translate")
@@ -136,6 +142,7 @@ let positional: [String] = {
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
                 || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction" || args[i] == "--mt-share"
+                || args[i] == "--longvowel"
                 || args[i] == "--gloss-top" || args[i] == "--identity"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
