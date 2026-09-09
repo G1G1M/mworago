@@ -29,6 +29,18 @@ struct PracticeView: View {
     /// 지금 보고 있는 낱말. **`id` 로 들고 있다** — 자리(번호)로 들면 하루치를 바꾸거나
     /// 낱말을 뺐을 때 같은 번호가 딴 낱말을 가리킨다.
     @State private var currentID: CollectedWord.ID?
+    /// 어느 묶음을 연습하는가. `nil` 이면 모은 것 전체다.
+    ///
+    /// **전체만 훑으면 스무 날치가 쌓인 뒤에 오늘 것을 다시 만나기 어렵다.** 책장에서
+    /// 묶음을 열고 연습으로 건너오는 길이 이미 있었는데(`subset`), 그 길은 책장을
+    /// 거쳐야 한다 — 연습 탭에 그대로 앉아서도 고를 수 있어야 한다.
+    ///
+    /// `--practice-folder=리코리스 리코일 3화` 로 그 묶음을 고른 채 띄운다.
+    /// `--query=` · `--folder=` 와 같은 취지 — 시뮬레이터는 손으로 두드릴 수 없다.
+    @State private var scope: FolderRoute? = LaunchOptions.current
+        .value(for: "practice-folder").map { FolderRoute(name: $0.isEmpty ? nil : $0) }
+    /// 무엇을 연습할지 고르는 판이 떠 있는가.
+    @State private var picking = LaunchOptions.current.has("practice-picking")
     /// `--revealed` 로 뒤집힌 채 띄운다. `--query=` · `--detail` 과 같은 취지 —
     /// 시뮬레이터는 손으로 두드릴 수 없어 뒷면을 눈으로 볼 길이 없다.
     @State private var revealed = LaunchOptions.current.has("revealed")
@@ -37,7 +49,26 @@ struct PracticeView: View {
     /// 앞면이 소리뿐이라 읽을 수 없으면 뒤집기 말고는 할 것이 없다. 설정에 넣으면
     /// 그 순간에 떠올릴 수 없는 자리가 된다. `--kana` 로 펼친 채 띄운다.
 
-    private var words: [CollectedWord] { subset ?? collection.words }
+    private var words: [CollectedWord] {
+        if let subset { return subset }
+        guard let scope else { return collection.words }
+        return collection.words.filter { $0.folder == scope.name }
+    }
+
+    /// 고를 수 있는 묶음들. **비어 있는 것은 넣지 않는다** — 골라 봐야 카드가 없는
+    /// 화면으로 가는데, 그 화면에는 다시 고를 단추가 없다.
+    /// 차례는 책장과 같다(만들어 둔 순서, 아직 안 넣은 것이 마지막).
+    private var pickableFolders: [(route: FolderRoute, count: Int)] {
+        var result = collection.folderNames.map { name in
+            (FolderRoute(name: name), collection.words.filter { $0.folder == name }.count)
+        }
+        let loose = collection.words.filter { $0.folder == nil }.count
+        if loose > 0 { result.append((FolderRoute(name: nil), loose)) }
+        return result.filter { $0.1 > 0 }
+    }
+
+    /// 고를 것이 있는가. 묶음이 하나뿐이면 고르는 일이 아니라 전체와 같은 말이다.
+    private var canPick: Bool { pickableFolders.count > 1 }
     private var current: CollectedWord? {
         words.first { $0.id == currentID } ?? words.first
     }
@@ -106,6 +137,52 @@ struct PracticeView: View {
         // 첫 낱말로 한 번 바뀌는데, 그것까지 "장이 바뀐 것"으로 세면 `--revealed` 로
         // 펼친 채 띄우는 길이 막힌다(글자 익히기는 이미 막아 둔 자리다).
         .onChange(of: currentID) { 앞, _ in if 앞 != nil { revealed = false } }
+        // 묶음을 바꾸면 그 묶음의 첫 장부터 시작한다. 하루치를 새로 골라 올 때와 같다.
+        .onChange(of: scope) { _, _ in
+            currentID = words.first?.id
+            revealed = false
+        }
+        // **비면 손을 뗀다.** 고른 묶음의 낱말을 다 빼거나 옮기면 카드가 한 장도 없는
+        // 화면이 되는데, 그 화면에는 다시 고를 단추가 없다(단추는 머리줄 안에 있다).
+        // 책장이 지우던 손을 비는 순간에 푸는 것과 같은 규칙이다.
+        .onChange(of: words.isEmpty) { _, empty in
+            if empty, scope != nil { scope = nil }
+        }
+        .dialog(isPresented: $picking) {
+            PracticeScopeDialog(folders: pickableFolders,
+                                total: collection.words.count,
+                                current: scope,
+                                isPresented: $picking) { picked in
+                // 책장에서 들고 온 하루치가 있으면 놓는다 — 고른 묶음과 겹쳐 두면
+                // 화면에 "무엇을 연습 중인가"가 둘이 된다.
+                onClearSubset()
+                scope = picked
+            }
+        }
+    }
+
+    /// 무엇을 연습하고 있는지, 그리고 바꾸는 문. **둘이 한 물건이다** — 지금 고른 것을
+    /// 적어 두면 그 글자가 곧 누를 자리가 된다. 고를 것이 없으면(묶음이 하나뿐이거나
+    /// 아예 없으면) 서지 않는다. 책장에서 하루치를 들고 왔을 때도 서지 않는다 —
+    /// 그때는 위의 알약이 이미 무엇을 보고 있는지 말하고 있다.
+    private var scopeButton: some View {
+        Button { picking = true } label: {
+            HStack(spacing: 5) {
+                Text(scope?.title ?? "전체")
+                    .font(Theme.korean(.sub))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .medium))
+            }
+            .foregroundStyle(Theme.grey1)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Theme.grey4, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("연습할 묶음 고르기")
+        .accessibilityValue(scope?.title ?? "전체")
     }
 
     /// 지금 무엇을 연습하고 있는지. 전체가 아니라면 그 사실이 화면에 있어야 한다 —
@@ -147,7 +224,8 @@ struct PracticeView: View {
                 .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
                 .monospacedDigit()
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
+            if subset == nil, canPick { scopeButton }
         }
         .frame(maxWidth: Theme.readWidth, alignment: .leading)
         .frame(maxWidth: .infinity)
