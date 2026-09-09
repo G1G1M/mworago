@@ -24,6 +24,8 @@ struct SearchView: View {
     /// 다른 탭에서 넘어온 검색어. 모은 것이나 도감에서 낱말을 누르면 여기로 들어온다.
     /// 받아서 처리한 뒤 비운다 — 남겨 두면 이 탭으로 돌아올 때마다 다시 검색된다.
     var incoming: Binding<String?>? = nil
+    /// 담은 자리로 건너가는 길. 알림 줄을 누르면 책장의 그 묶음이 열린다.
+    var onOpenFolder: (FolderRoute) -> Void = { _ in }
 
     /// 담아 두는 곳. 카드의 갈피표가 이것을 쓴다.
     @Environment(CollectionStore.self) private var collection
@@ -193,7 +195,7 @@ struct SearchView: View {
                          lastFolder: collection.lastFolder,
                          onPick: { folder in
                              collection.add(word, to: folder)
-                             justSaved = folder ?? "아직 안 넣은 것"
+                             justSaved = FolderRoute(name: folder)
                          },
                          onClose: { collecting = nil })
         }
@@ -201,23 +203,46 @@ struct SearchView: View {
 
     /// 담긴 자리를 알리는 한 줄. 입력 바 바로 위에 선다 — 갈피표에서 눈이 옮겨 온
     /// 자리이면서, 다음에 칠 자리이기도 하다.
+    ///
+    /// **누르면 그 묶음이 열린다.** 어디에 담겼는지를 알려 주고 나면 다음에 하고 싶은
+    /// 일이 "가서 보기"인데, 그러려면 탭을 옮겨 목록에서 그 이름을 다시 찾아야 했다.
+    /// 이미 이름을 적어 둔 줄이 그 자리로 가는 문이 된다.
+    ///
+    /// **머무는 시간은 짧다.** 알림이 사라지기를 기다리게 하지 않는다 — 누를 사람은
+    /// 뜨자마자 누르고, 안 누를 사람에게는 화면을 가리는 띠일 뿐이다.
     @ViewBuilder
     private var savedNotice: some View {
-        if let folder = justSaved {
-            Text("「\(folder)」에 담았어요")
-                .font(Theme.korean(.sub))
-                .foregroundStyle(Theme.grey1)
+        if let saved = justSaved {
+            Button {
+                justSaved = nil
+                onOpenFolder(saved)
+            } label: {
+                HStack(spacing: 6) {
+                    Text("「\(saved.title)」에 담았어요")
+                        .font(Theme.korean(.sub))
+                        .foregroundStyle(Theme.grey1)
+                    // 누를 수 있다는 것은 화살표가 말한다. 색은 쓰지 않는다 —
+                    // 이 앱에서 색으로 강조하는 자리가 없다.
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(Theme.grey2)
+                }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(Theme.grey4, in: Capsule())
-                .padding(.bottom, 8)
-                .transition(.opacity)
-                // **스스로 물러난다.** 닫는 단추를 두면 알림 하나에 할 일이 하나 는다.
-                .task(id: folder) {
-                    try? await Task.sleep(for: .seconds(2.4))
-                    guard !Task.isCancelled else { return }
-                    withAnimation(.easeOut(duration: 0.2)) { justSaved = nil }
-                }
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("「\(saved.title)」 묶음을 엽니다")
+            .padding(.bottom, 8)
+            .transition(.opacity)
+            // **스스로 물러난다.** 닫는 단추를 두면 알림 하나에 할 일이 하나 는다.
+            .task(id: saved) {
+                guard Self.pinnedNotice == nil else { return }
+                try? await Task.sleep(for: .seconds(1.2))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.2)) { justSaved = nil }
+            }
         }
     }
 
@@ -227,8 +252,25 @@ struct SearchView: View {
     ///
     /// 판을 닫고 나면 갈피표가 채워지는 것 말고는 아무 흔적이 없었다. 묶음이 여럿인
     /// 사람은 자기가 무엇을 골랐는지 곧 잊는다 — 고른 것이 판과 함께 사라지기 때문이다.
-    /// 몇 초 떠 있다 스스로 물러난다. 무를 수 있는 일이라 확인을 받지 않는다.
-    @State private var justSaved: String?
+    /// 잠깐 떠 있다 스스로 물러난다. 무를 수 있는 일이라 확인을 받지 않는다.
+    /// 누르면 그 묶음으로 건너간다.
+    ///
+    /// `--saved=리코리스 리코일 3화` 로 그 줄을 띄운 채 시작한다. `--collecting` 과 같은
+    /// 취지인데, 이것은 **띄우는 것만으로는 부족하다** — 1.2초 뒤에 스스로 물러나므로
+    /// 시뮬레이터에서 찍으려 들면 매번 다른 것이 찍힌다. 그래서 이 인자로 띄운 줄은
+    /// 물러나지 않는다(아래 `savedNotice` 의 `task`).
+    @State private var justSaved: FolderRoute? = Self.pinnedNotice
+
+    /// `--saved[=이름]` 로 띄워 둔 줄. 이름을 안 적으면 아직 안 넣은 것이다.
+    ///
+    /// **값이 붙은 인자는 `has` 로 못 잡는다** — `--saved=…` 는 그 이름 그대로가
+    /// 아니어서다. `--folder[=이름]` 이 둘을 함께 받는 것과 같은 문법으로 읽는다.
+    private static var pinnedNotice: FolderRoute? {
+        let launch = LaunchOptions.current
+        guard let name = launch.value(for: "saved") ?? (launch.has("saved") ? "" : nil)
+        else { return nil }
+        return FolderRoute(name: name.isEmpty ? nil : name)
+    }
 
     /// 돌려줄 답이 있는가.
     private var hasResults: Bool {

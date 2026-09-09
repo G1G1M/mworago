@@ -33,6 +33,8 @@ struct RootView: View {
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
     /// 다른 탭에서 찾기로 넘기는 검색어.
     @State private var pendingQuery: String?
+    /// 찾기에서 책장으로 넘기는 묶음. 담은 자리를 알리는 줄을 누르면 그리로 간다.
+    @State private var pendingFolder: FolderRoute?
     /// 찾기 탭을 눌렀다는 신호. 찾기 화면이 받아서 입력 바에 손을 얹는다.
     /// 교재에서 하루치를 들고 연습으로 넘길 때 그 낱말들.
     @State private var practiceSubset: [CollectedWord]?
@@ -66,6 +68,12 @@ struct RootView: View {
     private func goFind(_ hangul: String) {
         pendingQuery = hangul
         tab = .find
+    }
+
+    /// 방금 담은 묶음을 들고 책장으로 건너간다.
+    private func goLibrary(_ folder: FolderRoute) {
+        pendingFolder = folder
+        tab = .library
     }
 
     /// 하루치를 들고 연습으로 건너간다. 날짜는 그 화의 이름이므로 함께 넘긴다.
@@ -166,13 +174,14 @@ struct RootView: View {
         // 아이패드에서 탭바가 위아래로 **두 번** 그려졌다.
         TabView(selection: $tab) {
             Tab(value: RootTab.find) {
-                SearchView(incoming: $pendingQuery)
+                SearchView(incoming: $pendingQuery, onOpenFolder: goLibrary)
             } label: {
                 Image(systemName: "magnifyingglass")
                     .accessibilityLabel("찾기")
             }
             Tab(value: RootTab.library) {
-                LibraryView(onPick: goFind, onPractice: goPractice)
+                LibraryView(incomingFolder: $pendingFolder,
+                            onPick: goFind, onPractice: goPractice)
             } label: {
                 Image(systemName: "books.vertical")
                     .accessibilityLabel("책장")

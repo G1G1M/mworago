@@ -14,8 +14,24 @@ import MworagoCore
 /// 다 펼쳤는데, 한 편만 봤을 때는 괜찮아도 다섯 편이 쌓이면 책장이 다섯 배로 길어지고
 /// 스무 편이면 훑을 수 없는 화면이 됐다. 대신 줄 오른쪽에 낱말 두어 개를 흘려 두어
 /// **이름만으로 "어느 화였지"를 짚지 않아도 되게** 한다.
+/// 밖에서 "이 묶음을 열어 달라"고 건네는 이름.
+///
+/// **옵셔널 하나로는 모자란다.** 이름 없는 묶음(`아직 안 넣은 것`)이 실재하므로,
+/// `String?` 만으로는 `nil` 이 "그 묶음"과 "건넨 것 없음" 둘을 뜻하게 된다.
+struct FolderRoute: Equatable, Identifiable {
+    let name: String?
+    var id: String { name ?? "\u{1F}없음" }
+    /// 화면에 적을 이름.
+    var title: String { name ?? "아직 안 넣은 것" }
+}
+
 struct LibraryView: View {
     @Environment(CollectionStore.self) private var collection
+    /// 밖에서 열어 달라고 건네는 묶음. 담은 자리를 알리는 줄을 누르면 여기로 온다.
+    ///
+    /// **받아서 열고 비운다** — 남겨 두면 책장 탭으로 돌아올 때마다 그 묶음이 다시 열린다.
+    /// `SearchView.incoming` 과 같은 문법이다.
+    var incomingFolder: Binding<FolderRoute?>? = nil
     /// 상세에서 "찾기에서 보기"를 눌렀을 때 건너가는 길.
     ///
     /// 전에는 **낱말을 누르는 것 자체가** 이 길이었다. 모아 둔 것을 다시 만나게 하려던
@@ -137,6 +153,15 @@ struct LibraryView: View {
         }
     }
 
+    /// 건네진 묶음을 연다. **보기도 함께 맞춘다** — 날짜별을 보고 있었으면
+    /// 뒤로 나왔을 때 방금 연 묶음이 목록에 없다.
+    private func openIncoming() {
+        guard let route = incomingFolder?.wrappedValue else { return }
+        grouping = .folders
+        path = [.folder(route.name)]
+        incomingFolder?.wrappedValue = nil
+    }
+
     private var root: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
@@ -168,6 +193,11 @@ struct LibraryView: View {
         // 다른 화면으로 바뀌어 판이 닫힌 것인지 화면이 넘어간 것인지 읽히지 않는다.
         // 판이 뜨고 지는 결과 같은 것을 쓴다 — 한 몸짓의 앞뒤이기 때문이다.
         .animation(.dialog, value: isEmpty)
+        // **탭이 서기 전에 건네진 것도 받는다.** 찾기에서 알림 줄을 누르면 묶음을
+        // 건네면서 탭을 바꾸는데, 책장에 한 번도 온 적이 없으면 이 화면이 그때 처음
+        // 만들어진다 — 그 경우 `onChange` 는 이미 지나간 변화를 못 본다.
+        .onAppear { openIncoming() }
+        .onChange(of: incomingFolder?.wrappedValue) { _, _ in openIncoming() }
         .onAppear {
             guard !Self.openedFromArguments else { return }
             Self.openedFromArguments = true
