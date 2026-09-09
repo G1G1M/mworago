@@ -173,9 +173,7 @@ enum Theme {
     // 그어지는 굵기를 한 자리에서 정한다. 0.5pt 는 2배 화면에서 1px 이다.
 
     /// 가로로 긋는 실선 하나. **선은 여기서만 그린다.**
-    static func rule(_ color: Color = grey3) -> some View {
-        Rectangle().fill(color).frame(height: ruleWidth)
-    }
+    static func rule(_ color: Color = grey3) -> some View { Rule(color: color) }
 
     /// 선 하나의 굵기.
     static let ruleWidth: CGFloat = 0.5
@@ -261,5 +259,34 @@ private extension UIColor {
     convenience init(white: CGFloat) { self.init(white: white, alpha: 1) }
     convenience init(red: CGFloat, green: CGFloat, blue: CGFloat) {
         self.init(red: red, green: green, blue: blue, alpha: 1)
+    }
+}
+
+/// 선 하나. **굵기를 화면 픽셀에 맞춰 끊는다.**
+///
+/// 0.5pt 는 3배 화면에서 1.5px 이라 픽셀에 딱 떨어지지 않는다. 그러면 같은 굵기로
+/// 적어도 **놓이는 자리의 소수점에 따라** 1px 로도 2px 로도 그려진다 — 글줄 높이가
+/// 정수가 아니라서 섹션마다 시작하는 자리의 소수점이 다르다.
+///
+/// 설정 화면에서 실제로 그렇게 갈렸다. 픽셀로 재어 보니
+///
+///     화면      y 501~502   2px   먹량 0.580
+///     의견      y 887       1px   먹량 0.290   ← 혼자 절반
+///     앱에 대하여 y 1319~1320 2px   먹량 0.580
+///
+/// 「의견 밑줄만 얇아 보인다」는 말이 그것이었다. 색도 굵기 값도 같은데 그려진 것이
+/// 달랐던 것이라, 눈으로는 까닭을 댈 수 없고 재야 보인다.
+///
+/// **정수 픽셀로 끊으면 어디에 놓이든 같다.** 높이가 픽셀 수로 정수면 위아래 끝이
+/// 같은 방향으로 반올림되어 그 차이가 정확히 그 정수로 남는다.
+/// 3배 화면에서 2px(0.667pt), 2배 화면에서 1px(0.5pt) — 지금 대부분이 그려지던 굵기다.
+struct Rule: View {
+    var color: Color = Theme.grey3
+    @Environment(\.displayScale) private var scale
+
+    var body: some View {
+        Rectangle()
+            .fill(color)
+            .frame(height: max(1, (Theme.ruleWidth * scale).rounded()) / scale)
     }
 }
