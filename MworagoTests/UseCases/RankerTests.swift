@@ -224,3 +224,38 @@ struct RankerTests {
         #expect(Ranker.search("스고이", in: Self.사전([])).isEmpty)
     }
 }
+
+/// **사전이 권하지 않는 철자가 카드 머리에 섰다.**
+///
+/// `콘방와` 를 치면 규칙은 `こんばんわ` 를 만들고 사전에도 그 철자가 실려 있다 —
+/// `ik`(불규칙 가나 표기)라는 표시를 달고서. 찾는 길은 그대로 열어 두고, 화면에
+/// 세울 때만 권하는 철자로 바꾼다.
+///
+/// **소리는 함께 옮겨야 한다.** `こんばんは` 를 그대로 음차하면 「콘반하」가 되는데
+/// 사용자가 친 것도 들리는 것도 「콘반와」다.
+@Suite("권하는 철자로 세우기")
+struct RankerPreferredReadingTests {
+
+    static let 저녁인사 = DictEntry(
+        readings: [DictForm(text: "こんばんは", priority: 10),
+                   DictForm(text: "こんばんわ", priority: 0, isRare: true)],
+        writings: [DictForm(text: "今晩は", priority: 10)],
+        glosses: ["good evening"], usuallyKana: true, partsOfSpeech: ["int"])
+
+    @Test("불규칙 철자로 찾아와도 카드에는 권하는 철자가 선다")
+    func 카드머리() throws {
+        let index = DictIndex(entries: [Self.저녁인사])
+        let 결과 = try #require(Ranker.search("콘방와", in: index).first)
+        #expect(결과.reading == "こんばんは")
+        #expect(결과.headword == "今晩は")
+        // 규칙이 만들어 낸 후보는 그대로 남는다 — 무엇으로 찾았는지가 지워지면 안 된다.
+        #expect(결과.matchedKana == "こんばんわ")
+    }
+
+    @Test("소리 줄은 사전이 남긴 증거대로 읽는다")
+    func 소리줄() throws {
+        let index = DictIndex(entries: [Self.저녁인사])
+        let 결과 = try #require(Ranker.search("콘방와", in: index).first)
+        #expect(결과.sound == "콘반와")
+    }
+}

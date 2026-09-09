@@ -101,7 +101,16 @@ public enum JMDictParser {
         private var buffer = ""
         private var capturing = false
 
-        private static let captured: Set<String> = ["keb", "reb", "gloss", "ke_pri", "re_pri", "ke_inf", "misc", "pos"]
+        private static let captured: Set<String> = ["keb", "reb", "gloss", "ke_pri", "re_pri", "ke_inf", "re_inf", "misc", "pos"]
+
+        /// **사전이 권하지 않는 철자를 가리키는 읽기 표지.**
+        ///
+        /// `ik` 불규칙 가나 표기 · `ok` 옛 가나 · `rk` 드문 가나 · `sk` 검색 전용.
+        /// JMdict 실물에 붙은 수는 `sk` 5,062 · `ok` 916 · `ik` 391 · `rk` 222 다.
+        ///
+        /// **`gikun` 은 여기 없다.** 그것은 잘못 적은 것이 아니라 뜻으로 읽는 제대로 된
+        /// 읽기라서(`煙草` 를 `タバコ` 로), 함께 깎으면 멀쩡한 읽기가 머리에서 내려간다.
+        private static let rareReadingTags: Set<String> = ["ik", "ok", "rk", "sk"]
 
         /// `misc` 에는 사용역 말고도 여러 표지가 섞여 있다(`abbr`·`on-mim`·`yoji`…).
         /// **"써도 되는 말인가"에 답하는 것만 고른다** — 나머지는 화면에서 할 말이 없다.
@@ -148,6 +157,9 @@ public enum JMDictParser {
             case "ke_inf":
                 // exposeEntities 를 거쳐 표지 이름이 그대로 들어온다: sK · rK · iK
                 if text == "sK" || text == "rK" { formIsRare = true }
+            case "re_inf":
+                // 표기 쪽과 짝이 되는 자리. 읽기에도 "그렇게 적지 않는다"는 표지가 붙는다.
+                if Self.rareReadingTags.contains(text) { formIsRare = true }
             case "misc":
                 // `uk` 는 사용역이 아니라 표기 규칙이라 제 자리가 따로 있다.
                 if text == "uk" { usuallyKana = true }
@@ -160,7 +172,7 @@ public enum JMDictParser {
                 writings.append(DictForm(text: formText, priority: formPriority, isRare: formIsRare))
             case "r_ele":
                 guard !formText.isEmpty else { return }
-                readings.append(DictForm(text: formText, priority: formPriority))
+                readings.append(DictForm(text: formText, priority: formPriority, isRare: formIsRare))
             // 뜻은 앞의 둘만 싣는다. 다섯을 다 실으면 색인이 눈에 띄게 커지는데,
             // 화면에 보이는 것은 어차피 앞의 한둘이다.
             case "gloss": if glosses.count < 2 { glosses.append(text) }

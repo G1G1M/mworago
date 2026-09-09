@@ -343,11 +343,14 @@ if !explainWords.isEmpty {
         print("활용 벌점 \(wordWeights.deinflectionPenalty) · JMdict \(wordWeights.jmdictWeight)"
               + " · 동점 가르기 \(wordWeights.kanaIdentityWeight)"
               + "   (분절은 활용 벌점 \(Segmenter.defaultWeights.deinflectionPenalty) 를 쓴다)")
-        print("표제어        읽기          점수   활용     뜻")
-        print(String(repeating: "─", count: 76))
+        // **소리도 찍는다.** 카드에는 읽기 아래에 한글 음차가 함께 서는데, 그 둘이
+        // 따로 정해진다 — 읽기는 사전이 권하는 철자이고 소리는 사전이 남긴 증거로
+        // 되돌린 것이다(`こんばんは` 는 「콘반와」). 하나만 보아서는 카드를 못 본다.
+        print("표제어        읽기          소리          점수   활용     뜻")
+        print(String(repeating: "─", count: 90))
         for (i, result) in results.prefix(10).enumerated() {
             let rule = (result.deinflection ?? "—").padded(9)
-            print("\(i + 1). \(result.headword.padded(14))\(result.reading.padded(14))\(String(format: "%6.1f", result.score))  \(rule)\(result.entry.glosses.prefix(2).joined(separator: ", "))")
+            print("\(i + 1). \(result.headword.padded(14))\(result.reading.padded(14))\(result.sound.padded(14))\(String(format: "%6.1f", result.score))  \(rule)\(result.entry.glosses.prefix(2).joined(separator: ", "))")
         }
         if results.count > 10 { print("   … 외 \(results.count - 10)개") }
     }

@@ -211,3 +211,83 @@ struct JMDictUsageTests {
         #expect(store.lookup("きさま").first?.entry.usageTags == ["derog", "male"])
     }
 }
+
+/// **읽기에도 표지가 붙는다.**
+///
+/// 표기 쪽 표지(`ke_inf` 의 `sK`·`rK`)는 진작 읽고 있었는데 읽기 쪽(`re_inf`)은
+/// 통째로 흘리고 있었다. 그래서 `콘방와` 를 치면 카드 머리에 `こんばんわ` 가 섰다 —
+/// 사전은 그것을 `ik`(불규칙 가나 표기)로 표시해 두었고 권하는 철자는 `こんばんは` 다.
+///
+/// JMdict 실물에 붙은 수: `sk` 5,062 · `ok` 916 · `ik` 391 · `gikun` 336 · `rk` 222.
+@Suite("읽기에 붙은 표지")
+struct JMDictReadingInfoTests {
+
+    /// 今晩は(1289480) · 今日は(1289400) 를 실물에서 잘라온 것.
+    static let 인사 = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE JMdict [
+    <!ENTITY ik "word containing irregular kana usage">
+    <!ENTITY sk "search-only kana form">
+    <!ENTITY uk "word usually written using kana alone">
+    ]>
+    <JMdict>
+    <entry><ent_seq>1289480</ent_seq>
+    <k_ele><keb>今晩は</keb><ke_pri>ichi1</ke_pri></k_ele>
+    <r_ele><reb>こんばんは</reb><re_pri>ichi1</re_pri></r_ele>
+    <r_ele><reb>こんばんわ</reb><re_inf>&ik;</re_inf></r_ele>
+    <sense><pos>&int;</pos><misc>&uk;</misc><gloss>good evening</gloss></sense>
+    </entry>
+    <entry><ent_seq>1289400</ent_seq>
+    <k_ele><keb>今日は</keb><ke_pri>ichi1</ke_pri></k_ele>
+    <r_ele><reb>こんにちは</reb><re_pri>ichi1</re_pri></r_ele>
+    <r_ele><reb>こんにちわ</reb><re_inf>&ik;</re_inf></r_ele>
+    <r_ele><reb>こにちわ</reb><re_inf>&sk;</re_inf></r_ele>
+    <sense><pos>&int;</pos><misc>&uk;</misc><gloss>hello</gloss></sense>
+    </entry>
+    </JMdict>
+    """
+
+    @Test("사전이 권하지 않는 철자(ik·sk)를 표시한다")
+    func 표지읽기() throws {
+        let 저녁인사 = try #require(JMDictParser.parse(xml: Self.인사).first)
+        #expect(저녁인사.readings.map(\.text) == ["こんばんは", "こんばんわ"])
+        #expect(저녁인사.readings.map(\.isRare) == [false, true])
+
+        let 낮인사 = try JMDictParser.parse(xml: Self.인사)[1]
+        // 검색 전용(`sk`)은 오타에 가깝다. 찾을 때는 열어 두되 화면에 세우면 안 된다.
+        #expect(낮인사.readings.map(\.isRare) == [false, true, true])
+    }
+
+    /// `gikun` 은 잘못 적은 것이 아니라 **뜻으로 읽는** 제대로 된 읽기다
+    /// (`煙草` 를 `タバコ` 로 읽는 것). 함께 깎으면 멀쩡한 읽기가 머리에서 내려간다.
+    @Test("gikun 은 깎지 않는다")
+    func 의훈은그대로() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE JMdict [<!ENTITY gikun "gikun (meaning as reading)">]>
+        <JMdict><entry><ent_seq>1</ent_seq>
+        <k_ele><keb>煙草</keb></k_ele>
+        <r_ele><reb>タバコ</reb><re_inf>&gikun;</re_inf></r_ele>
+        <sense><gloss>tobacco</gloss></sense>
+        </entry></JMdict>
+        """
+        #expect(try JMDictParser.parse(xml: xml).first?.readings.first?.isRare == false)
+    }
+
+    /// 파서만 읽고 색인이 안 실으면 화면에는 없는 것이다.
+    @Test("색인에 굽고 다시 읽어도 남는다")
+    func 색인왕복() throws {
+        let path = NSTemporaryDirectory() + "mworago-reinf-\(UUID().uuidString).db"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let entries = try JMDictParser.parse(xml: Self.인사)
+        try DictionaryStore.build(entries: entries, at: path)
+        let store = try DictionaryStore(path: path)
+
+        // 찾는 길은 열려 있다 — 사용자는 `와` 로 친다.
+        let hit = try #require(store.lookup("こんばんわ").first)
+        #expect(hit.reading == "こんばんわ")
+        // 그런데 그 항목이 머리에 세울 읽기는 권하는 철자다.
+        #expect(hit.entry.preferredReading("こんばんわ") == "こんばんは")
+    }
+}

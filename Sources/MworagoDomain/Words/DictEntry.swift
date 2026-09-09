@@ -4,7 +4,11 @@ import Foundation
 public struct DictForm: Sendable, Equatable {
     public let text: String
     public let priority: Int
-    /// 검색 전용(`sK`)이거나 거의 안 쓰는(`rK`) 표기. 실제로 그렇게 적는 사람이 없다.
+    /// **사전이 권하지 않는 철자.** 실려 있을 뿐 실제로 그렇게 적는 사람이 없다.
+    ///
+    /// 표기는 검색 전용(`sK`)과 거의 안 쓰는 것(`rK`), 읽기는 불규칙 가나 표기(`ik`) ·
+    /// 옛 가나(`ok`) · 드문 가나(`rk`) · 검색 전용(`sk`)이 여기 걸린다.
+    /// **찾는 길은 열어 두고 화면에서만 내린다** — 사용자는 실제로 그렇게 친다.
     public let isRare: Bool
 
     public init(text: String, priority: Int, isRare: Bool = false) {
@@ -68,7 +72,50 @@ public struct DictEntry: Sendable, Equatable {
     /// 실제로 쓰이는 표기만. 전부 희귀 표기라면 가나로 쓰는 낱말이나 마찬가지다.
     public var usableWritings: [DictForm] { writings.filter { !$0.isRare } }
 
-    public var headword: String { usableWritings.first?.text ?? readings.first?.text ?? "" }
+    /// 사전이 권하는 철자로 적은 읽기만.
+    ///
+    /// **하나도 안 남으면 거르지 않는다.** 읽기가 없는 표제항은 있을 수 없어서,
+    /// 걸러 낸 결과가 비었다는 것은 거를 자리가 아니었다는 뜻이다.
+    public var usableReadings: [DictForm] {
+        let usable = readings.filter { !$0.isRare }
+        return usable.isEmpty ? readings : usable
+    }
+
+    public var headword: String { usableWritings.first?.text ?? usableReadings.first?.text ?? "" }
+
+    /// 화면 머리에 세울 읽기. **사전이 권하지 않는 철자로 찾아왔으면 권하는 철자로 세운다.**
+    ///
+    /// `콘방와` 를 치면 규칙은 `こんばんわ` 를 만들고 사전에도 그 철자가 실려 있다 —
+    /// `ik`(불규칙 가나 표기)라는 표시를 달고서. 표시를 읽지 않으면 둘이 같은 급이 되어,
+    /// 사용자가 `와` 로 쳤다는 이유만으로 권하지 않는 철자가 카드 머리에 선다.
+    ///
+    /// 바꿔 세울 자리가 없으면(읽기가 전부 그런 철자라면) 찾은 것을 그대로 둔다.
+    ///
+    /// **옛 가나(`ok`)에서는 소리까지 달라질 수 있다.** 철자만 낡은 것(`あはれ`→`あわれ`)이
+    /// 대부분이지만 읽기 자체가 낡은 것도 섞여 있어서(`梔子` 의 `しし`→`くちなし`),
+    /// 그런 자리에서는 소리 줄이 친 것과 어긋난다. 그래도 머리에 세우는 것은 지금 쓰는
+    /// 철자여야 한다 — 사전이 낡았다고 적어 둔 것을 카드 머리에 올릴 까닭이 없고,
+    /// 그런 항목은 순위 아래쪽이라 눈에 닿을 일도 드물다.
+    public func preferredReading(_ matched: String) -> String {
+        guard readings.contains(where: { $0.text == matched && $0.isRare }),
+              let preferred = readings.first(where: { !$0.isRare })
+        else { return matched }
+        return preferred.text
+    }
+
+    /// 소리 나는 대로 적은 읽기. 음차는 이것을 옮긴다.
+    ///
+    /// 권하는 철자를 머리에 세우고 나면 음차가 **「콘반하」**가 된다 — 사용자가 친 것도
+    /// 실제로 들리는 것도 「콘반와」다. 표기와 발음이 어긋나는 자리가 낱말 끝에 남아 있다.
+    ///
+    /// **지어내지 않는다.** 같은 표제항에 끝만 `わ` 로 바뀐 이표기가 나란히 서 있는 것이
+    /// 사전이 남긴 증거다(`こんばんは` 곁의 `こんばんわ`). 그런 이표기가 없으면 표기대로
+    /// 읽는다 — `葉`(잎)의 `は` 는 하다.
+    public func spokenReading(_ reading: String) -> String {
+        guard reading.count > 1, reading.hasSuffix("は") else { return reading }
+        let spoken = reading.dropLast() + "わ"
+        return readings.contains { $0.text == spoken } ? String(spoken) : reading
+    }
 }
 
 /// 색인이 돌려주는 한 건. 점수는 **찾은 그 읽기의** 점수다.

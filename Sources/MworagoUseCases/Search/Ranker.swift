@@ -4,12 +4,27 @@ import MworagoDomain
 /// 검색 결과 한 건.
 public struct SearchResult: Sendable {
     public let entry: DictEntry
-    public let reading: String        // 사전에서 찾은 읽기
+    /// 화면에 세울 읽기. **사전이 권하는 철자다** — 불규칙 가나 표기(`ik`)나 검색 전용
+    /// 철자(`sk`)로 찾아왔으면 여기서 권하는 철자로 바뀐다(`こんばんわ` → `こんばんは`).
+    /// 무엇으로 찾았는지는 `matchedKana` 에 그대로 남는다.
+    public let reading: String
     public let matchedKana: String    // 규칙이 만들어 낸 가나 후보
     public let deinflection: String?  // 활용을 되돌렸다면 그 이름 ("명령형" 등)
     public let score: Double
 
     public var headword: String { entry.headword }
+
+    /// 화면에 적을 한글 음차.
+    ///
+    /// **읽기를 그대로 옮기지 않는다.** 사전이 권하는 철자에는 소리와 어긋나는 `は` 가
+    /// 남아 있어서(`こんばんは` 는 「콘반와」다), 사전이 남긴 증거로 그 자리를 되돌린다.
+    ///
+    /// **조사 `は`·`へ` 도 쓰는 대로 읽지 않는다.** 표기대로 옮기면 `와타시와` 를 친
+    /// 사람의 카드에 "하"가 적힌다 — 찾을 때 열어 준 사이를 여기서 닫는다.
+    public var sound: String {
+        KanaToHangul.transliterate(entry.spokenReading(reading),
+                                   asParticle: entry.wordClass == .function)
+    }
 
     /// 가나 옆 괄호에 넣을 한자. 가나로만 쓰는 낱말이면 nil.
     ///
@@ -356,7 +371,9 @@ public enum Ranker {
                     if deinflection.rule != nil { score -= weights.deinflectionPenalty }
 
                     results.append(SearchResult(entry: hit.entry,
-                                                reading: hit.reading,
+                                                // 찾기는 사전에 실린 철자 그대로 하고,
+                                                // 세우는 것은 사전이 권하는 철자로 한다.
+                                                reading: hit.entry.preferredReading(hit.reading),
                                                 matchedKana: candidate.kana,
                                                 deinflection: deinflection.rule,
                                                 score: score))

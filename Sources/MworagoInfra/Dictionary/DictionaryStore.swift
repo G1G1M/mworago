@@ -22,7 +22,12 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
     ///
     /// 색인은 구워서 앱에 싣는 물건이라, 코드만 고치고 다시 굽지 않으면
     /// `no such column` 같은 말로 실패한다. 무엇이 잘못됐는지 바로 알 수 있게 새겨 둔다.
-    static let schemaVersion = 5
+    ///
+    /// **칸이 그대로여도 담기는 것이 달라지면 올린다.** 6 은 읽기에 붙은 표지
+    /// (`ik`·`ok`·`rk`·`sk`)를 처음 실은 판이다 — 칸(`readings` 의 셋째 자리)은
+    /// 5 에도 있었지만 늘 0 이었다. 안 올리면 옛 색인이 아무 말 없이 열려서,
+    /// 코드는 고쳐졌는데 화면에는 `こんばんわ` 가 그대로 선다.
+    static let schemaVersion = 6
 
     public init(path: String) throws {
         var handle: OpaquePointer?
