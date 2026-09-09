@@ -2,7 +2,7 @@
 
 ![정확도](https://img.shields.io/badge/%EC%A0%95%ED%99%95%EB%8F%84-137%2F150%20%2891%25%29-171717?style=flat-square)
 ![3위 안](https://img.shields.io/badge/3%EC%9C%84%20%EC%95%88-147%2F150%20%2898%25%29-171717?style=flat-square)
-![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-329%EA%B0%9C-4a4a4a?style=flat-square)
+![테스트](https://img.shields.io/badge/%ED%85%8C%EC%8A%A4%ED%8A%B8-338%EA%B0%9C-4a4a4a?style=flat-square)
 ![플랫폼](https://img.shields.io/badge/iOS-18%2B-b0b0b0?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6.2-b0b0b0?style=flat-square)
 ![JMdict](https://img.shields.io/badge/JMdict-CC%20BY--SA%204.0-b0b0b0?style=flat-square)
@@ -135,7 +135,7 @@ MworagoApp/
 ### 시험과 도구
 
 ```
-MworagoTests/         테스트 329개. 코어와 같은 층으로 나눈다
+MworagoTests/         테스트 338개. 코어와 같은 층으로 나눈다
 Tools/                앱에 실리지 않는다
   fetch/                사전 · 빈도 · 글꼴 · 예문 내려받기
   bake/                 받은 것을 앱이 실을 모양으로 굽기
@@ -144,7 +144,7 @@ Tools/                앱에 실리지 않는다
 ## 실행
 
 ```sh
-swift test                  # 테스트 329개
+swift test                  # 테스트 338개
 ./Tools/fetch/fetch-jmdict.sh     # 사전 내려받기, 약 10MB
 swift run SpikeRunner       # 측정
 ```
@@ -171,6 +171,7 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 #   --expanded                    카드의 `다른 뜻 N` 을 펴 둔 채로
 #   --collecting                  담을 곳을 묻는 판을 펼친 채로
 #   --naming                      그 판에서 새 이름을 받는 칸까지 펼친 채로
+#   --saved[=이름]                "「…」에 담았어요" 줄을 띄운 채로(눌러 두면 안 사라진다)
 #   --guide                       입력 도움말
 #   --credits                     도움말 안의 "이 앱이 쓰는 자료"까지
 #   책장
@@ -185,6 +186,8 @@ xcrun simctl launch <device> com.g1g1e.Mworago --query=다이죠부야쿠소쿠
 #   --list-moving                 그 위에 "어디로 옮길까요" 판까지
 #   연습·가나
 #   --revealed                    연습 카드를 뒤집은 채로
+#   --practice-folder[=이름]      그 묶음만 연습하는 채로(이름을 비우면 아직 안 넣은 것)
+#   --practice-picking            "무엇을 연습할까요" 판을 펼친 채로
 #   --quiz                        가나 탭을 `익히기` 쪽으로 연 채로
 #   --kana=<글자>                 그 글자의 상세를 펼친 채로
 #   앞의 두 장
