@@ -15,11 +15,11 @@
 
 <table>
   <tr>
-    <td align="center" width="20%"><img src="docs/screenshots/iphone-1-찾기.png" alt="찾기" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-1-찾기.gif" alt="찾기" width="100%"></td>
     <td align="center" width="20%"><img src="docs/screenshots/iphone-2-문장.png" alt="문장" width="100%"></td>
-    <td align="center" width="20%"><img src="docs/screenshots/iphone-3-책장.png" alt="책장" width="100%"></td>
-    <td align="center" width="20%"><img src="docs/screenshots/iphone-4-연습.png" alt="연습" width="100%"></td>
-    <td align="center" width="20%"><img src="docs/screenshots/iphone-5-글자.png" alt="글자" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-3-책장.gif" alt="책장" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-4-연습.gif" alt="연습" width="100%"></td>
+    <td align="center" width="20%"><img src="docs/screenshots/iphone-5-글자.gif" alt="글자" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><b>찾기</b><br><sub>들린 대로 치면<br>원문이 나온다</sub></td>
