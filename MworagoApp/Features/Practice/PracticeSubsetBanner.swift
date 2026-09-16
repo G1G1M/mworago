@@ -28,8 +28,8 @@ struct PracticeSubsetBanner: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5))
+            // 찾기의 입력 바 · 담은 자리 알림과 같은 유리다. 이 자리에서 떠 있는 것은 셋뿐이다.
+            .glassCapsule()
             .padding(.top, 14)
             Spacer()
         }

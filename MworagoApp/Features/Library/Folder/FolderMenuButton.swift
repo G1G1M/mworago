@@ -37,9 +37,10 @@ struct FolderMenuButton: View {
         // 그 순간만 다른 앱이 된다. 뜨는 자리(단추 옆)는 시스템에 맡기고
         // 안에 서는 것만 이쪽에서 그린다.
         .popover(isPresented: $isOpen, arrowEdge: .top) {
+            // 바탕은 시스템에 맡긴다. iOS 26 의 팝오버는 유리라, 종이색으로 덮으면
+            // 입력 바 · 탭바와 같은 층에 뜬 것이 혼자 불투명한 판이 된다.
             menuList
                 .presentationCompactAdaptation(.popover)
-                .presentationBackground(Theme.paper)
         }
     }
 
