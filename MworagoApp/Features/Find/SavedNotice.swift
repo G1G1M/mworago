@@ -32,7 +32,7 @@ struct SavedNotice: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            .background(Theme.grey4, in: Capsule())
+            .glassCapsule()
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
