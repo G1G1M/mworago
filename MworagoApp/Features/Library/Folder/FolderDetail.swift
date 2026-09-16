@@ -87,6 +87,10 @@ struct FolderDetail: View {
             }
             .scrollBounceBehavior(.basedOnSize)
         }
+        // 줄임표 단추 밑에 뜨는 목록. 까닭은 `FolderMenuList` 에 적었다.
+        .overlayPreferenceValue(FolderMenuAnchor.self) { anchor in
+            menuOverlay(anchor)
+        }
         // **제목은 화면 안에서 말한다.** 내비 바에도 두면 같은 이름이 두 번 나온다 —
         // 책장 루트에서 내비 바를 숨긴 것과 같은 까닭이다. 바는 뒤로 가는 길로만 쓴다.
         .navigationTitle("")
@@ -214,26 +218,52 @@ struct FolderDetail: View {
                 // 둘 서고 "이 묶음에 무엇을 할 수 있는지"가 두 자리로 갈린다.
                 // 한 자리에서 열어 고르면 그 목록이 곧 답이다.
                 if !words.isEmpty || folder != nil {
-                    FolderMenuButton(isOpen: $menuOpen,
-                                     selecting: selecting,
-                                     hasWords: !words.isEmpty,
-                                     isNamed: folder != nil,
-                                     onPractice: { onPractice(words) },
-                                     onToggleSelecting: {
-                                         if selecting {
-                                             endSelecting()
-                                         } else {
-                                             withAnimation(.snappy(duration: 0.18)) { selecting = true }
-                                         }
-                                     },
-                                     onRename: { renaming = true },
-                                     onRemove: { removing = true })
+                    FolderMenuButton(isOpen: $menuOpen)
                 }
             }
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, Theme.screenTop)
         .padding(.bottom, Theme.blockGap)
+    }
+
+    /// 펼친 목록과, 바깥을 누르면 닫히는 바탕.
+    ///
+    /// 목록의 오른쪽 끝을 단추의 오른쪽 끝에 맞추고 단추 바로 밑에 둔다 — 팝오버가 서던 자리다.
+    @ViewBuilder
+    private func menuOverlay(_ anchor: Anchor<CGRect>?) -> some View {
+        GeometryReader { proxy in
+            if menuOpen, let anchor {
+                let button = proxy[anchor]
+                ZStack(alignment: .topLeading) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .ignoresSafeArea()
+                        .onTapGesture { closeMenu() }
+                    FolderMenuList(selecting: selecting,
+                                   hasWords: !words.isEmpty,
+                                   isNamed: folder != nil,
+                                   onClose: { closeMenu() },
+                                   onPractice: { onPractice(words) },
+                                   onToggleSelecting: {
+                                       if selecting {
+                                           endSelecting()
+                                       } else {
+                                           withAnimation(.snappy(duration: 0.18)) { selecting = true }
+                                       }
+                                   },
+                                   onRename: { renaming = true },
+                                   onRemove: { removing = true })
+                        .offset(x: button.maxX - FolderMenuList.width, y: button.maxY + 8)
+                        .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .topTrailing)))
+                }
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: menuOpen)
+    }
+
+    private func closeMenu() {
+        menuOpen = false
     }
 
     // MARK: 고르기
