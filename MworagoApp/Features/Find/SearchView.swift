@@ -35,6 +35,8 @@ struct SearchView: View {
     /// **화면에 하나뿐이어야 한다.** 카드마다 시트를 달면 조각 수만큼 생기고,
     /// 그중 어느 것이 떠 있는지 화면이 스스로 알 수 없게 된다.
     @State private var collecting: CollectedWord?
+    /// 바닥에 뜬 것들(담은 자리 줄 · 입력 바)의 높이. 답 목록이 이만큼 그 밑으로 흘러든다.
+    @State private var dockHeight: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -92,25 +94,34 @@ struct SearchView: View {
                 // 읽던 자리를 눈이 다시 찾아야 한다.
                 content
                     .ignoresSafeArea(.keyboard, edges: .bottom)
-                if let saved = justSaved {
-                    SavedNotice(saved: saved,
-                                onOpen: {
-                                    justSaved = nil
-                                    onOpenFolder(saved)
-                                },
-                                onExpire: {
-                                    withAnimation(.easeOut(duration: 0.2)) { justSaved = nil }
-                                })
-                        .padding(.bottom, 8)
-                        .transition(.opacity)
+                    // **답은 입력 바 밑까지 내려간다.** 바가 유리인데 목록이 바 윗선에서
+                    // 끝나면, 유리 뒤에는 늘 빈 종이뿐이라 막힌 판으로 보였다. 탭바처럼
+                    // 글이 밑으로 지나가야 유리가 유리로 읽힌다. 바는 뒤에 적혀 위에 그려진다.
+                    .padding(.bottom, hasResults ? -dockHeight : 0)
+                // 바닥에 뜬 것들을 한 덩어리로 잰다. 이 묶음은 답이 있든 없든 늘 여기 서므로
+                // 입력 바의 자리(둘째)도 바뀌지 않는다.
+                VStack(spacing: 0) {
+                    if let saved = justSaved {
+                        SavedNotice(saved: saved,
+                                    onOpen: {
+                                        justSaved = nil
+                                        onOpenFolder(saved)
+                                    },
+                                    onExpire: {
+                                        withAnimation(.easeOut(duration: 0.2)) { justSaved = nil }
+                                    })
+                            .padding(.bottom, 8)
+                            .transition(.opacity)
+                    }
+                    SearchInputBar(text: $input,
+                                   focused: $inputFocused,
+                                   onClear: {
+                                       input = ""
+                                       engine.search("")
+                                   },
+                                   onGuide: { showingGuide = true })
                 }
-                SearchInputBar(text: $input,
-                               focused: $inputFocused,
-                               onClear: {
-                                   input = ""
-                                   engine.search("")
-                               },
-                               onGuide: { showingGuide = true })
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
                 // 아래쪽은 **손이 얹히는 순간에도** 닫는다. 그래야 바가 바닥까지 내려가
                 // 키보드가 그 자리에서 곧바로 밀어 올린다 — 키보드 바로 위가 바의 자리다.
                 Spacer(minLength: 0)
@@ -292,6 +303,8 @@ struct SearchView: View {
                 .onTapGesture { inputFocused = false }
             }
             .scrollBounceBehavior(.basedOnSize)
+            // 밑으로 흘러든 만큼 끝에 자리를 남긴다 — 마지막 카드도 바 위까지 올려 읽을 수 있게.
+            .contentMargins(.bottom, dockHeight)
             // **스크롤로는 내리지 않는다.**
             //
             // `.interactively` 는 손가락을 따라 키보드를 조금씩 밀어 내린다. 그 사이
