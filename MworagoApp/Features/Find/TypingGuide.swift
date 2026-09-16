@@ -82,7 +82,7 @@ struct TypingGuide: View {
         Rule(name: "탁음",
              examples: [.init("갓코", result: "学校"),
                         .init("캇코", result: "格好")],
-             note: "들리는 대로 다 · 타를 가른다"),
+             note: "들리는 대로 가 · 카를 갈라 쳐요"),
     ]
 
     var body: some View {

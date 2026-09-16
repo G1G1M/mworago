@@ -42,21 +42,16 @@ struct FolderPicker: View {
     /// 화면 위에 덧그린 판이라, 그 길로 닫으면 판이 아니라 뒤에 있는 화면이 닫힌다.
     var onClose: () -> Void = {}
 
-    /// 지금 고른 자리. **`nil` 과 "안 고름"이 다르므로** 옵셔널을 겹쳐 쓰지 않고
-    /// 갈래로 적는다 — `nil` 은 "나중에 정하기"라는 **고른 값**이다.
-    enum Pick: Equatable {
-        case folder(String)
-        case later
-        var name: String? { if case .folder(let n) = self { n } else { nil } }
-    }
-    @State private var picked: Pick
+    /// 고른 줄과 이름 칸에 친 글자. `저장` 이 어디에 담을지는 이것이 정한다 —
+    /// 까닭은 `FolderChoice` 에 적었다.
+    @State private var choice: FolderChoice
+    private var picked: FolderChoice.Pick { choice.picked }
 
     /// 새 묶음 이름을 받는 중인가.
     ///
     /// **묶음이 하나도 없으면 펼친 채로 연다.** "폴더가 없으면 거기서 만든다"는 것이
     /// 이 모달의 절반인데, 빈 목록에 만들기 버튼 하나만 놓으면 그것을 한 번 더 누르게 한다.
     @State private var naming: Bool
-    @State private var newName = ""
     @FocusState private var nameFocused: Bool
 
     init(word: CollectedWord, folderNames: [String], lastFolder: String?,
@@ -73,7 +68,7 @@ struct FolderPicker: View {
         // `--naming` 은 이름 받는 칸을 펼친 채 띄운다. `--collecting` 과 같은 취지 —
         // 시뮬레이터는 손으로 두드릴 수 없어 이 상태를 눈으로 볼 길이 없다.
         _naming = State(initialValue: folderNames.isEmpty || LaunchOptions.current.has("naming"))
-        _picked = State(initialValue: lastFolder.map(Pick.folder) ?? .later)
+        _choice = State(initialValue: FolderChoice(lastFolder: lastFolder))
     }
 
     var body: some View {
@@ -98,10 +93,10 @@ struct FolderPicker: View {
             // 한 번만 긋는다.
             row(name: "나중에 정하기",
                 picked: picked == .later,
-                dim: true) { picked = .later }
+                dim: true) { choice.choose(.later) }
             DialogDivider()
             NewFolderField(naming: $naming,
-                           name: $newName,
+                           name: $choice.typed,
                            focused: $nameFocused,
                            canFold: !folderNames.isEmpty,
                            onCreate: createAndPick)
@@ -113,7 +108,7 @@ struct FolderPicker: View {
     private var folderRows: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(folderNames, id: \.self) { name in
-                row(name: name, picked: picked == .folder(name)) { picked = .folder(name) }
+                row(name: name, picked: picked == .folder(name)) { choice.choose(.folder(name)) }
             }
             // **방금 만든 자리도 줄로 선다.** 이름을 적어 만들면 그 자리가 골라지는데,
             // 목록은 아직 그것을 모른다(밖에서 받은 값이고 저장할 때 비로소 생긴다).
@@ -130,7 +125,8 @@ struct FolderPicker: View {
     /// 둘인데, 하나는 "무엇을"이고 하나는 "그래서 어떻게"라 겹치지 않는다.
     private var confirm: some View {
         DialogActions(confirmTitle: "저장",
-                      onConfirm: { pick(picked.name) },
+                      // 칸에 치다 만 이름도 고른 것이다 — `만들기` 를 안 눌렀다고 버리지 않는다.
+                      onConfirm: { pick(choice.destination) },
                       onCancel: onClose)
             // 만드는 줄과 조금 더 벌린다. 위는 판 안에서 고르고 만드는 일이고 여기는
             // 판을 닫는 일이라, 줄 사이 간격과 같으면 한 목록의 마지막 줄로 읽힌다.
@@ -185,17 +181,11 @@ struct FolderPicker: View {
         .accessibilityHint(picked ? "지금 고른 자리입니다" : "")
     }
 
-    private var trimmedName: String {
-        newName.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     /// 이름을 받아 그 자리를 고른 상태로 만든다. 담기는 `저장` 이 한다.
     private func createAndPick() {
-        guard !trimmedName.isEmpty else { return }
-        picked = .folder(trimmedName)
+        guard choice.create() else { return }
         naming = false
         nameFocused = false
-        newName = ""
     }
 
     private func pick(_ folder: String?) {
