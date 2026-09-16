@@ -421,7 +421,17 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 12) {
             // **고르는 중에는 이 줄이 통째로 바뀐다.** 묶음 화면과 같은 문법이다 —
             // 이름 자리에 무엇을 고르는 중인지가 서고, 그 낱말들로 할 수 있는 일이 뒤따른다.
-            if selecting { selectionHead } else { titleRow }
+            if selecting {
+                selectionHead
+            } else {
+                LibraryTitleRow(wordCount: collection.words.count,
+                                isEmpty: isEmpty,
+                                grouping: grouping,
+                                editing: $editing,
+                                onStartSelecting: {
+                                    withAnimation(.snappy(duration: 0.18)) { selecting = true }
+                                })
+            }
             // 담긴 것이 없으면 무엇으로 묶어 볼지도 없다. 고르는 중에도 감춘다 —
             // 고르다 말고 보기를 바꾸면 고른 것이 어디로 갔는지 알 수 없다.
             if !collection.words.isEmpty && !selecting { dial }
@@ -429,56 +439,6 @@ struct LibraryView: View {
         .padding(.horizontal, Theme.gutter)
         .padding(.top, 18)
         .padding(.bottom, 14)
-    }
-
-    /// 화면 이름과, 이 목록에서 손볼 수 있는 것.
-    private var titleRow: some View {
-        Group {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("책장")
-                    .font(Theme.korean(.heading, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                // 개수는 담긴 낱말을 센다. **`0` 은 적지 않는다** — 묶음만 만들어 둔
-                // 책장에서 알려 주는 것이 없고, 빈 자리를 세어 보라는 말처럼 읽힌다.
-                if !collection.words.isEmpty {
-                    Text("\(collection.words.count)")
-                        .font(Theme.korean(.body))
-                        .foregroundStyle(Theme.grey2)
-                }
-
-                Spacer(minLength: 12)
-
-                // **보기마다 손볼 것이 다르다.** 묶음별에서 지우는 것은 묶음이고,
-                // 모두에서 손보는 것은 낱말이다. 날짜는 사람이 만든 자리가 아니라
-                // 담은 때가 만든 자리라 지울 것도 고를 것도 없다 —
-                // 예전에는 거기서도 단추가 떠 있었지만 눌러도 아무 일이 없었다.
-                if !isEmpty {
-                    switch grouping {
-                    case .folders:
-                        Button {
-                            withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
-                        } label: {
-                            Text(editing ? "완료" : "지우기")
-                                .font(Theme.korean(.body, weight: editing ? .medium : .regular))
-                                .foregroundStyle(editing ? Theme.ink : Theme.grey2)
-                        }
-                        .buttonStyle(.plain)
-                    case .list:
-                        Button {
-                            withAnimation(.snappy(duration: 0.18)) { selecting = true }
-                        } label: {
-                            Text("고르기")
-                                .font(Theme.korean(.body))
-                                .foregroundStyle(Theme.grey2)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("낱말을 골라 옮기거나 지웁니다")
-                    case .days:
-                        EmptyView()
-                    }
-                }
-            }
-        }
     }
 
     /// 고르는 중의 머리줄. 묶음 화면과 **같은 것**을 쓴다 — `SelectionHead`.
@@ -493,8 +453,7 @@ struct LibraryView: View {
                       onDone: { endSelecting() })
     }
 
-    /// 읽기 보조 다이얼과 같은 문법이다 — 평평하고, 고른 것 하나만 검게 채워진다.
-    /// 유리는 씌우지 않는다. 그것은 **떠 있는** 컨트롤의 표시인데 이쪽은 글에 붙어 있다.
+    /// 무엇으로 묶어 볼지 — 묶음별 · 날짜별 · 모두.
     private var dial: some View {
         HStack(spacing: 6) {
             ForEach(Grouping.allCases) { option in

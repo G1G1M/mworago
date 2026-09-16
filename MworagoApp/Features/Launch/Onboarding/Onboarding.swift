@@ -22,33 +22,6 @@ import MworagoCore
 /// 시안 넷을 만들어 견줬다(페이지형·포커스형·한 장·첫 성공 뒤). 포커스형은 진짜 입력
 /// 바 자리에 구멍을 뚫어야 해서 복제본이 생겼고, 첫 성공 뒤에 한 번 짚는 안은 조용하지만
 /// 탭 셋의 관계를 말하지 못했다.
-
-/// 온보딩을 봤는지.
-///
-/// **적어 두는 일은 밖에서 한다**(`PreferenceStoring`). 예전에는 이 enum 이 직접
-/// Application Support 를 찾아 빈 파일을 만들었다 — 뷰 파일 안에 파일 IO 가
-/// 박혀 있었고, 같은 여섯 줄이 모습 설정과 모은 낱말 자리에도 복붙되어 있었다.
-///
-/// **값이 아니라 표시다.** 오래도록 빈 파일이었으므로 그 파일이 있으면 본 것으로
-/// 친다 — 값으로 읽으면 이미 본 사람에게 온보딩이 다시 뜬다.
-enum OnboardingSeen {
-    /// 적어 둘 때 쓰는 이름. 예전에 남긴 빈 파일과 같은 이름이라 그대로 이어진다.
-    static let key = "onboarding-seen"
-
-    /// `--onboarding` 으로 언제든 다시 띄운다. 봤는지와 무관하게 화면을 확인하려는 것이다.
-    static var forced: Bool { LaunchOptions.current.has("onboarding") }
-
-    /// `--onboarded` 로 건너뛴다 — **다른 화면을 찍으려는데 앞을 막고 서 있을 때**다.
-    ///
-    /// 새 시뮬레이터는 아무것도 안 봤으므로 무엇을 띄우든 온보딩이 먼저 뜬다.
-    /// `--query=` 도 `--tab=` 도 그 뒤에서 조용히 흘러가 버려서, 등록용 스크린샷을
-    /// 찍으려면 다섯 장을 손으로 넘겨야 했다. `--no-splash` 와 같은 취지다.
-    ///
-    /// **적어 두지는 않는다.** 이 인자로 건너뛴 것은 본 것이 아니므로, 인자 없이
-    /// 다시 열면 온보딩이 그대로 나온다.
-    static var skipped: Bool { LaunchOptions.current.has("onboarded") }
-}
-
 struct Onboarding: View {
     /// `--onboarding-page=2` 로 그 장을 펼친 채 띄운다. `--detail` · `--quiz` 와 같은
     /// 취지다 — 시뮬레이터는 손으로 밀 수 없어 뒷장을 눈으로 볼 길이 없다.
@@ -61,110 +34,15 @@ struct Onboarding: View {
         max(Theme.koreanWidth("다음", size: .body), Theme.koreanWidth("시작", size: .body))
     }
 
-    /// 탭바에 선 다섯 자리. 마지막 장이 이것을 짚는다.
-    private static let tabs: [(symbol: String, name: String)] = [
-        ("magnifyingglass", "찾기"),
-        ("books.vertical", "책장"),
-        ("rectangle.stack", "연습"),
-        ("character.book.closed", "글자"),
-        ("gearshape", "설정"),
-    ]
+    private var pages: [OnboardingPage] { OnboardingPage.all }
 
-    private struct Page {
-        /// 이 장이 가리키는 탭. 지도에서 이 자리가 검게 채워진다.
-        let tab: Int
-        let title: String
-        let detail: String
-    }
-
-    private var pages: [Page] {
-        [
-            Page(tab: 0,
-                 // **무엇을 치라는 것인지 첫 줄에 적는다.** "들린 대로 치세요"는 이 앱이
-                 // 무엇을 하는 물건인지 이미 아는 사람에게만 통했다 — 처음 온 사람은
-                 // 무엇을 들었다는 것인지부터 막힌다. 빠진 낱말은 **일본어**다.
-                 title: "일본어를 들리는 대로 쳐보세요",
-                 detail: "띄어 쓰지 않아도 됩니다.\n어디서 끊을지는 사전이 정해요."),
-            Page(tab: 1,
-                 title: "담으면 교재가 됩니다",
-                 // 전에는 "한 화를 보며 찾은 것들은 같은 날 모이니 날짜가 곧 그 화"였다.
-                 // **두 번 낡은 말이다.** 날짜는 어느 화를 봤는지 앱이 몰라서 쓰던
-                 // 대용품인데 이제 담을 때 묶음을 직접 고르고, 애초에 영상을 안 보고
-                 // 온 사람에게 "한 화"는 없는 말이다.
-                 detail: "갈피표를 누르면 어디에 넣을지 물어봐요.\n묶음은 마음대로 만들고 옮길 수 있습니다."),
-            Page(tab: 2,
-                 title: "다시 만나요",
-                 // 앞면이 한글에서 **가나**로 바뀌었다 — 한글 음차는 찾을 때 쓰는
-                 // 열쇠지 익힐 것이 아니고, 자막에 뜨는 것은 `いたい` 이지 `이타이` 가 아니다.
-                 detail: "가나를 보고 뜻을 떠올린 다음 뒤집어 맞춰 봐요.\n채점하지 않아요."),
-            Page(tab: 3,
-                 title: "가나를 못 읽어도 괜찮아요",
-                 // 글자 탭이 따로 있는 까닭은 **막히는 자리가 정해져 있지 않아서**다.
-                 // 가나를 못 읽어 멈추는 일은 찾을 때도 연습할 때도 생기는데,
-                 // 한때 연습 안의 쪽지로만 두었더니 연습 화면에서만 닿았다.
-                 detail: "오십음도 표가 있고, 한 글자씩 뒤집어 익힐 수도 있어요.\n찾다가 막혀도 연습하다 막혀도 같은 자리예요."),
-            Page(tab: 4,
-                 title: "눈이 편한 쪽으로 보세요",
-                 // 설정은 앱의 이야기(찾고·담기고·다시 만난다) 밖이지만 어느 화면에서나
-                 // 닿아야 하는 자리라 탭으로 두었다. 여기서도 한 번 짚는다.
-                 detail: "밝게 볼지 어둡게 볼지 고를 수 있어요.\n이 앱이 어떤 사전을 쓰는지도 여기서 봐요."),
-        ]
-    }
-
-    /// 탭바 지도. 다섯 자리가 늘 서 있고 **지금 장의 것만 검게 채워진다.**
-    ///
-    /// 강조는 반전 하나로만 한다 — 채워진 것이 지금 말하는 자리다. 앱의 다른 곳
-    /// (설정의 `모습`, 책장의 보기 다이얼, 탭바의 고른 칸)이 다 같은 문법을 쓴다.
-    ///
-    /// **아이콘 크기는 바뀌지 않는다.** 포커스를 크기로도 말하면 장을 넘길 때마다
-    /// 줄의 높이가 흔들려, 아래 글이 위아래로 뛴다. 채우는 것 하나로 충분하다.
-    ///
-    /// **눌러서도 간다.** 지도가 "어디에 무엇이 있는지"를 말하는 그림이기만 하면,
-    /// 눌러 본 사람에게는 아무 일도 안 일어나는 그림이다. 다섯 자리가 곧 다섯 장이라
-    /// 짚은 자리로 바로 넘어간다 — 뒤로 가는 길이 `이전` 하나뿐이던 것도 함께 풀린다.
+    /// 탭바 지도. 짚으면 그 탭을 말하는 장으로 넘어간다.
     private var tabMap: some View {
-        // **사이를 단추가 나눠 갖는다.** 칸 사이 18pt 를 좌우 9pt 씩 단추 안으로 넣으면
-        // 줄의 폭도, 알약이 서는 자리도 그대로인데 누를 수 있는 넓이만 46 → 64pt 가 된다.
-        HStack(alignment: .top, spacing: 0) {
-            ForEach(Self.tabs.indices, id: \.self) { i in
-                let focused = i == pages[page].tab
-                Button {
-                    guard let target = pages.firstIndex(where: { $0.tab == i }) else { return }
-                    withAnimation(.snappy(duration: 0.18)) { page = target }
-                } label: {
-                    VStack(spacing: 9) {
-                        Image(systemName: Self.tabs[i].symbol)
-                            .font(.system(size: 21))
-                            .foregroundStyle(focused ? Theme.paper : Theme.grey3)
-                            .frame(width: 46, height: 36)
-                            .background(focused ? Theme.ink : .clear, in: Capsule())
-                        Text(Self.tabs[i].name)
-                            .font(Theme.korean(.tag))
-                            .foregroundStyle(focused ? Theme.ink : Theme.grey3)
-                    }
-                    .padding(.horizontal, Self.tabGap / 2)
-                    // 알약과 글자 사이의 빈 자리까지 한 단추다. 없으면 그 틈에서 손이 샌다.
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Self.tabs[i].name)
-                .accessibilityAddTraits(focused ? [.isSelected] : [])
-            }
+        OnboardingTabMap(focusedTab: pages[page].tab) { tab in
+            guard let target = pages.firstIndex(where: { $0.tab == tab }) else { return }
+            withAnimation(.snappy(duration: 0.18)) { page = target }
         }
-        // 알약은 도형이라 제 여백이 없어 글보다 밖에서 선다. 스크린샷을 픽셀로 재서 당긴다.
-        // 단추가 안으로 9pt 를 물었으므로 그만큼 되돌려야 알약이 재 둔 자리에 그대로 선다.
-        .padding(.leading, -Self.mapLeading - Self.tabGap / 2)
     }
-
-    /// 지도의 칸과 칸 사이(pt). 절반씩 양옆 단추가 나눠 갖는다.
-    private static let tabGap: CGFloat = 18
-
-    /// 지도가 글보다 밖에서 시작하는 만큼(pt). 음수라 안쪽으로 민다.
-    ///
-    /// 알약은 도형이라 글리프가 안고 있는 여백이 없어, 기둥에 정확히 붙어 선다(24.0pt).
-    /// 제목은 글자라 제 여백만큼 안에서 시작한다(25.7pt). 그 차이를 재서 넣는다 —
-    /// 아이콘이나 알약 크기를 바꾸면 다시 재야 한다.
-    private static let mapLeading: CGFloat = -1.7
 
     /// 글이 서는 자리의 높이. 제목 두 줄 + 설명 두 줄이 들어갈 만큼이다.
     ///

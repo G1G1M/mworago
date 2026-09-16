@@ -14,7 +14,7 @@ import MworagoCore
 /// 탭바는 표준 컨트롤을 그대로 쓰고 색만 맞춘다. 직접 그리면 시스템이 주는 것
 /// (아이패드의 자리, 손대기 좋은 크기, 손쉬운 사용)을 전부 다시 만들어야 한다.
 struct RootView: View {
-    /// 옮기는 자리. 세션을 여기서 열어 두려고 받는다 — 까닭은 `translationSessions` 에 적었다.
+    /// 옮기는 자리. 세션을 여기서 열어 두려고 받는다 — 까닭은 `body` 의 `.translationTask` 곁에 적었다.
     @Environment(TranslationDesk.self) private var desk
     /// 언어쌍마다 하나씩. 번역을 못 하는 기기에서는 만들지 않으므로 세션도 열리지 않는다 —
     /// 열어 두고 실패를 삼키면 애플이 대신 시트를 띄운다.
@@ -28,23 +28,21 @@ struct RootView: View {
     /// **화면이 파일을 몰라도 되게** 밖에서 받는다. 예전에는 두 값이 각자 뷰 파일 안에서
     /// `FileManager` 로 Application Support 를 찾았다.
     private let preferences: any PreferenceStoring
-    /// 어느 탭을 열지 실행 인자로 고를 수 있다 (`--tab=collection`).
-    /// `--query=` · `--select=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
-    /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
     /// 다른 탭에서 찾기로 넘기는 검색어.
     @State private var pendingQuery: String?
     /// 찾기에서 책장으로 넘기는 묶음. 담은 자리를 알리는 줄을 누르면 그리로 간다.
     @State private var pendingFolder: FolderRoute?
-    /// 찾기 탭을 눌렀다는 신호. 찾기 화면이 받아서 입력 바에 손을 얹는다.
     /// 교재에서 하루치를 들고 연습으로 넘길 때 그 낱말들.
     @State private var practiceSubset: [CollectedWord]?
     @State private var practiceLabel: String?
+    /// 지금 탭. 어느 탭을 열지 실행 인자로 고를 수 있다 (`--tab=collection`).
+    /// `--query=` · `--select=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
+    /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
     @State private var tab: RootTab = RootTab(LaunchOptions.current)
-    /// 온보딩 시안 — 실행 인자로만 뜬다.
-    /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
-    /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
     /// 앱을 밝게 볼지 어둡게 볼지 — 설정의 `모습`. 기본은 기기를 따르는 것이다.
     @State private var appearance: Appearance
+    /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
+    /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
     @State private var showOnboarding: Bool
     /// 앱을 여는 한 장. `--no-splash` 로 건너뛴다 — 다른 화면을 찍을 때마다
     /// 1초를 기다릴 이유가 없다. `--query=` · `--tab=` 과 같은 취지다.
@@ -82,21 +80,6 @@ struct RootView: View {
         practiceSubset = words
         practiceLabel = first.collectedAt.formatted(.dateTime.month(.wide).day().locale(Theme.locale))
         tab = .practice
-    }
-
-    enum RootTab: Hashable {
-        case find, library, practice, kana, settings
-
-        init(_ launch: LaunchOptions) {
-            switch launch.value(for: "tab") {
-            // 탭을 합치기 전 이름으로 띄우던 스크립트가 있어 옛 이름도 받는다.
-            case "library", "collection", "book": self = .library
-            case "practice": self = .practice
-            case "kana": self = .kana
-            case "settings": self = .settings
-            default: self = .find
-            }
-        }
     }
 
     var body: some View {
@@ -155,10 +138,10 @@ struct RootView: View {
             Task { await checkTranslation() }
         }
         .translationTask(fromJapanese) { session in
-            await Self.serve(session, desk.japanese)
+            await TranslationRunner.serve(session, desk.japanese)
         }
         .translationTask(fromEnglish) { session in
-            await Self.serve(session, desk.english)
+            await TranslationRunner.serve(session, desk.english)
         }
         .tint(Theme.ink)
         // **아직 여러 말로 옮기지 않았다.** 기기를 영어로 써도 화면은 한국어이므로
@@ -264,30 +247,4 @@ struct RootView: View {
             keep(TranslationSession.Configuration(source: language, target: korean))
         }
     }
-
-    /// 줄에 선 것을 받아 옮겨 준다. 줄이 끝나면(세션이 물러나면) 이 반복도 끝난다.
-    private nonisolated static func serve(_ session: TranslationSession, _ store: Translations) async {
-        let requests = await store.openRequests()
-        for await batch in requests {
-            let asked = batch.map { TranslationSession.Request(sourceText: $0) }
-            var responses = try? await session.translations(from: asked)
-            if responses == nil {
-                // **한 번은 더 물어본다.** 언어팩을 아직 내려받는 중이면 첫 물음이 빈손으로
-                // 돌아온다. 그 한 번 때문에 문장이 영영 안 뜨는 것은 사용자가 알 길이 없다.
-                try? await Task.sleep(for: .milliseconds(400))
-                responses = try? await session.translations(from: asked)
-            }
-            guard let responses else {
-                // **쉬었다가 다시 싣는다.** 언어팩을 내려받는 중이면 몇 초 뒤에 되는
-                // 일이고, 쉬지 않고 물으면 되지도 않을 것에 줄이 붙들린다.
-                // 몇 번까지 보낼지는 줄이 세고, 그 뒤에는 놓아준다.
-                try? await Task.sleep(for: .seconds(2))
-                _ = await MainActor.run { store.failed(batch) }
-                continue
-            }
-            let pairs = responses.map { (source: $0.sourceText, target: $0.targetText) }
-            await MainActor.run { store.receive(pairs) }
-        }
-    }
-
 }

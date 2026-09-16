@@ -1,21 +1,5 @@
 import SwiftUI
-@preconcurrency import Translation
 import MworagoCore
-
-/// 입력 바가 실제로 놓인 자리.
-///
-/// **스플래시가 이것을 받아 마지막 알약을 앉힌다.** 전에는 스플래시가 제 숫자를 들고
-/// 있었다 — 높이 52, 아래 여백 70. 둘 다 시뮬레이터 하나에서 눈으로 잰 값이라,
-/// 폰트가 조금 다르게 그려지거나 탭바 높이가 다른 기기·방향으로 가면 마지막 한 프레임에서
-/// 툭 튄다. 그 한 프레임이 "이것이 저것이 되었다"는 말을 통째로 무너뜨린다.
-///
-/// 재는 대신 **묻는다.** 진짜 입력 바만이 제 자리를 안다.
-struct InputBarFrame: PreferenceKey {
-    static let defaultValue: CGRect? = nil
-    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
-        value = nextValue() ?? value
-    }
-}
 
 struct SearchView: View {
     /// 한 줄이 지나치게 길어지면 눈이 되돌아올 곳을 잃는다. iPad 에서 특히 그렇다.
@@ -32,8 +16,6 @@ struct SearchView: View {
     /// 사전을 열고 검색을 맡는다. **조립 루트가 세운다** — 예전에는 이 화면이
     /// 직접 만들었고, 그래서 사전을 여는 일이 찾기 탭이 처음 그려질 때 일어났다.
     @Environment(SearchEngine.self) private var engine
-    /// 번역기 설정. **한 번만 만든다** — 문장마다 새로 만들면 그때마다 세션이 다시 열려
-    /// 실기기에서 눈에 띄게 걸린다. 세션 여는 일이 번역보다 무겁다.
     /// 실행 인자로 검색어를 넣을 수 있다 (`--query=다이죠부`).
     /// 시뮬레이터에 한글을 타이핑하지 않고도 화면을 확인할 수 있어 스크린샷과 점검에 쓴다.
     @State private var input = LaunchOptions.current.value(for: "query") ?? ""
@@ -110,8 +92,25 @@ struct SearchView: View {
                 // 읽던 자리를 눈이 다시 찾아야 한다.
                 content
                     .ignoresSafeArea(.keyboard, edges: .bottom)
-                savedNotice
-                inputBar
+                if let saved = justSaved {
+                    SavedNotice(saved: saved,
+                                onOpen: {
+                                    justSaved = nil
+                                    onOpenFolder(saved)
+                                },
+                                onExpire: {
+                                    withAnimation(.easeOut(duration: 0.2)) { justSaved = nil }
+                                })
+                        .padding(.bottom, 8)
+                        .transition(.opacity)
+                }
+                SearchInputBar(text: $input,
+                               focused: $inputFocused,
+                               onClear: {
+                                   input = ""
+                                   engine.search("")
+                               },
+                               onGuide: { showingGuide = true })
                 // 아래쪽은 **손이 얹히는 순간에도** 닫는다. 그래야 바가 바닥까지 내려가
                 // 키보드가 그 자리에서 곧바로 밀어 올린다 — 키보드 바로 위가 바의 자리다.
                 Spacer(minLength: 0)
@@ -134,6 +133,11 @@ struct SearchView: View {
         .task {
             // 색인·규칙표·캐시를 손 얹히기 전에 한 번 지나가게 한다.
             engine.prewarm()
+        }
+        .onChange(of: input) { _, new in
+            // 조각이 다시 나뉘므로 번호로 잡아 둔 선택은 뜻을 잃는다.
+            selected = nil
+            engine.search(new)
         }
         .onChange(of: incoming?.wrappedValue) { _, new in
             guard let new, !new.isEmpty else { return }
@@ -201,51 +205,6 @@ struct SearchView: View {
         }
     }
 
-    /// 담긴 자리를 알리는 한 줄. 입력 바 바로 위에 선다 — 갈피표에서 눈이 옮겨 온
-    /// 자리이면서, 다음에 칠 자리이기도 하다.
-    ///
-    /// **누르면 그 묶음이 열린다.** 어디에 담겼는지를 알려 주고 나면 다음에 하고 싶은
-    /// 일이 "가서 보기"인데, 그러려면 탭을 옮겨 목록에서 그 이름을 다시 찾아야 했다.
-    /// 이미 이름을 적어 둔 줄이 그 자리로 가는 문이 된다.
-    ///
-    /// **머무는 시간은 짧다.** 알림이 사라지기를 기다리게 하지 않는다 — 누를 사람은
-    /// 뜨자마자 누르고, 안 누를 사람에게는 화면을 가리는 띠일 뿐이다.
-    @ViewBuilder
-    private var savedNotice: some View {
-        if let saved = justSaved {
-            Button {
-                justSaved = nil
-                onOpenFolder(saved)
-            } label: {
-                HStack(spacing: 6) {
-                    Text("「\(saved.title)」에 담았어요")
-                        .font(Theme.korean(.sub))
-                        .foregroundStyle(Theme.grey1)
-                    // 누를 수 있다는 것은 화살표가 말한다. 색은 쓰지 않는다 —
-                    // 이 앱에서 색으로 강조하는 자리가 없다.
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(Theme.grey2)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(Theme.grey4, in: Capsule())
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("「\(saved.title)」 묶음을 엽니다")
-            .padding(.bottom, 8)
-            .transition(.opacity)
-            // **스스로 물러난다.** 닫는 단추를 두면 알림 하나에 할 일이 하나 는다.
-            .task(id: saved) {
-                guard Self.pinnedNotice == nil else { return }
-                try? await Task.sleep(for: .seconds(1.2))
-                guard !Task.isCancelled else { return }
-                withAnimation(.easeOut(duration: 0.2)) { justSaved = nil }
-            }
-        }
-    }
-
     // MARK: 결과
 
     /// 방금 담은 곳. **어디로 들어갔는지 화면에 남긴다.**
@@ -258,54 +217,25 @@ struct SearchView: View {
     /// `--saved=리코리스 리코일 3화` 로 그 줄을 띄운 채 시작한다. `--collecting` 과 같은
     /// 취지인데, 이것은 **띄우는 것만으로는 부족하다** — 1.2초 뒤에 스스로 물러나므로
     /// 시뮬레이터에서 찍으려 들면 매번 다른 것이 찍힌다. 그래서 이 인자로 띄운 줄은
-    /// 물러나지 않는다(아래 `savedNotice` 의 `task`).
-    @State private var justSaved: FolderRoute? = Self.pinnedNotice
-
-    /// `--saved[=이름]` 로 띄워 둔 줄. 이름을 안 적으면 아직 안 넣은 것이다.
-    ///
-    /// **값이 붙은 인자는 `has` 로 못 잡는다** — `--saved=…` 는 그 이름 그대로가
-    /// 아니어서다. `--folder[=이름]` 이 둘을 함께 받는 것과 같은 문법으로 읽는다.
-    private static var pinnedNotice: FolderRoute? {
-        let launch = LaunchOptions.current
-        guard let name = launch.value(for: "saved") ?? (launch.has("saved") ? "" : nil)
-        else { return nil }
-        return FolderRoute(name: name.isEmpty ? nil : name)
-    }
+    /// 물러나지 않는다(`SavedNotice` 의 `task`).
+    @State private var justSaved: FolderRoute? = SavedNotice.pinned
 
     /// 돌려줄 답이 있는가.
     private var hasResults: Bool {
         engine.failure == nil && !input.isEmpty && !engine.segments.isEmpty
     }
 
-    /// 입력 바가 바닥에 서는가.
-    ///
-    /// **손이 얹히는 순간 내려간다.** 답이 있을 때만 내려가게 두었더니, 바를 눌러도
-    /// 키보드만 올라오고 바는 가운데 그대로였다 — 치기 시작해서 첫 글자가 답을 낼 때에야
-    /// 뒤늦게 내려앉는다. 누른 자리와 글자가 찍히는 자리가 달라지는 셈이다.
-    ///
-    /// **첫 글자의 부담도 덜어 준다.** 답이 있을 때만 내려가게 두면 첫 글자를 치는 순간
-    /// 바가 옮겨 가는 그림과 화면 재배치가 첫 검색과 한꺼번에 일어난다.
-    /// 누를 때 자리를 미리 잡아 두면 그 순간에는 찾는 일만 남는다.
-    ///
-
-    /// 세션 하나를 붙들고, 줄에 들어오는 것을 옮겨 담는다.
-    ///
-    /// 줄이 닫히기 전까지 돌아오지 않는다. 그래야 세션이 살아 있고, 다음 문장을 물을 때
-    /// 다시 열지 않아도 된다 — 그 다시 열기가 곧 실기기에서 느껴지던 걸림이었다.
-    ///
-    /// **줄은 여기서 연다.** 이 태스크는 화면에 매여 있어서 찾기 탭을 벗어나면 취소되고,
-    /// 그때 `AsyncStream` 은 되살릴 수 없이 끝난다. 줄을 하나 만들어 두고 쓰면 탭을 한 번
-    /// 다녀온 뒤로 아무것도 옮겨지지 않았다 — 돌아올 때마다 새 줄을 연다.
+    /// 답 자리 — 사전을 못 열었거나, 아직 안 쳤거나, 못 찾았거나, 답이 있거나.
     @ViewBuilder
     private var content: some View {
         if let failure = engine.failure {
-            resting { notice("사전을 열지 못했습니다", detail: failure) }
+            resting { SearchNotice(title: "사전을 열지 못했습니다", detail: failure) }
         } else if input.isEmpty {
             // **손이 얹히면 안내문은 물러난다.** 읽으라고 둔 글인데, 치기 시작한 사람에게는
             // 이미 읽은 글이다. 키보드가 올라오는 좁은 자리를 그 글이 차지하고 있을 이유가 없다.
-            if !inputFocused { resting { emptyState } }
+            if !inputFocused { resting { SearchPrompt() } }
         } else if engine.segments.isEmpty {
-            resting { notice("찾지 못했습니다", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.") }
+            resting { SearchNotice(title: "찾지 못했습니다", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.") }
         } else {
             results
         }
@@ -376,92 +306,5 @@ struct SearchView: View {
                 withAnimation(.snappy(duration: 0.25)) { scroller.scrollTo(new, anchor: .top) }
             }
         }
-    }
-
-    private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            // **온보딩 첫 장과 같은 말을 쓴다.** 한 번 읽고 온 사람이 여기서 다른 말을
-            // 만나면 처음부터 다시 이해해야 한다. "들린 대로 치세요"는 무엇을 치라는
-            // 것인지가 빠져 있어 실제로 안 읽혔다.
-            Text("일본어를 들리는 대로 쳐보세요")
-                .font(Theme.korean(.hero, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-            Text("띄어 쓰지 않아도 됩니다. 어디서 끊을지는 사전이 정해요.")
-                .font(Theme.korean(.body))
-                .foregroundStyle(Theme.grey2)
-        }
-        .padding(.horizontal, Theme.gutter)
-        .padding(.bottom, 24)
-    }
-
-    private func notice(_ title: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(Theme.korean(.title, weight: .medium)).foregroundStyle(Theme.ink)
-            Text(detail).font(Theme.korean(.body)).foregroundStyle(Theme.grey2)
-        }
-        .padding(.horizontal, Theme.gutter)
-        .padding(.bottom, 24)
-    }
-
-    // MARK: 입력 바 — 떠 있는 컨트롤에만 유리를 쓴다
-
-    private var inputBar: some View {
-        VStack(spacing: 10) {
-
-            HStack(spacing: 12) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Theme.grey2)
-                TextField("콘니치와", text: $input)
-                    .font(Theme.korean(.field))
-                    .foregroundStyle(Theme.ink)
-                    .focused($inputFocused)
-                    .submitLabel(.search)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .onChange(of: input) { _, new in
-                        // 조각이 다시 나뉘므로 번호로 잡아 둔 선택은 뜻을 잃는다.
-                        selected = nil
-                        engine.search(new)
-                    }
-                if !input.isEmpty {
-                    Button {
-                        input = ""
-                        engine.search("")
-                    } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.grey3)
-                    }
-                    .buttonStyle(.plain)
-                }
-                // 입력에 대한 도움말이라 입력 곁에 둔다. 표준 기호를 그대로 쓰고 색만 맞춘다.
-                Button { showingGuide = true } label: {
-                    Image(systemName: "info.circle").foregroundStyle(Theme.grey2)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("한글로 치는 법")
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5)
-            )
-            // 스플래시가 마지막에 여기로 와서 앉는다. 화면 좌표로 올려야
-            // 스플래시가 제 좌표계로 옮겨 쓸 수 있다.
-            .background {
-                GeometryReader { bar in
-                    Color.clear.preference(key: InputBarFrame.self,
-                                           value: bar.frame(in: .global))
-                }
-            }
-        }
-        .frame(maxWidth: Self.contentWidth)
-        // 떠 있는 바지만 가장자리는 글이 시작하는 자리에 맞춘다 — 혼자 4pt 밖으로
-        // 나가 있으면 아래로 스크롤할 때 바깥선이 본문과 어긋나 보인다.
-        .padding(.horizontal, Theme.gutter)
-        // **바닥에서 띄운다.** 14pt 로 두었더니 아이폰에서 입력 바와 탭 알약이 한 덩어리로
-        // 붙어 보였다. 아이패드는 탭바가 위로 갔지만 값을 되돌리지 않는다 —
-        // 다른 화면이 바닥에 두는 값과 같아야 화면을 옮길 때 바닥선이 흔들리지 않는다.
-        .padding(.bottom, Theme.screenBottom)
     }
 }
