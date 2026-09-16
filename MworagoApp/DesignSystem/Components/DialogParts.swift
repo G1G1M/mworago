@@ -28,7 +28,7 @@ struct DialogHead: View {
     }
 }
 
-/// 판 아래의 알약 단추. 채운 것이 하려는 일, 흐린 것이 물러나는 일이다.
+/// 판 아래의 알약 단추. 채운 것이 하려는 일, 회색이 물러나는 일이다.
 struct DialogButton: View {
     let title: String
     var prominent = false
@@ -39,11 +39,9 @@ struct DialogButton: View {
             Text(title)
                 .font(Theme.korean(.body))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 11)
-                .background(prominent ? Theme.ink : Theme.grey4, in: Capsule())
-                .foregroundStyle(prominent ? Theme.paper : Theme.grey1)
         }
-        .buttonStyle(.plain)
+        .matteButton(prominent: prominent)
+        .controlSize(.large)
     }
 }
 
@@ -59,9 +57,9 @@ struct DialogActions: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // 막혔을 때 흐리는 일은 표준 버튼이 한다.
             DialogButton(title: confirmTitle, prominent: true, action: onConfirm)
                 .disabled(!canConfirm)
-                .opacity(canConfirm ? 1 : 0.4)
             DialogButton(title: "그만두기", action: onCancel)
         }
         .padding(.horizontal, 20)

@@ -36,13 +36,9 @@ struct FlipControls: View {
     private func button(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(Theme.korean(size == .large ? .title : .body,
-                                   weight: filled && size == .regular ? .semibold : .regular))
-                .padding(.horizontal, size == .large ? 28 : 18)
-                .padding(.vertical, size == .large ? 14 : 11)
-                .background(filled ? Theme.ink : Theme.grey4, in: Capsule())
-                .foregroundStyle(filled ? Theme.paper : Theme.grey1)
+                .font(Theme.korean(size == .large ? .title : .body))
         }
-        .buttonStyle(.plain)
+        .matteButton(prominent: filled)
+        .controlSize(size == .large ? .extraLarge : .large)
     }
 }

@@ -19,13 +19,9 @@ struct PracticeScopeButton: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .medium))
             }
-            .foregroundStyle(Theme.grey1)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Theme.grey4, in: Capsule())
-            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .matteButton()
+        .controlSize(.small)
         .accessibilityLabel("연습할 묶음 고르기")
         .accessibilityValue(title)
     }

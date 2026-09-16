@@ -58,21 +58,28 @@ struct SelectionHead: View {
     }
 
     /// 머리줄의 단추. 강조는 반전 하나로만 — 지금 하려던 일이 채워진다.
+    @ViewBuilder
     private func headButton(_ title: String, filled: Bool = false, destructive: Bool = false,
                             disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(Theme.korean(.sub, weight: filled ? .medium : .regular))
-                // **접히지 않는다.** 자리가 모자랄 때 접히라고 두면 알약이 동그라미가 된다.
-                // 모자라면 줄을 나눌 일이지 글자를 접을 일이 아니다.
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, filled ? 14 : 6)
-                .padding(.vertical, filled ? 8 : 0)
-                .background(filled ? Theme.ink : .clear, in: Capsule())
-                .foregroundStyle(filled ? Theme.paper : (destructive ? Theme.destructive : Theme.grey1))
+        let label = Text(title)
+            .font(Theme.korean(.sub))
+            // **접히지 않는다.** 자리가 모자랄 때 접히라고 두면 알약이 동그라미가 된다.
+            // 모자라면 줄을 나눌 일이지 글자를 접을 일이 아니다.
+            .fixedSize(horizontal: true, vertical: false)
+        if filled {
+            // 채운 단추는 표준 버튼이다. 막혔을 때 흐리는 일도 버튼이 한다.
+            Button(action: action) { label }
+                .matteButton(prominent: true)
+                .disabled(disabled)
+        } else {
+            Button(action: action) {
+                label
+                    .padding(.horizontal, 6)
+                    .foregroundStyle(destructive ? Theme.destructive : Theme.grey1)
+            }
+            .buttonStyle(.plain)
+            .disabled(disabled)
+            .opacity(disabled ? 0.35 : 1)
         }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .opacity(disabled ? 0.35 : 1)
     }
 }

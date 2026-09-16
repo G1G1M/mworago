@@ -172,12 +172,8 @@ struct WordDetail: View {
                 } label: {
                     Text("찾기에서 보기")
                         .font(Theme.korean(.body))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
-                        .background(Theme.ink, in: Capsule())
-                        .foregroundStyle(Theme.paper)
                 }
-                .buttonStyle(.plain)
+                .matteButton(prominent: true)
 
                 Button {
                     onRemove(word)
@@ -185,12 +181,8 @@ struct WordDetail: View {
                 } label: {
                     Text("교재에서 빼기")
                         .font(Theme.korean(.body))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
-                        .background(Theme.grey4, in: Capsule())
-                        .foregroundStyle(Theme.grey1)
                 }
-                .buttonStyle(.plain)
+                .matteButton()
             }
         }
     }
@@ -206,21 +198,19 @@ struct WordDetail: View {
                 .foregroundStyle(Theme.grey2)
             // **누르면 담기와 같은 모달이 열린다.** 메뉴였을 때는 이미 있는 묶음으로만
             // 옮길 수 있어서, 새 자리로 보내려면 먼저 딴 낱말을 담아 묶음을 만들어야 했다.
-            Button { moving = true } label: {
-                HStack(spacing: 6) {
-                    Text(word.folder ?? "아직 안 넣음")
-                        .font(Theme.korean(.body))
-                        .foregroundStyle(word.folder == nil ? Theme.grey3 : Theme.ink)
+            //
+            // 표준 버튼은 다른 버튼 안에 넣을 수 없어, 묶음 이름은 글로 두고 `옮기기` 만 단추다.
+            HStack(spacing: 8) {
+                Text(word.folder ?? "아직 안 넣음")
+                    .font(Theme.korean(.body))
+                    .foregroundStyle(word.folder == nil ? Theme.grey3 : Theme.ink)
+                Button { moving = true } label: {
                     Text("옮기기")
                         .font(Theme.korean(.sub))
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 3)
-                        .background(Theme.grey4, in: Capsule())
-                        .foregroundStyle(Theme.grey1)
                 }
-                .contentShape(Rectangle())
+                .matteButton()
+                .controlSize(.small)
             }
-            .buttonStyle(.plain)
         }
     }
 }

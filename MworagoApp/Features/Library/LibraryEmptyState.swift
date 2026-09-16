@@ -38,16 +38,12 @@ struct LibraryEmptyState: View {
             // 전에 이름을 세워 두는 일이 이 앱의 실제 흐름이고(빈 묶음을 지원하는 까닭이
             // 그것이다), 담긴 것이 없을 때는 그 길이 아예 없었다.
             //
-            // 그래서 두되 **작게** 둔다. 채우지 않은 알약이라 위의 글과 겨루지 않는다.
+            // 그래서 두되 **작게** 둔다. 채우지 않은 회색 단추라 위의 글과 겨루지 않는다.
             Button(action: onCreateFolder) {
                 Text("묶음 만들어 두기")
                     .font(Theme.korean(.sub))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 9)
-                    .background(Theme.grey4, in: Capsule())
-                    .foregroundStyle(Theme.grey1)
             }
-            .buttonStyle(.plain)
+            .matteButton()
             .padding(.top, 4)
         }
         .padding(.horizontal, Theme.gutter)

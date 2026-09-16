@@ -20,11 +20,10 @@ struct FolderMenuButton: View {
             // 바로 밑에 뜬 목록이 이미 말한다.
             Image(systemName: "ellipsis")
                 .font(.system(size: 15, weight: .medium))
-                .frame(width: 38, height: 38)
-                .background(Theme.grey4, in: Circle())
-                .foregroundStyle(Theme.grey1)
         }
-        .buttonStyle(.plain)
+        .matteButton(shape: .circle)
+        // 기본 크기는 이름 옆에서 너무 작다. 한 단 키워 예전 동그라미(38)와 비슷하게 선다.
+        .controlSize(.large)
         .accessibilityLabel("이 묶음 손보기")
         // 목록이 단추 밑에 뜨도록 제 자리를 묶음 화면에 올린다.
         .anchorPreference(key: FolderMenuAnchor.self, value: .bounds) { $0 }
