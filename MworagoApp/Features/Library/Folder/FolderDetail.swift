@@ -66,18 +66,15 @@ struct FolderDetail: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     head
-                    if words.isEmpty { emptyWords }
+                    if words.isEmpty { FolderEmptyState(isNamed: folder != nil) }
                     ForEach(words) { word in
                         HStack(spacing: 0) {
-                            if selecting {
-                                let picked = selection.contains(word.id)
-                                Image(systemName: picked ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 21))
-                                    .foregroundStyle(picked ? Theme.ink : Theme.grey3)
-                                    .padding(.leading, Theme.gutter)
-                                    .accessibilityHidden(true)   // 줄 전체가 이미 고르는 단추다
+                            if selecting { SelectionMark(isPicked: selection.contains(word.id)) }
+                            FolderWordRow(word: word,
+                                          selecting: selecting,
+                                          isPicked: selection.contains(word.id)) {
+                                if selecting { toggle(word) } else { detail = word }
                             }
-                            row(word)
                         }
                         Theme.rule().padding(.horizontal, Theme.gutter)
                     }
@@ -216,147 +213,27 @@ struct FolderDetail: View {
                 // 연습만 밖에 캡슐로 세워 두었는데, 그러면 이름 옆에 크기가 다른 것이
                 // 둘 서고 "이 묶음에 무엇을 할 수 있는지"가 두 자리로 갈린다.
                 // 한 자리에서 열어 고르면 그 목록이 곧 답이다.
-                if !words.isEmpty || folder != nil { moreButton }
+                if !words.isEmpty || folder != nil {
+                    FolderMenuButton(isOpen: $menuOpen,
+                                     selecting: selecting,
+                                     hasWords: !words.isEmpty,
+                                     isNamed: folder != nil,
+                                     onPractice: { onPractice(words) },
+                                     onToggleSelecting: {
+                                         if selecting {
+                                             endSelecting()
+                                         } else {
+                                             withAnimation(.snappy(duration: 0.18)) { selecting = true }
+                                         }
+                                     },
+                                     onRename: { renaming = true },
+                                     onRemove: { removing = true })
+                }
             }
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, Theme.screenTop)
         .padding(.bottom, Theme.blockGap)
-    }
-
-    /// 이 묶음에 할 수 있는 일을 여는 단추.
-    ///
-    /// **동그랗다.** 납작한 캡슐은 글자를 담으려고 옆으로 늘인 꼴인데 여기 담긴 것은
-    /// 점 세 개뿐이라, 가로로 늘이면 빈 자리만 넓어진다. 기호 하나에는 원이 맞다.
-    /// 줄임표는 애플이 이 자리에 쓰는 기호다(메모·파일이 그렇다) — 이름 옆에 서므로
-    /// 글자보다 기호가 낫다. 이름과 겨루지 않는다.
-    private var moreButton: some View {
-        Button { menuOpen = true } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 15, weight: .medium))
-                .frame(width: 38, height: 38)
-                .background(menuOpen || selecting ? Theme.ink : Theme.grey4, in: Circle())
-                .foregroundStyle(menuOpen || selecting ? Theme.paper : Theme.grey1)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("이 묶음 손보기")
-        // **목록도 앱의 얼굴로 짓는다.** 시스템 메뉴는 글자체부터 남의 것이라
-        // 그 순간만 다른 앱이 된다. 뜨는 자리(단추 옆)는 시스템에 맡기고
-        // 안에 서는 것만 이쪽에서 그린다.
-        .popover(isPresented: $menuOpen, arrowEdge: .top) {
-            menuList
-                .presentationCompactAdaptation(.popover)
-                .presentationBackground(Theme.paper)
-        }
-    }
-
-    /// 할 수 있는 일들. 자주 하는 것이 위, 되돌릴 수 없는 것이 맨 아래다.
-    private var menuList: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if !words.isEmpty {
-                menuRow("이 묶음 연습", symbol: "rectangle.stack") { onPractice(words) }
-                menuDivider
-                // 켜는 자리와 끄는 자리를 같게 둔다. 밖에 따로 세우지 않으므로
-                // 여기서 켜고 여기서 끈다.
-                menuRow(selecting ? "고르기 마치기" : "낱말 고르기",
-                        symbol: selecting ? "checkmark" : "checkmark.circle") {
-                    if selecting {
-                        endSelecting()
-                    } else {
-                        withAnimation(.snappy(duration: 0.18)) { selecting = true }
-                    }
-                }
-            }
-            if folder != nil {
-                if !words.isEmpty { menuDivider }
-                menuRow("이름 바꾸기", symbol: "pencil") { renaming = true }
-                menuDivider
-                menuRow("묶음 없애기", symbol: "trash", destructive: true) { removing = true }
-            }
-        }
-        .frame(width: 208)
-    }
-
-    private var menuDivider: some View {
-        Theme.rule(Theme.grey4).padding(.horizontal, 16)
-    }
-
-    /// 목록 한 줄. 글이 왼쪽, 기호가 오른쪽 — 애플의 메뉴와 차례가 같다.
-    private func menuRow(_ title: String, symbol: String, destructive: Bool = false,
-                         action: @escaping () -> Void) -> some View {
-        Button {
-            // **누른 뒤에 목록이 닫힌다.** 열어 둔 채로 다음 화면을 띄우면
-            // 판과 목록이 함께 떠 있는 순간이 생긴다.
-            menuOpen = false
-            action()
-        } label: {
-            HStack(spacing: 12) {
-                Text(title)
-                    .font(Theme.korean(.body))
-                Spacer(minLength: 8)
-                Image(systemName: symbol)
-                    .font(.system(size: 13, weight: .medium))
-            }
-            .foregroundStyle(destructive ? Color.red : Theme.ink)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// 담긴 것이 없을 때. **자리는 있고 아직 아무것도 넣지 않았을 뿐이다** —
-    /// 그렇게 보이게 적는다. 잘못 들어온 화면이 아니라는 것이 먼저다.
-    ///
-    /// 책장의 빈 화면처럼 가운데 세우지 않는다. 여기는 이름이 위에 서 있는 화면이라,
-    /// 글이 이름 아래에서 이어져야 그 묶음에 대한 말로 읽힌다.
-    private var emptyWords: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(folder == nil ? "아직 담은 것이 없어요" : "이 묶음은 아직 비어 있어요")
-                .font(Theme.korean(.title, weight: .medium))
-                .foregroundStyle(Theme.grey1)
-            Text(folder == nil
-                 ? "찾기에서 낱말 옆의 갈피표를 누르면 여기 모입니다."
-                 : "찾기에서 낱말 옆의 갈피표를 누르고 이 묶음을 고르면 여기 모입니다.")
-                .font(Theme.korean(.body))
-                .foregroundStyle(Theme.grey2)
-        }
-        .padding(.horizontal, Theme.gutter)
-    }
-
-    /// 낱말 한 줄.
-    ///
-    /// 책장 목록에서는 알약으로 늘어놓아 소리만 훑게 했는데, 여기서는 **뜻까지 세운다** —
-    /// 한 화 분량을 훑으려고 들어온 화면이라 무엇을 담았는지 읽혀야 한다.
-    /// 층의 차례는 화면 어디서나 같다 — 가나 · 한글.
-    private func row(_ word: CollectedWord) -> some View {
-        Button {
-            if selecting { toggle(word) } else { detail = word }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Headword(reading: word.reading, kanji: word.kanji, size: .word)
-                        if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
-                    }
-                }
-                if !word.gloss.isEmpty {
-                    Spacer(minLength: 12)
-                    Text(word.gloss)
-                        .font(Theme.korean(.sub))
-                        .foregroundStyle(Theme.grey2)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.trailing)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Theme.gutter)
-            .padding(.vertical, 13)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint(selecting ? "고르거나 풉니다" : "자세히 봅니다")
-        .accessibilityAddTraits(selecting && selection.contains(word.id) ? [.isSelected] : [])
     }
 
     // MARK: 고르기

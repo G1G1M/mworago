@@ -126,18 +126,10 @@ struct KanaView: View {
     private var dial: some View {
         HStack(spacing: 6) {
             ForEach([false, true], id: \.self) { isKatakana in
-                let selected = isKatakana == katakana
-                Button {
+                ChoiceChip(title: isKatakana ? "가타카나" : "히라가나",
+                           isSelected: isKatakana == katakana) {
                     withAnimation(.snappy(duration: 0.18)) { katakana = isKatakana }
-                } label: {
-                    Text(isKatakana ? "가타카나" : "히라가나")
-                        .font(Theme.korean(.sub, weight: selected ? .semibold : .regular))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(selected ? Theme.ink : .clear, in: Capsule())
-                        .foregroundStyle(selected ? Theme.paper : Theme.grey2)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

@@ -22,7 +22,7 @@ struct PracticeScopeDialog: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            head
+            DialogHead(title: "무엇을 연습할까요?", hint: "고른 묶음만 넘겨 봅니다.")
             // 줄이 적으면 스크롤을 두지 않는다 — `ScrollView` 는 준 높이를 늘 다 차지해서
             // 묶음이 둘뿐인데도 판 아래가 그 높이만큼 비어 보인다.
             if folders.count > 4 {
@@ -33,40 +33,17 @@ struct PracticeScopeDialog: View {
                 rows
             }
 
-            Button { isPresented = false } label: {
-                Text("그만두기")
-                    .font(Theme.korean(.body))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Theme.grey4, in: Capsule())
-                    .foregroundStyle(Theme.grey1)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
+            DialogButton(title: "그만두기") { isPresented = false }
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
         }
         .padding(.vertical, 20)
-    }
-
-    private var head: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("무엇을 연습할까요?")
-                .font(Theme.korean(.title))
-                .foregroundStyle(Theme.ink)
-            Text("고른 묶음만 넘겨 봅니다.")
-                .font(Theme.korean(.sub))
-                .foregroundStyle(Theme.grey2)
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
     }
 
     private var rows: some View {
         VStack(alignment: .leading, spacing: 0) {
             row(name: "전체", count: total, picked: current == nil) { pick(nil) }
-            Theme.rule(Theme.grey4)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 5)
+            DialogDivider()
             ForEach(folders, id: \.route.id) { folder in
                 row(name: folder.route.title, count: folder.count,
                     picked: current == folder.route,
@@ -84,27 +61,11 @@ struct PracticeScopeDialog: View {
     /// 고르기 전에 알고 싶은 것이 그 수다.
     private func row(name: String, count: Int, picked: Bool, dim: Bool = false,
                      action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 11) {
-                Circle()
-                    .strokeBorder(picked ? Theme.ink : Theme.grey3, lineWidth: 1.5)
-                    .background(Circle().fill(picked ? Theme.ink : .clear).padding(3.5))
-                    .frame(width: 16, height: 16)
-                Text(name)
-                    .font(Theme.korean(.body))
-                    .foregroundStyle(dim ? Theme.grey1 : Theme.ink)
-                    .lineLimit(1)
-                Spacer(minLength: 10)
-                Text("\(count)개")
-                    .font(Theme.korean(.tag))
-                    .foregroundStyle(Theme.grey2)
-                    .monospacedDigit()
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
+        RadioRow(title: name, isPicked: picked, dim: dim, action: action) {
+            Text("\(count)개")
+                .font(Theme.korean(.tag))
+                .foregroundStyle(Theme.grey2)
+                .monospacedDigit()
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(picked ? [.isSelected] : [])
     }
 }

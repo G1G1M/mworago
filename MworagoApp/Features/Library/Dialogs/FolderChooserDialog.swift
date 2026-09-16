@@ -47,7 +47,7 @@ struct FolderChooserDialog: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            head
+            DialogHead(title: title, hint: hint)
             // **줄이 적으면 스크롤을 두지 않는다.** `ScrollView` 는 준 높이를 늘 다
             // 차지해서, 묶음이 둘뿐인데도 판 아래가 그 높이만큼 비어 보인다.
             if folderNames.count > 5 {
@@ -58,36 +58,16 @@ struct FolderChooserDialog: View {
                 rows
             }
 
-            HStack(spacing: 10) {
-                // 있던 자리 그대로면 옮길 것이 없다. 막아 두면 "무엇이 달라지는가"를
-                // 단추가 대신 말해 준다.
-                Button {
-                    onPick(picked.name)
-                    isPresented = false
-                } label: {
-                    Text("저장")
-                        .font(Theme.korean(.body))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(Theme.ink, in: Capsule())
-                        .foregroundStyle(Theme.paper)
-                }
-                .buttonStyle(.plain)
-                .disabled(!canSave)
-                .opacity(canSave ? 1 : 0.4)
-
-                Button { isPresented = false } label: {
-                    Text("그만두기")
-                        .font(Theme.korean(.body))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(Theme.grey4, in: Capsule())
-                        .foregroundStyle(Theme.grey1)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
+            // 있던 자리 그대로면 옮길 것이 없다. 막아 두면 "무엇이 달라지는가"를
+            // 단추가 대신 말해 준다.
+            DialogActions(confirmTitle: "저장",
+                          canConfirm: canSave,
+                          onConfirm: {
+                              onPick(picked.name)
+                              isPresented = false
+                          },
+                          onCancel: { isPresented = false })
+                .padding(.top, 14)
         }
         .padding(.vertical, 20)
         // 열 때는 지금 있는 자리에 놓는다. 여러 묶음에서 골라 왔으면 지금이 하나가
@@ -101,9 +81,7 @@ struct FolderChooserDialog: View {
                 row(name: name, picked: picked == .folder(name),
                     here: marksCurrent && name == current) { picked = .folder(name) }
             }
-            Theme.rule(Theme.grey4)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 5)
+            DialogDivider()
             // 묶음에서 빼기. 지우는 것이 아니라 **아직 안 넣은 것으로 되돌리는** 일이라
             // 책장에 그대로 남는다 — 이름이 그것을 말해 준다.
             row(name: "아직 안 넣은 것으로", picked: picked == .none,
@@ -112,47 +90,18 @@ struct FolderChooserDialog: View {
         }
     }
 
-    private var head: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(Theme.korean(.title))
-                .foregroundStyle(Theme.ink)
-            Text(hint)
-                .font(Theme.korean(.sub))
-                .foregroundStyle(Theme.grey2)
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
-    }
-
     /// 묶음 한 줄. 담기 모달과 같은 문법이다 — 왼쪽 점이 **지금 고른 자리**를 가리키고,
     /// 오른쪽 `지금` 이 **원래 있던 자리**를 말한다. 둘을 갈라 두어야 무엇이 달라지는지가
     /// 화면에 남는다.
     private func row(name: String, picked: Bool, here: Bool, dim: Bool = false,
                      action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 11) {
-                Circle()
-                    .strokeBorder(picked ? Theme.ink : Theme.grey3, lineWidth: 1.5)
-                    .background(Circle().fill(picked ? Theme.ink : .clear).padding(3.5))
-                    .frame(width: 16, height: 16)
-                Text(name)
-                    .font(Theme.korean(.body))
-                    .foregroundStyle(dim ? Theme.grey1 : Theme.ink)
-                    .lineLimit(1)
-                Spacer(minLength: 10)
-                if here {
-                    Text("지금")
-                        .font(Theme.korean(.tag))
-                        .foregroundStyle(Theme.grey2)
-                }
+        RadioRow(title: name, isPicked: picked, dim: dim, action: action) {
+            if here {
+                Text("지금")
+                    .font(Theme.korean(.tag))
+                    .foregroundStyle(Theme.grey2)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(picked ? [.isSelected] : [])
         .accessibilityHint(here ? "원래 있던 자리입니다" : "")
     }
 }

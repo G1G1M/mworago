@@ -14,17 +14,6 @@ import MworagoCore
 /// 다 펼쳤는데, 한 편만 봤을 때는 괜찮아도 다섯 편이 쌓이면 책장이 다섯 배로 길어지고
 /// 스무 편이면 훑을 수 없는 화면이 됐다. 대신 줄 오른쪽에 낱말 두어 개를 흘려 두어
 /// **이름만으로 "어느 화였지"를 짚지 않아도 되게** 한다.
-/// 밖에서 "이 묶음을 열어 달라"고 건네는 이름.
-///
-/// **옵셔널 하나로는 모자란다.** 이름 없는 묶음(`아직 안 넣은 것`)이 실재하므로,
-/// `String?` 만으로는 `nil` 이 "그 묶음"과 "건넨 것 없음" 둘을 뜻하게 된다.
-struct FolderRoute: Equatable, Identifiable {
-    let name: String?
-    var id: String { name ?? "\u{1F}없음" }
-    /// 화면에 적을 이름.
-    var title: String { name ?? "아직 안 넣은 것" }
-}
-
 struct LibraryView: View {
     @Environment(CollectionStore.self) private var collection
     /// 밖에서 열어 달라고 건네는 묶음. 담은 자리를 알리는 줄을 누르면 여기로 온다.
@@ -174,7 +163,7 @@ struct LibraryView: View {
             // 헤더가 빠지면 빈 글이 **화면 전체의 한가운데**에 선다. 연습의 빈 화면과
             // 같은 자리다 — 탭을 오갈 때 같은 말이 위아래로 흔들리지 않는다.
             if isEmpty {
-                empty
+                LibraryEmptyState { naming = true }
                     .transition(.opacity)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
@@ -359,37 +348,6 @@ struct LibraryView: View {
         endSelecting()
     }
 
-    /// 고르는 중인 줄 앞에 서는 동그라미.
-    private func checkmark(_ word: CollectedWord) -> some View {
-        let picked = selection.contains(word.id)
-        return Image(systemName: picked ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 21))
-            .foregroundStyle(picked ? Theme.ink : Theme.grey3)
-            .padding(.leading, Theme.gutter)
-            .accessibilityHidden(true)   // 줄 전체가 이미 고르는 단추다
-    }
-
-    /// 지울 수 있는 줄. 편집 중일 때만 단추가 앞에 선다.
-    @ViewBuilder
-    private func deletable<V: View>(_ remove: @escaping () -> Void,
-                                    @ViewBuilder _ inner: () -> V) -> some View {
-        HStack(spacing: 0) {
-            if editing {
-                Button(action: remove) {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 21))
-                        .foregroundStyle(Theme.destructive)
-                        .padding(.leading, Theme.gutter)
-                        .padding(.vertical, 8)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("지우기")
-            }
-            inner()
-        }
-    }
-
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -400,25 +358,26 @@ struct LibraryView: View {
                     ForEach(collection.folders) { folder in
                         // 묶음을 없애도 **낱말은 남는다** — 묶음은 담아 둔 자리일 뿐이다.
                         // 그래서 여기서는 되묻지 않는다. 이름 없는 무리는 지울 자리가 없다.
-                        deletable({ if let name = folder.name { collection.removeFolder(name) } }) {
-                            groupRow(name: folder.name ?? "아직 안 넣은 것",
-                                     dim: folder.name == nil,
-                                     words: folder.words,
-                                     route: .folder(folder.name))
+                        DeletableRow(editing: editing,
+                                     onRemove: { if let name = folder.name { collection.removeFolder(name) } }) {
+                            LibraryGroupRow(name: folder.name ?? "아직 안 넣은 것",
+                                            dim: folder.name == nil,
+                                            words: folder.words,
+                                            route: Route.folder(folder.name))
                         }
                         rowDivider
                     }
                     // **지울 셈일 때는 만드는 자리를 감춘다.** 한 화면에서 만들기와
                     // 지우기가 나란히 서면 손이 어느 쪽인지 헷갈린다.
-                    if !editing { newFolderRow }
+                    if !editing { NewFolderRow { naming = true } }
                 case .days:
                     // 날짜 묶음에는 지우는 단추를 두지 않는다. 날짜는 사람이 만든 자리가
                     // 아니라 담은 때가 만든 자리라, 지운다는 말이 성립하지 않는다.
                     ForEach(days) { day in
-                        groupRow(name: day.date.formatted(.dateTime.month(.wide).day().locale(Theme.locale)),
-                                 dim: false,
-                                 words: day.words,
-                                 route: .day(day.date))
+                        LibraryGroupRow(name: day.date.formatted(.dateTime.month(.wide).day().locale(Theme.locale)),
+                                        dim: false,
+                                        words: day.words,
+                                        route: Route.day(day.date))
                         rowDivider
                     }
                 case .list:
@@ -430,8 +389,12 @@ struct LibraryView: View {
                         // 층에 붙는다. 글의 첫 줄에 맞춰 세운다 — 고르는 것은 낱말이고,
                         // 낱말은 맨 윗줄에 있다.
                         HStack(alignment: .firstTextBaseline, spacing: 0) {
-                            if selecting { checkmark(word) }
-                            row(word)
+                            if selecting { SelectionMark(isPicked: selection.contains(word.id)) }
+                            LibraryWordRow(word: word,
+                                           selecting: selecting,
+                                           isPicked: selection.contains(word.id),
+                                           onTap: { if selecting { toggle(word) } else { detail = word } },
+                                           onRemove: { collection.remove(word) })
                         }
                         rowDivider
                     }
@@ -535,189 +498,10 @@ struct LibraryView: View {
     private var dial: some View {
         HStack(spacing: 6) {
             ForEach(Grouping.allCases) { option in
-                let selected = option == grouping
-                Button {
+                ChoiceChip(title: option.label, isSelected: option == grouping) {
                     withAnimation(.snappy(duration: 0.18)) { grouping = option }
-                } label: {
-                    Text(option.label)
-                        .font(Theme.korean(.sub, weight: selected ? .semibold : .regular))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(selected ? Theme.ink : .clear, in: Capsule())
-                        .foregroundStyle(selected ? Theme.paper : Theme.grey2)
                 }
-                .buttonStyle(.plain)
             }
         }
-    }
-
-    /// 묶음 한 줄 — 묶음이든 날짜든 같은 꼴이다. 눈이 두 번 배우지 않아도 된다.
-    ///
-    /// **한 줄 안에서 끝난다.** 이름과 개수만 두면 스무 편도 한 화면에 들어오지만
-    /// 이름만으로는 "어느 화였지"가 안 떠오른다. 그래서 오른쪽에 **낱말 두 개를 회색으로
-    /// 흘려** 둔다 — 읽으라고 두는 것이 아니라 어느 무리인지 짚어 주는 단서다.
-    private func groupRow(name: String, dim: Bool, words: [CollectedWord],
-                          route: Route) -> some View {
-        NavigationLink(value: route) {
-            HStack(alignment: .firstTextBaseline, spacing: 9) {
-                Text(name)
-                    .font(Theme.korean(.title, weight: .medium))
-                    .foregroundStyle(dim ? Theme.grey2 : Theme.ink)
-                Text("\(words.count)")
-                    .font(Theme.korean(.sub))
-                    .foregroundStyle(Theme.grey3)
-
-                Spacer(minLength: 12)
-
-                // 담긴 것이 없으면 흘릴 낱말도 없다. 그 자리를 비워 두면 줄이 반쯤
-                // 지워진 것처럼 보이므로, 비었다고 적는다.
-                if words.isEmpty {
-                    Text("비어 있음")
-                        .font(Theme.korean(.sub))
-                        .foregroundStyle(Theme.grey3)
-                } else {
-                    Text(words.prefix(2).map(\.reading).joined(separator: " · "))
-                        .font(Theme.japanese(.sub))
-                        .foregroundStyle(Theme.grey3)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                Image(systemName: "chevron.right")
-                    // 설정의 줄 끝에 서는 것과 같은 11 이다. 같은 기호가 같은 일을
-                    // 하는데 화면마다 1pt 씩 다르면, 탭을 옮길 때 줄 끝만 흔들린다.
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.grey3)
-            }
-            .padding(.horizontal, Theme.gutter)
-            .padding(.vertical, 17)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("이 묶음을 엽니다")
-    }
-
-    /// 묶음을 만드는 줄. 묶음들이 선 목록의 맨 끝에 이어 붙는다.
-    ///
-    /// **담기 모달에도 만드는 길이 있지만 하는 일이 다르다.** 그쪽은 낱말을 손에 들고
-    /// 만드는 것이라 만들면 곧 담긴다. 여기서 만드는 것은 **비어 있는 자리**다 —
-    /// 다음 화를 보기 전에 이름을 세워 두고, 담을 때 그 자리를 고른다.
-    private var newFolderRow: some View {
-        Button { naming = true } label: {
-            HStack(spacing: 11) {
-                Image(systemName: "plus")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 16)
-                Text("새 묶음 만들기")
-                    .font(Theme.korean(.body))
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(Theme.grey1)
-            .padding(.horizontal, Theme.gutter)
-            .padding(.vertical, 17)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("담긴 것이 없는 묶음을 미리 만듭니다")
-    }
-
-    /// 낱말 하나. **담을 때 보였던 뜻을 그대로 붙든다** — 뜻이 나중에 좋아지더라도
-    /// 무엇을 보고 담았는지가 그 사람의 기억과 맞다.
-    private func row(_ word: CollectedWord) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
-            Button {
-                if selecting { toggle(word) } else { detail = word }
-            } label: {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Headword(reading: word.reading, kanji: word.kanji, size: .word)
-                        if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
-                    }
-                    Text(word.hangul)
-                        .font(Theme.korean(.sub))
-                        .foregroundStyle(Theme.grey3)
-                    if !word.gloss.isEmpty {
-                        Text(word.gloss)
-                            .font(Theme.korean(.sub))
-                            .foregroundStyle(Theme.grey1)
-                            .padding(.top, 2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint(selecting ? "고르거나 풉니다" : "자세히 봅니다")
-            .accessibilityAddTraits(selecting && selection.contains(word.id) ? [.isSelected] : [])
-
-            // 고르는 중에는 갈피표를 감춘다. 한 줄에 고르는 손과 빼는 손이 같이 있으면
-            // 고르려다 빼는 일이 생기고, 그것은 되돌릴 수 없다.
-            if !selecting {
-                Button {
-                    collection.remove(word)
-                } label: {
-                    Image(systemName: "bookmark.fill")
-                        // 찾기의 갈피표와 같은 15 다. 같은 기호가 같은 일(담기·빼기)을 한다.
-                        .font(.system(size: 15))
-                        .foregroundStyle(Theme.ink)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(word.reading) 빼기")
-            }
-        }
-        .padding(.horizontal, Theme.gutter)
-        .padding(.vertical, 16)
-    }
-
-    /// 담긴 것이 없을 때. 남은 자리 한가운데 글 덩어리 하나가 선다 —
-    /// 연습의 빈 화면과 같은 자리다. 글줄은 왼쪽에서 시작한다.
-    ///
-    /// 좌우 여백을 폭 **안쪽**에 둔다. 폭을 잰 뒤에 붙이면 덩어리가
-    /// `readWidth + 여백` 이 되어 재 둔 폭이 실제와 어긋난다.
-    /// 담긴 것이 없을 때. **연습의 빈 화면과 같은 자리에 선다** — 화면 한가운데
-    /// 글 덩어리 하나가 가운데 정렬로 놓인다. 빈 화면은 읽으라고 두는 것이라
-    /// 목록처럼 위에서부터 왼쪽에 채울 것이 없다.
-    ///
-    /// 두 화면이 **같은 문법으로 선다** — 폭 안쪽 여백 · `readWidth` · 공유 높이 ·
-    /// 남은 자리 채우기. 결과만 비슷하게 맞춰 두면 한쪽을 손볼 때 다시 어긋난다.
-    private var empty: some View {
-        VStack(alignment: .leading, spacing: Theme.blockGap) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("아직 책장이 비어 있어요")
-                    .font(Theme.korean(.heading, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                Text("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓입니다.")
-                    .font(Theme.korean(.body))
-                    .foregroundStyle(Theme.grey2)
-            }
-            // 온보딩 2장과 같은 이유로 낡았던 말이다. 날짜는 어느 화를 봤는지 앱이
-            // 몰라서 쓰던 대용품인데, 이제 담을 때 어느 묶음에 넣을지 직접 고른다.
-            Text("묶음은 마음대로 만들고, 담은 뒤에도 옮길 수 있어요.")
-                .font(Theme.korean(.sub))
-                .foregroundStyle(Theme.grey3)
-
-            // **보기 전에 자리를 먼저 만들 수 있다.**
-            //
-            // 한때는 이 자리를 비워 두었다 — 처음 온 사람에게 할 일을 둘 내밀면
-            // "찾기에서 갈피표를 누르세요"가 흐려진다는 이유였다. 그런데 다음 화를 보기
-            // 전에 이름을 세워 두는 일이 이 앱의 실제 흐름이고(빈 묶음을 지원하는 까닭이
-            // 그것이다), 담긴 것이 없을 때는 그 길이 아예 없었다.
-            //
-            // 그래서 두되 **작게** 둔다. 채우지 않은 알약이라 위의 글과 겨루지 않는다.
-            Button { naming = true } label: {
-                Text("묶음 만들어 두기")
-                    .font(Theme.korean(.sub))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 9)
-                    .background(Theme.grey4, in: Capsule())
-                    .foregroundStyle(Theme.grey1)
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 4)
-        }
-        .padding(.horizontal, Theme.gutter)
-        .frame(maxWidth: Theme.readWidth, alignment: .leading)
-        // 첫 줄을 연습의 빈 화면과 같은 높이에 세운다 — 자세한 까닭은 `emptyBlockHeight`.
-        .frame(minHeight: Theme.emptyBlockHeight, alignment: .topLeading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

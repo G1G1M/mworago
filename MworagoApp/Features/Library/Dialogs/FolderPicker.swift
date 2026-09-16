@@ -42,14 +42,6 @@ struct FolderPicker: View {
     /// 화면 위에 덧그린 판이라, 그 길로 닫으면 판이 아니라 뒤에 있는 화면이 닫힌다.
     var onClose: () -> Void = {}
 
-    /// 줄 하나의 높이.
-    ///
-    /// **접힌 줄과 펼친 줄이 같은 높이여야 한다.** 판은 화면 한가운데 서므로 안이
-    /// 자라면 위아래로 함께 벌어진다 — `새 묶음 만들기` 를 누르는 순간 판 전체가
-    /// 들썩이고 아래 단추가 제자리를 옮긴다. 누른 것은 줄 하나인데 화면이 통째로
-    /// 움직이는 셈이다. 두 상태를 같은 높이에 묶어 그 일이 아예 안 일어나게 한다.
-    private static let rowHeight: CGFloat = 45
-
     /// 지금 고른 자리. **`nil` 과 "안 고름"이 다르므로** 옵셔널을 겹쳐 쓰지 않고
     /// 갈래로 적는다 — `nil` 은 "나중에 정하기"라는 **고른 값**이다.
     enum Pick: Equatable {
@@ -107,8 +99,12 @@ struct FolderPicker: View {
             row(name: "나중에 정하기",
                 picked: picked == .later,
                 dim: true) { picked = .later }
-            line
-            newFolder
+            DialogDivider()
+            NewFolderField(naming: $naming,
+                           name: $newName,
+                           focused: $nameFocused,
+                           canFold: !folderNames.isEmpty,
+                           onCreate: createAndPick)
             confirm
         }
         .padding(.vertical, 20)
@@ -133,31 +129,12 @@ struct FolderPicker: View {
     /// **`저장` 만 검게 채운다.** 이 판에서 검게 채워지는 것은 고른 자리의 점과 이 단추
     /// 둘인데, 하나는 "무엇을"이고 하나는 "그래서 어떻게"라 겹치지 않는다.
     private var confirm: some View {
-        HStack(spacing: 10) {
-            Button { pick(picked.name) } label: {
-                Text("저장")
-                    .font(Theme.korean(.body))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Theme.ink, in: Capsule())
-                    .foregroundStyle(Theme.paper)
-            }
-            .buttonStyle(.plain)
-
-            Button(action: onClose) {
-                Text("그만두기")
-                    .font(Theme.korean(.body))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Theme.grey4, in: Capsule())
-                    .foregroundStyle(Theme.grey1)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 20)
-        // 만드는 줄과 조금 더 벌린다. 위는 판 안에서 고르고 만드는 일이고 여기는
-        // 판을 닫는 일이라, 줄 사이 간격과 같으면 한 목록의 마지막 줄로 읽힌다.
-        .padding(.top, 20)
+        DialogActions(confirmTitle: "저장",
+                      onConfirm: { pick(picked.name) },
+                      onCancel: onClose)
+            // 만드는 줄과 조금 더 벌린다. 위는 판 안에서 고르고 만드는 일이고 여기는
+            // 판을 닫는 일이라, 줄 사이 간격과 같으면 한 목록의 마지막 줄로 읽힌다.
+            .padding(.top, 20)
     }
 
     /// 무엇을 담는 중인지 말해 준다. 갈피표를 누른 뒤 모달이 뜨는 사이에 시선이
@@ -186,129 +163,26 @@ struct FolderPicker: View {
         .padding(.bottom, 14)
     }
 
-    private var line: some View {
-        Theme.rule(Theme.grey4)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 5)
-    }
-
     /// 묶음 한 줄. 왼쪽 점이 **지금 고른 자리**를 가리킨다.
     ///
     /// 열 때는 지난번에 넣은 곳에 놓여 있다. 그래서 한 화를 몰아 담는 동안은
     /// 고르는 일이 없고 `저장` 만 누르면 된다.
     private func row(name: String, picked: Bool, dim: Bool = false, isNew: Bool = false,
                      action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 11) {
-                Circle()
-                    .strokeBorder(picked ? Theme.ink : Theme.grey3, lineWidth: 1.5)
-                    .background(Circle().fill(picked ? Theme.ink : .clear).padding(3.5))
-                    .frame(width: 16, height: 16)
-                Text(name)
-                    .font(Theme.korean(.body))
-                    .foregroundStyle(dim ? Theme.grey1 : Theme.ink)
-                Spacer(minLength: 10)
-                // **지난번 자리는 고른 것과 따로 말한다.** 다른 곳을 골라도 이 표는
-                // 그 자리에 남아, 원래 어디에 넣어 왔는지가 화면에서 안 사라진다.
-                if isNew {
-                    Text("새 묶음")
-                        .font(Theme.korean(.tag))
-                        .foregroundStyle(Theme.grey2)
-                } else if name == lastFolder || (name == "나중에 정하기" && lastFolder == nil) {
-                    Text(markLabel)
-                        .font(Theme.korean(.tag))
-                        .foregroundStyle(Theme.grey2)
-                }
+        RadioRow(title: name, isPicked: picked, dim: dim, singleLine: false, action: action) {
+            // **지난번 자리는 고른 것과 따로 말한다.** 다른 곳을 골라도 이 표는
+            // 그 자리에 남아, 원래 어디에 넣어 왔는지가 화면에서 안 사라진다.
+            if isNew {
+                Text("새 묶음")
+                    .font(Theme.korean(.tag))
+                    .foregroundStyle(Theme.grey2)
+            } else if name == lastFolder || (name == "나중에 정하기" && lastFolder == nil) {
+                Text(markLabel)
+                    .font(Theme.korean(.tag))
+                    .foregroundStyle(Theme.grey2)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(picked ? [.isSelected] : [])
         .accessibilityHint(picked ? "지금 고른 자리입니다" : "")
-    }
-
-    /// 새 묶음. 접혀 있을 때는 한 줄, 펼치면 그 자리가 이름 받는 칸이 된다.
-    ///
-    /// **만들면 그 자리가 골라진다.** 담기는 아래 `저장` 이 한다 — 여기서 곧바로
-    /// 담아 버리면 판에 `저장` 을 두고도 어떤 길로는 그것을 건너뛰게 되어,
-    /// 같은 화면이 두 가지 문법으로 도는 셈이 된다.
-    /// 담을 것 없이 자리만 만드는 일은 책장에서 한다.
-    @ViewBuilder
-    private var newFolder: some View {
-        if naming {
-            // **한 줄에 담는다.** 칸 아래에 단추 둘을 세우면 그 `그만두기` 가 판 아래의
-            // `그만두기` 와 나란히 서서, 어느 것이 무엇을 무르는지 알 수 없게 된다.
-            // 여기서 무르는 것은 "이름 짓기를 접는" 작은 일이라 작은 자리에 둔다.
-            HStack(spacing: 8) {
-                TextField("예) 일상생활", text: $newName)
-                    .font(Theme.korean(.body))
-                    .foregroundStyle(Theme.ink)
-                    .textFieldStyle(.plain)
-                    .focused($nameFocused)
-                    .submitLabel(.done)
-                    .onSubmit { createAndPick() }
-                    .padding(.horizontal, 14)
-                    .frame(height: Self.rowHeight - 6)
-                    .background(Theme.grey4, in: RoundedRectangle(cornerRadius: 10))
-
-                // **검게 채우지 않는다.** 이 판에서 검게 채워지는 것은 아래 `저장` 하나다.
-                // 만들기는 고를 자리를 하나 늘리는 일이고, 담는 것은 여전히 `저장` 이다.
-                Button { createAndPick() } label: {
-                    Text("만들기")
-                        .font(Theme.korean(.body))
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 15)
-                        .frame(height: Self.rowHeight - 6)
-                        .overlay(Capsule().strokeBorder(Theme.grey3, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .disabled(trimmedName.isEmpty)
-                .opacity(trimmedName.isEmpty ? 0.4 : 1)
-
-                // 묶음이 하나도 없으면 접을 자리가 없다 — 그때는 이름을 짓는 것이
-                // 이 판에서 할 수 있는 유일한 일이다.
-                if !folderNames.isEmpty {
-                    Button {
-                        naming = false
-                        nameFocused = false
-                        newName = ""
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Theme.grey2)
-                            .frame(width: 28, height: Self.rowHeight - 6)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("이름 짓기 그만두기")
-                }
-
-            }
-            .padding(.horizontal, 20)
-            .frame(height: Self.rowHeight)
-            .onAppear { nameFocused = true }
-        } else {
-            Button {
-                naming = true
-                nameFocused = true
-            } label: {
-                HStack(spacing: 11) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 16)
-                    Text("새 묶음 만들기")
-                        .font(Theme.korean(.body))
-                    Spacer(minLength: 0)
-                }
-                .foregroundStyle(Theme.grey1)
-                .padding(.horizontal, 20)
-                .frame(height: Self.rowHeight)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        }
     }
 
     private var trimmedName: String {

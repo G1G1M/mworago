@@ -40,7 +40,7 @@ struct FolderNameDialog: View {
         // 판의 폭과 바닥은 `Dialog` 가 정한다. 여기서는 그 안에 무엇이 서는지만 적는다 —
         // 그래야 이름 받는 판과 할 일을 고르는 판이 같은 크기로 뜬다.
         VStack(alignment: .leading, spacing: 0) {
-            head
+            DialogHead(title: title, hint: hint, bottom: 14)
             field
             buttons
         }
@@ -55,19 +55,6 @@ struct FolderNameDialog: View {
                 focused = true
             }
         }
-    }
-
-    private var head: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(Theme.korean(.title))
-                .foregroundStyle(Theme.ink)
-            Text(hint)
-                .font(Theme.korean(.sub))
-                .foregroundStyle(Theme.grey2)
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 14)
     }
 
     /// 이름 받는 칸. 담기 모달의 그것과 같은 꼴이라 눈이 두 번 배우지 않는다.
@@ -102,31 +89,11 @@ struct FolderNameDialog: View {
     /// `만들기` 와 `그만두기` 가 서로 다른 크기가 되고, 둘 다 칸보다 한참 좁아
     /// 시트 안에 크기가 세 가지 서게 된다. 세로 여백도 칸의 것을 그대로 쓴다.
     private var buttons: some View {
-        HStack(spacing: 10) {
-            Button(action: confirm) {
-                Text(confirmLabel)
-                    .font(Theme.korean(.body))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Theme.ink, in: Capsule())
-                    .foregroundStyle(Theme.paper)
-            }
-            .buttonStyle(.plain)
-            .disabled(blocked)
-            .opacity(blocked ? 0.4 : 1)
-
-            Button(action: close) {
-                Text("그만두기")
-                    .font(Theme.korean(.body))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Theme.grey4, in: Capsule())
-                    .foregroundStyle(Theme.grey1)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+        DialogActions(confirmTitle: confirmLabel,
+                      canConfirm: !blocked,
+                      onConfirm: confirm,
+                      onCancel: close)
+            .padding(.top, 16)
     }
 
     private func confirm() {
