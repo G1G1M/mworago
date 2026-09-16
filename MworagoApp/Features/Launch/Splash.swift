@@ -154,26 +154,26 @@ struct Splash: View {
 
     /// 덮개의 색. 검정에서 입력 바의 톤으로 옮겨 간다.
     ///
-    /// 도착점이 `grey4` 인 것은 종이 위에 얹힌 `.ultraThinMaterial` 이 실제로 그 언저리로
-    /// 보이기 때문이다. 순백으로 가면 바가 배경에 녹아 한 번 사라졌다 나타나고,
-    /// 회색에서 멈추면 걷힐 때 한 번 밝아진다.
-    private var tintedFill: Color { tinted ? Theme.grey4 : Theme.ink }
+    /// 도착점은 입력 바가 실제로 보이는 톤이다. iOS 26 의 유리는 종이와 거의 같은 색
+    /// (`glassTone`)이고, 그 아래의 `.ultraThinMaterial` 은 `grey4` 언저리로 보인다.
+    /// 다른 톤에서 멈추면 걷히는 순간 바가 한 번 밝아지거나 어두워진다.
+    private var tintedFill: Color {
+        guard tinted else { return Theme.ink }
+        if #available(iOS 26, *) { return Theme.glassTone }
+        return Theme.grey4
+    }
 
     /// 입력 바의 얼굴 — 유리와 실선, 그리고 그 안에 놓이는 것들.
     ///
-    /// 찾기 화면의 입력 바가 쓰는 값을 그대로 쓴다(반지름 18 · `.ultraThinMaterial` ·
-    /// 회색 실선 0.5 · 좌우 18). **마지막 프레임이 진짜 입력 바와 같아야** 스플래시가
-    /// 걷힌 자리에 같은 것이 남아, 화면이 넘어간 것이 아니라 이어진 것으로 읽힌다.
+    /// 찾기 화면의 입력 바가 쓰는 값을 그대로 쓴다(반지름 18 · `glassSurface` · 좌우 18).
+    /// **마지막 프레임이 진짜 입력 바와 같아야** 스플래시가 걷힌 자리에 같은 것이 남아,
+    /// 화면이 넘어간 것이 아니라 이어진 것으로 읽힌다.
     ///
     /// 알약일 때는 검정에 통째로 가려 있다. 좁은 캡슐 안에서 글자가 눌리는 것은
     /// 보이지 않지만, 넘친 것이 밖으로 새지 않게 모양대로 잘라 둔다.
     private func barFace(corner: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: corner, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5)
-            )
+        Color.clear
+            .glassSurface(cornerRadius: corner)
             .overlay(alignment: .leading) {
                 HStack(spacing: 12) {
                     Image(systemName: "magnifyingglass")
@@ -189,8 +189,10 @@ struct Splash: View {
                 // 덮개가 걷히는 것과 함께 들어온다. 덮개가 이미 같은 색이라
                 // 글자만 나중에 떠오르는 것처럼 보인다.
                 .opacity(uncovered ? 1 : 0)
+                // **글자만 자른다.** 판째 자르면 유리의 그림자까지 잘려, 종이와 거의 같은
+                // 톤인 유리가 걷히는 순간 테두리 없이 사라졌다가 진짜 바에서 그림자가 붙는다.
+                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
             }
-            .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
     }
 
     // MARK: 자리

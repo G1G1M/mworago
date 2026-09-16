@@ -42,11 +42,7 @@ struct SearchInputBar: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Theme.grey3.opacity(0.5), lineWidth: 0.5)
-            )
+            .glassSurface(cornerRadius: 18)
             // 스플래시가 마지막에 여기로 와서 앉는다. 화면 좌표로 올려야
             // 스플래시가 제 좌표계로 옮겨 쓸 수 있다.
             .background {
