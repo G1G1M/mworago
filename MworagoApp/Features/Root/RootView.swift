@@ -39,7 +39,7 @@ struct RootView: View {
     /// `--query=` · `--select=` 와 같은 취지 — 시뮬레이터를 손으로 두드리면
     /// 엉뚱한 것을 누르기 쉽고, 무엇을 눌렀는지도 기록에 남지 않는다.
     @State private var tab: RootTab = RootTab(LaunchOptions.current)
-    /// 앱을 밝게 볼지 어둡게 볼지 — 설정의 `모습`. 기본은 기기를 따르는 것이다.
+    /// 앱을 밝게 볼지 어둡게 볼지 — 설정의 `화면`. 기본은 밝게다.
     @State private var appearance: Appearance
     /// 처음 열었는가. 봤으면 파일 하나가 남고 다시 나오지 않는다.
     /// `--onboarding` 으로는 봤는지와 무관하게 다시 띄운다.
