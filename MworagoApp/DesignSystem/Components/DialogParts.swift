@@ -28,12 +28,7 @@ struct DialogHead: View {
     }
 }
 
-/// 판 아래의 알약 단추. 채운 것이 하려는 일, 테두리만 두른 것이 물러나는 일이다.
-///
-/// **물러나는 단추는 면이 아니라 선으로 선다.** 한때 옅은 회색 면(`grey4`)을 깔았는데,
-/// 밝을 때 판 위에서 면이 236, 둘레가 240~246 이라 거의 차이가 없어 단추가 어디 있는지
-/// 보이지 않았다. 면을 짙게 하면 검게 채운 `저장` 과 무게를 다투므로, 채우지 않고
-/// 테두리(`grey3`)로 자리만 긋는다 — 새 묶음 칸 옆 `만들기` 와 같은 꼴이다.
+/// 판 아래의 알약 단추. 채운 것이 하려는 일, 흐린 것이 물러나는 일이다.
 struct DialogButton: View {
     let title: String
     var prominent = false
@@ -45,12 +40,8 @@ struct DialogButton: View {
                 .font(Theme.korean(.body))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 11)
-                .background(prominent ? Theme.ink : .clear, in: Capsule())
-                .overlay {
-                    if !prominent { Capsule().strokeBorder(Theme.grey3, lineWidth: 1) }
-                }
-                .foregroundStyle(prominent ? Theme.paper : Theme.ink)
-                .contentShape(Capsule())
+                .background(prominent ? Theme.ink : Theme.grey4, in: Capsule())
+                .foregroundStyle(prominent ? Theme.paper : Theme.grey1)
         }
         .buttonStyle(.plain)
     }
