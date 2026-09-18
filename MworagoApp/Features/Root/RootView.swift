@@ -74,11 +74,14 @@ struct RootView: View {
         tab = .library
     }
 
-    /// 하루치를 들고 연습으로 건너간다. 날짜는 그 화의 이름이므로 함께 넘긴다.
-    private func goPractice(_ words: [CollectedWord]) {
-        guard let first = words.first else { return }
+    /// 책장에서 한 묶음을 들고 연습으로 건너간다. **이름은 보내는 쪽이 적어 준다** —
+    /// 한때 이 자리에서 첫 낱말의 담은 날로 지었는데, 날짜별로 들고 온 것에만 맞는 이름이라
+    /// 묶음에서 「이 묶음 연습」을 눌러도 이름표에 날짜가 떴다. 무엇을 들고 왔는지는
+    /// 책장의 그 화면만 안다.
+    private func goPractice(_ words: [CollectedWord], _ label: String) {
+        guard !words.isEmpty else { return }
         practiceSubset = words
-        practiceLabel = first.collectedAt.formatted(.dateTime.month(.wide).day().locale(Theme.locale))
+        practiceLabel = label
         tab = .practice
     }
 

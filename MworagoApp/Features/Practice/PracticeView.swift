@@ -22,6 +22,10 @@ struct PracticeView: View {
     /// 쌓인 뒤에는 더 그렇다. 어느 화를 복습할지는 사용자가 교재에서 고른다.
     var subset: [CollectedWord]? = nil
     var subsetLabel: String? = nil
+    /// `--practice-subset=리코리스 리코일 3화` 는 책장에서 그 묶음을 들고 온 것처럼 띄운다.
+    /// `--practice-folder=` 와 다르다 — 그쪽은 연습 탭에서 고른 것이라 이름표가 서지 않는다.
+    /// 책장을 눌러 건너오는 길은 손으로 두드려야 해서 이 화면을 눈으로 볼 길이 없었다.
+    private static var argumentLabel: String? { LaunchOptions.current.value(for: "practice-subset") }
     /// 하루치에서 빠져나와 전체로 돌아간다.
     var onClearSubset: () -> Void = {}
 
@@ -44,8 +48,14 @@ struct PracticeView: View {
     /// 시뮬레이터는 손으로 두드릴 수 없어 뒷면을 눈으로 볼 길이 없다.
     @State private var revealed = LaunchOptions.current.has("revealed")
 
+    /// 들고 온 묶음의 이름. 실행 인자로 띄운 것도 같은 자리에 선다.
+    private var label: String? { subsetLabel ?? Self.argumentLabel }
+
     private var words: [CollectedWord] {
         if let subset { return subset }
+        if let name = Self.argumentLabel {
+            return collection.words.filter { $0.folder == name }
+        }
         guard let scope else { return collection.words }
         return collection.words.filter { $0.folder == scope.name }
     }
@@ -108,9 +118,6 @@ struct PracticeView: View {
                 .padding(.top, Theme.screenTop)
                 .padding(.bottom, Theme.screenBottom)
             }
-            if let subsetLabel {
-                PracticeSubsetBanner(label: subsetLabel, count: words.count, onClear: onClearSubset)
-            }
         }
         // 첫 장. 담긴 것이 없다가 생겼을 때도 여기서 잡힌다.
         //
@@ -170,7 +177,12 @@ struct PracticeView: View {
                 .foregroundStyle(Theme.grey2)
                 .monospacedDigit()
             Spacer(minLength: 8)
-            if subset == nil, canPick {
+            // 들고 온 묶음이 있으면 그 이름표가 이 자리에 선다. 그때 고르는 단추는 서지
+            // 않는다 — 이름표의 `전체` 가 빠져나오는 길이고, 둘이 나란히 서면 지금 무엇을
+            // 보는지 말하는 자리가 둘이 된다.
+            if let label {
+                PracticeSubsetBanner(label: label, count: words.count, onClear: onClearSubset)
+            } else if subset == nil, canPick {
                 PracticeScopeButton(title: scope?.title ?? "전체") { picking = true }
             }
         }

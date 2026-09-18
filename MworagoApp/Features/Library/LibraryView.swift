@@ -29,7 +29,8 @@ struct LibraryView: View {
     var onPick: (String) -> Void = { _ in }
     /// 그날 것만 들고 연습으로 건너간다. 연습이 늘 전체를 훑으면
     /// 스무 날치가 쌓인 뒤에는 오늘 본 것을 다시 만나기까지 한참이 걸린다.
-    var onPractice: ([CollectedWord]) -> Void = { _ in }
+    /// 한 묶음을 들고 연습으로 건너간다. 이름표에 적을 이름을 함께 넘긴다.
+    var onPractice: ([CollectedWord], String) -> Void = { _, _ in }
 
     enum Grouping: Int, CaseIterable, Identifiable {
         case folders, days, list

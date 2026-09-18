@@ -23,7 +23,9 @@ struct FolderDetail: View {
     /// 사용자가 지은 이름에만 있다.** 날짜는 앱이 센 것이라 고칠 것이 아니고,
     /// 안 넣은 것은 묶음이 아니라 아직 묶이지 않았다는 상태다.
     var folder: String? = nil
-    var onPractice: ([CollectedWord]) -> Void = { _ in }
+    /// 이 묶음을 들고 연습으로 건너간다. 이름표에 적을 이름은 이 화면의 제목이다 —
+    /// 묶음이면 묶음 이름, 날짜별로 열었으면 그날의 날짜다.
+    var onPractice: ([CollectedWord], String) -> Void = { _, _ in }
     var onRename: (String, String) -> Void = { _, _ in }
     var onRemoveFolder: (String) -> Void = { _ in }
     /// 낱말 상세가 쓰는 길들. 책장 목록에서 여는 것과 **같은 시트**라
@@ -244,7 +246,7 @@ struct FolderDetail: View {
                                    hasWords: !words.isEmpty,
                                    isNamed: folder != nil,
                                    onClose: { closeMenu() },
-                                   onPractice: { onPractice(words) },
+                                   onPractice: { onPractice(words, title) },
                                    onToggleSelecting: {
                                        if selecting {
                                            endSelecting()
