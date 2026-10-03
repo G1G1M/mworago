@@ -44,7 +44,7 @@ struct Feedback: View {
             VStack(alignment: .leading, spacing: 22) {
                 Text("""
                     이 앱이 내놓는 답은 사전과 규칙이 함께 만든 것이라 틀리는 자리가 \
-                    반드시 있습니다. 무엇을 치고 무엇이 나왔는지 알려 주시면 고칩니다.
+                    반드시 있어요. 무엇을 치고 무엇이 나왔는지 알려 주시면 고칠게요.
                     """)
                     .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey1)
@@ -63,7 +63,7 @@ struct Feedback: View {
                     if copiedAddress {
                         // 메일 앱이 없을 때. 주소를 보여 주기만 하면 옮겨 적어야 하므로
                         // 붙여 넣을 수 있게 해 두고 그 사실만 알린다.
-                        Text("메일 앱을 열 수 없어 주소를 복사했습니다 — \(Self.address)")
+                        Text("메일 앱을 열 수 없어 주소를 복사했어요 — \(Self.address)")
                             .font(Theme.korean(.sub))
                             .foregroundStyle(Theme.grey2)
                             .padding(.bottom, 14)
@@ -88,7 +88,7 @@ struct Feedback: View {
                         .foregroundStyle(Theme.ink)
                     Text("""
                         무엇을 치셨는지 · 무엇이 나왔는지 · 무엇이 나오길 기대하셨는지.
-                        친 글자를 그대로 적어 주시면 같은 자리를 다시 만들어 볼 수 있습니다.
+                        친 글자를 그대로 적어 주시면 같은 자리를 다시 만들어 볼 수 있어요.
                         """)
                         .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
@@ -140,7 +140,7 @@ struct Feedback: View {
 
 
             ─────────────
-            무엇이 어떻게 나왔는지 적어 주세요. 친 글자와 화면을 함께 알려 주시면 좋습니다.
+            무엇이 어떻게 나왔는지 적어 주세요. 친 글자와 화면을 함께 알려 주시면 좋아요.
 
             앱 \(Self.appVersion)
             \(UIDevice.current.systemName) \(UIDevice.current.systemVersion)

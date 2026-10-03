@@ -14,7 +14,7 @@ struct FolderEmptyState: View {
             Text(isNamed ? "이 묶음은 아직 비어 있어요" : "아직 담은 것이 없어요")
                 .font(Theme.korean(.title, weight: .medium))
                 .foregroundStyle(Theme.grey1)
-            Text(isNamed
+            Text.bookmarkGuide(isNamed
                  ? "찾기에서 낱말 옆의 갈피표를 누르고 이 묶음을 고르면 여기 모여요."
                  : "찾기에서 낱말 옆의 갈피표를 누르면 여기 모여요.")
                 .font(Theme.korean(.body))

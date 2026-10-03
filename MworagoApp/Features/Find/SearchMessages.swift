@@ -12,7 +12,7 @@ struct SearchPrompt: View {
             Text("일본어를 들리는 대로 쳐보세요")
                 .font(Theme.korean(.hero, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-            Text("띄어 쓰지 않아도 됩니다. 어디서 끊을지는 사전이 정해요.")
+            Text("띄어 쓰지 않아도 돼요. 어디서 끊을지는 사전이 정해요.")
                 .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
         }

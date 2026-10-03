@@ -111,7 +111,7 @@ struct Onboarding: View {
                                 Text(pages[i].title)
                                     .font(Theme.korean(.hero, weight: .semibold))
                                     .foregroundStyle(Theme.ink)
-                                Text(pages[i].detail)
+                                Text.bookmarkGuide(pages[i].detail)
                                     .font(Theme.korean(.body))
                                     .foregroundStyle(Theme.grey2)
                                     .fixedSize(horizontal: false, vertical: true)

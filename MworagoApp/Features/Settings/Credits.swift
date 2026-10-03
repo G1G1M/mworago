@@ -150,8 +150,8 @@ struct Credits: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Text("""
                         앱에 실린 사전 색인은 위 자료를 다시 엮은 것이라, \
-                        원본과 같은 CC BY-SA 4.0 조건에 놓입니다. \
-                        한국어 뜻은 미리 옮겨 실은 것이고, 자주 쓰는 낱말은 사람이 다듬었습니다.
+                        원본과 같은 CC BY-SA 4.0 조건에 놓여요. \
+                        한국어 뜻은 미리 옮겨 실은 것이고, 자주 쓰는 낱말은 사람이 다듬었어요.
                         """)
                         .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)
@@ -182,15 +182,15 @@ struct Credits: View {
                         .font(Theme.korean(.title))
                         .foregroundStyle(Theme.ink)
                     Text("""
-                        이 앱은 아무것도 모으지 않습니다. 계정도, 위치도, 사용 기록도 \
-                        받지 않고 어디로도 보내지 않습니다.
+                        이 앱은 아무것도 모으지 않아요. 계정도, 위치도, 사용 기록도 \
+                        받지 않고 어디로도 보내지 않아요.
                         """)
                         .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey1)
                         .fixedSize(horizontal: false, vertical: true)
                     Text("""
-                        사전은 앱 안에 통째로 들어 있어 찾을 때 인터넷을 쓰지 않습니다. \
-                        모은 낱말은 기기 안 파일에만 있고, 앱을 지우면 함께 사라집니다.
+                        사전은 앱 안에 통째로 들어 있어 찾을 때 인터넷을 쓰지 않아요. \
+                        모은 낱말은 기기 안 파일에만 있고, 앱을 지우면 함께 사라져요.
                         """)
                         .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.grey2)

@@ -14,7 +14,7 @@ struct PracticeEmptyState: View {
             Text("모은 낱말을 가나만 보고 떠올려 보는 자리예요.")
                 .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
-            Text("찾기에서 낱말 옆의 갈피표를 누르면 여기로 와요.")
+            Text.bookmarkGuide("찾기에서 낱말 옆의 갈피표를 누르면 여기로 와요.")
                 .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey3)
         }
