@@ -72,6 +72,23 @@ final class SystemSpeaker: Speaking, @unchecked Sendable {
         MainActor.assumeIsolated { self.utter(text, pace: pace) }
     }
 
+    /// 말을 끝까지 하고 돌아온다.
+    ///
+    /// 앱을 열지 않고 띄운 작은 창의 소리 단추가 쓴다. 그 단추는 화면이 아니라 시스템이
+    /// 앱을 잠깐 깨워 부르는 것이라, 부른 일이 끝나면 앱이 다시 잠든다 — 말을 시작만 하고
+    /// 돌아오면 첫 소리에서 끊긴다. 그래서 말이 끝날 때까지 붙들고 있는다(길어야 10초).
+    @MainActor
+    func speakToEnd(_ text: String, pace: SpeechPace) async {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        utter(text, pace: pace)
+        // 말이 시작되기 전(`preUtteranceDelay`)에는 아직 말하는 중이 아니다.
+        try? await Task.sleep(for: .milliseconds(200))
+        for _ in 0..<100 where synth.isSpeaking {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
     @MainActor
     private func utter(_ text: String, pace: SpeechPace) {
         prepareSession()
