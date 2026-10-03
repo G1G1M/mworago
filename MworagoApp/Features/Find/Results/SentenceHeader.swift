@@ -37,8 +37,6 @@ struct SentenceHeader: View {
     /// 그려져야 폭도 다시 재어진다.
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// 담아 둔 것. 갈피표가 채워졌는지 여기서 본다.
-    @Environment(CollectionStore.self) private var collection
     /// 옮긴 말. 문장을 담을 때 **뜻도 함께 담기 위해** 본다.
     @Environment(TranslationDesk.self) private var desk
     /// 담아 달라고 위로 알린다. 카드와 같은 문법이다 — **머리줄이 직접 담지 않는다.**
@@ -59,7 +57,7 @@ struct SentenceHeader: View {
                 PartOfSpeechTag(name: CollectedWord.sentenceTag)
                 SpeakButton(text: parts.kana, size: 13, pace: .sentence)
                 Spacer(minLength: 10)
-                bookmark
+                BookmarkButton(word: sentence, name: "문장", onCollect: onCollect)
             }
 
             pieces
@@ -101,22 +99,6 @@ struct SentenceHeader: View {
                       partOfSpeech: CollectedWord.sentenceTag)
     }
 
-    /// 문장 담기. 카드의 갈피표와 같은 문법이다 — 담을 때는 어디에 넣을지 묻고,
-    /// 뺄 때는 묻지 않는다.
-    private var bookmark: some View {
-        let held = collection.contains(sentence)
-        return Button {
-            if held { collection.remove(sentence) } else { onCollect(sentence) }
-        } label: {
-            Image(systemName: held ? "bookmark.fill" : "bookmark")
-                .font(.system(size: 15))
-                .foregroundStyle(held ? Theme.ink : Theme.grey3)
-        }
-        .buttonStyle(.plain)
-        .sensoryFeedback(held ? .increase : .decrease, trigger: held)
-        .accessibilityLabel(held ? "문장 빼기" : "문장 담기")
-    }
-
     /// 조각들을 이어 붙인 한 줄. 일본어는 띄어 쓰지 않으므로 사이를 벌리지 않고,
     /// 대신 누른 조각의 배경으로만 경계를 보인다.
     private var pieces: some View {
@@ -127,7 +109,7 @@ struct SentenceHeader: View {
                 let isSelected = selected == index
                 Button {
                     // 같은 것을 다시 누르면 놓는다. 고른 상태에서 빠져나갈 길이 있어야 한다.
-                    withAnimation(.snappy(duration: 0.18)) {
+                    withAnimation(.select) {
                         selected = isSelected ? nil : index
                     }
                 } label: {
@@ -144,7 +126,7 @@ struct SentenceHeader: View {
                         .frame(width: Theme.japaneseWidth(segment.kana, size: .piece, weight: .medium))
                         .padding(.vertical, 4)
                         .background(isSelected ? Theme.ink : .clear,
-                                    in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                                    in: RoundedRectangle(cornerRadius: Theme.Radius.piece, style: .continuous))
                         .foregroundStyle(pieceColor(segment, selected: isSelected))
                 }
                 .buttonStyle(.plain)

@@ -164,11 +164,8 @@ struct SearchView: View {
                 engine.searchNow(input)
                 for segment in engine.segments {
                     guard let top = segment.results.first else { continue }
-                    collection.add(CollectedWord(headword: top.headword,
-                                                 reading: top.reading,
-                                                 hangul: segment.hangul,
-                                                 gloss: top.entry.displayGloss,
-                                           partOfSpeech: top.entry.wordClass.displayName),
+                    collection.add(CollectedWord(result: top, hangul: segment.hangul,
+                                                 gloss: top.entry.displayGloss),
                                    to: nil)
                 }
             }
@@ -192,10 +189,7 @@ struct SearchView: View {
             if LaunchOptions.current.has("collecting"),
                let top = engine.segments.first?.results.first,
                let hangul = engine.segments.first?.hangul {
-                collecting = CollectedWord(headword: top.headword,
-                                           reading: top.reading,
-                                           hangul: hangul,
-                                           gloss: top.entry.displayGloss)
+                collecting = CollectedWord(result: top, hangul: hangul, gloss: top.entry.displayGloss)
             }
         }
         .sheet(isPresented: $showingGuide) {
@@ -246,7 +240,7 @@ struct SearchView: View {
             // 이미 읽은 글이다. 키보드가 올라오는 좁은 자리를 그 글이 차지하고 있을 이유가 없다.
             if !inputFocused { resting { SearchPrompt() } }
         } else if engine.segments.isEmpty {
-            resting { SearchNotice(title: "찾지 못했어요", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.") }
+            resting { SearchNotice(title: SearchNotice.notFoundTitle, detail: SearchNotice.notFoundDetail) }
         } else {
             results
         }

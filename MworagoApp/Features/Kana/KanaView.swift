@@ -128,7 +128,7 @@ struct KanaView: View {
             ForEach([false, true], id: \.self) { isKatakana in
                 ChoiceChip(title: isKatakana ? "가타카나" : "히라가나",
                            isSelected: isKatakana == katakana) {
-                    withAnimation(.snappy(duration: 0.18)) { katakana = isKatakana }
+                    withAnimation(.select) { katakana = isKatakana }
                 }
             }
         }
@@ -136,13 +136,7 @@ struct KanaView: View {
 
     private func chartBlock(_ chart: KanaTable.Chart) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text(chart.title)
-                    .font(Theme.korean(.tag))
-                    .tracking(0.6)
-                    .foregroundStyle(Theme.grey2)
-                Theme.rule()
-            }
+            SectionLabel(title: chart.title)
 
             // 격자로 세운다. 오십음도는 자리가 곧 뜻이라 — 어느 행 어느 단인지가
             // 그 글자의 소리를 말해 준다 — 칸이 어긋나면 표가 아니라 목록이 된다.

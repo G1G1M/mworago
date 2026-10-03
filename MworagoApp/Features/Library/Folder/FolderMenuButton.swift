@@ -19,7 +19,7 @@ struct FolderMenuButton: View {
             // 검게 채워지는 것은 "지금 고른 것"이라 단추가 켜진 상태로 읽혔다. 열린 것은
             // 바로 밑에 뜬 목록이 이미 말한다.
             Image(systemName: "ellipsis")
-                .font(.system(size: 15, weight: .medium))
+                .font(Theme.icon(.control, weight: .medium))
         }
         .matteButton(shape: .circle)
         // 기본 크기는 이름 옆에서 너무 작다. 한 단 키워 예전 동그라미(38)와 비슷하게 선다.
@@ -87,7 +87,7 @@ struct FolderMenuList: View {
         .frame(width: Self.width)
         // **옅은 유리다.** 기본 유리는 이 크기에서 뒤를 거의 가려 흰 판으로 보였고,
         // 맑은 유리는 뒤의 낱말이 메뉴 글자와 겹쳐 읽혔다.
-        .glassSurface(cornerRadius: 20, sheer: true)
+        .glassSurface(cornerRadius: Theme.Radius.menu, sheer: true)
         // 떠 있는 동안에는 이 목록만 읽힌다. 시스템 팝오버가 해 주던 일을 대신 한다.
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape, onClose)
@@ -111,9 +111,9 @@ struct FolderMenuList: View {
                     .font(Theme.korean(.body))
                 Spacer(minLength: 8)
                 Image(systemName: symbol)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.icon(.action, weight: .medium))
             }
-            .foregroundStyle(destructive ? Color.red : Theme.ink)
+            .foregroundStyle(destructive ? Theme.destructive : Theme.ink)
             .padding(.horizontal, 16)
             .padding(.vertical, 13)
             .contentShape(Rectangle())

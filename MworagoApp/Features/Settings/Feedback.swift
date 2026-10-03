@@ -121,9 +121,7 @@ struct Feedback: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Theme.grey3)
+            RowChevron()
                 .padding(.top, 4)
         }
         .padding(.vertical, 14)

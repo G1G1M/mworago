@@ -64,11 +64,11 @@ struct WordDetail: View {
 
     /// 지금 낱말. 보고 있던 것이 목록에서 사라졌으면(옮겨 가거나 빠졌으면) 첫 낱말로 돌아간다.
     private var current: CollectedWord? {
-        words.first { $0.id == currentID } ?? words.first
+        words.page(currentID)
     }
 
     private var position: Int? {
-        currentID.flatMap { id in words.firstIndex { $0.id == id } }
+        words.pageIndex(currentID)
     }
 
     var body: some View {
@@ -97,23 +97,15 @@ struct WordDetail: View {
                 ToolbarItem(placement: .principal) {
                     PagerPosition(index: position, total: words.count)
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("닫기") { dismiss() }
-                        .font(Theme.korean(.body))
-                        .foregroundStyle(Theme.ink)
-                }
             }
+            .closeToolbar { dismiss() }
         }
-        .alert("이 낱말을 뺄까요?", isPresented: $removing) {
-            Button("빼기", role: .destructive) {
-                if let word = current {
-                    onRemove(word)
-                    dismiss()
-                }
+        .confirmRemoval("이 낱말을 뺄까요?", isPresented: $removing, action: "빼기",
+                        message: "책장에서 빼요. 되돌릴 수 없어요.") {
+            if let word = current {
+                onRemove(word)
+                dismiss()
             }
-            Button("그만두기", role: .cancel) { }
-        } message: {
-            Text("책장에서 빼요. 되돌릴 수 없어요.")
         }
         .dialog(isPresented: $moving) {
             if let word = current {
@@ -214,7 +206,7 @@ struct WordDetail: View {
             //
             // 표준 버튼은 다른 버튼 안에 넣을 수 없어, 묶음 이름은 글로 두고 `옮기기` 만 단추다.
             HStack(spacing: 8) {
-                Text(word.folder ?? "아직 안 넣음")
+                Text(word.folder ?? FolderRoute.unfiledTitle)
                     .font(Theme.korean(.body))
                     .foregroundStyle(word.folder == nil ? Theme.grey3 : Theme.ink)
                 Button { moving = true } label: {

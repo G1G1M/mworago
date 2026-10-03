@@ -39,7 +39,7 @@ struct LibraryTitleRow: View {
                 switch grouping {
                 case .folders:
                     Button {
-                        withAnimation(.snappy(duration: 0.18)) { editing.toggle() }
+                        withAnimation(.select) { editing.toggle() }
                     } label: {
                         Text(editing ? "완료" : "지우기")
                             .font(Theme.korean(.body, weight: editing ? .medium : .regular))

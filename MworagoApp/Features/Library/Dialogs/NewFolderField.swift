@@ -47,7 +47,7 @@ struct NewFolderField: View {
                     .onSubmit { onCreate() }
                     .padding(.horizontal, 14)
                     .frame(height: Self.rowHeight - 6)
-                    .background(Theme.grey4, in: RoundedRectangle(cornerRadius: 10))
+                    .background(Theme.grey4, in: RoundedRectangle(cornerRadius: Theme.Radius.field))
 
                 // **검게 채우지 않는다.** 이 판에서 검게 채워지는 것은 아래 `저장` 하나다.
                 // 만들기는 고를 자리를 하나 늘리는 일이고, 담는 것은 여전히 `저장` 이다.
@@ -70,7 +70,7 @@ struct NewFolderField: View {
                         name = ""
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(Theme.icon(.action, weight: .medium))
                             .foregroundStyle(Theme.grey2)
                             .frame(width: 28, height: Self.rowHeight - 6)
                             .contentShape(Rectangle())
@@ -90,7 +90,7 @@ struct NewFolderField: View {
             } label: {
                 HStack(spacing: 11) {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.icon(.action, weight: .medium))
                         .frame(width: 16)
                     Text("새 묶음 만들기")
                         .font(Theme.korean(.body))

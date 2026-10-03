@@ -85,11 +85,11 @@ struct KanaQuiz: View {
     /// 지금 물고 있는 것. **차례에서 꺼내 온다** — 따로 들고 있으면 범위를 좁혔을 때
     /// 지난 판의 글자가 남는다.
     private var current: Card {
-        deck.first { $0.id == currentID } ?? deck.first ?? Card(kana: "あ", katakana: false)
+        deck.page(currentID) ?? Card(kana: "あ", katakana: false)
     }
 
     /// 몇째 장인가.
-    private var at: Int { deck.firstIndex { $0.id == currentID } ?? 0 }
+    private var at: Int { deck.pageIndex(currentID) ?? 0 }
 
     /// **이 화면만 가운데 맞춤이다.**
     ///
@@ -124,7 +124,7 @@ struct KanaQuiz: View {
                     Button { reset() } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(Theme.icon(.chevron, weight: .medium))
                             Text("초기화")
                                 .font(Theme.korean(.sub))
                         }
@@ -189,7 +189,7 @@ struct KanaQuiz: View {
         HStack(spacing: 7) {
             ForEach(Scope.allCases) { option in
                 ChoiceChip(title: option.label, isSelected: option == scope) {
-                    withAnimation(.snappy(duration: 0.18)) {
+                    withAnimation(.select) {
                         scope = option
                         reset()
                     }
@@ -203,24 +203,20 @@ struct KanaQuiz: View {
     /// 한때는 매번 무작위로 뽑고 같은 글자만 피했다. 그러면 마흔여섯 자를 다 만났는지
     /// 알 수 없고, 운이 나쁘면 몇 자를 영영 못 본다.
     private func next() {
-        guard !deck.isEmpty else { return }
-        withAnimation(.snappy(duration: 0.18)) {
-            currentID = deck[(at + 1) % deck.count].id
-        }
+        guard let id = deck.pageID(from: currentID, by: 1) else { return }
+        withAnimation(.select) { currentID = id }
     }
 
     /// 한 장 뒤로. 첫 장에서 누르면 마지막 장으로 돌아간다 — `다음` 과 짝을 맞춘다.
     private func previous() {
-        guard !deck.isEmpty else { return }
-        withAnimation(.snappy(duration: 0.18)) {
-            currentID = deck[(at - 1 + deck.count) % deck.count].id
-        }
+        guard let id = deck.pageID(from: currentID, by: -1) else { return }
+        withAnimation(.select) { currentID = id }
     }
 
     /// 처음으로. **랜덤이면 다시 섞는다** — 초기화가 같은 차례를 되풀이하면
     /// 무작위라고 할 수 없다.
     private func reset() {
-        withAnimation(.snappy(duration: 0.18)) {
+        withAnimation(.select) {
             deck = Self.cards(scope: scope, order: order)
             currentID = deck.first?.id
             revealed = false

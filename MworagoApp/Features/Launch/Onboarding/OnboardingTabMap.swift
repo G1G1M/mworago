@@ -26,7 +26,7 @@ struct OnboardingTabMap: View {
                 Button { onPick(i) } label: {
                     VStack(spacing: 9) {
                         Image(systemName: OnboardingPage.tabs[i].symbol)
-                            .font(.system(size: 21))
+                            .font(Theme.icon(.mark))
                             .foregroundStyle(focused ? Theme.paper : Theme.grey3)
                             .frame(width: 46, height: 36)
                             .background(focused ? Theme.ink : .clear, in: Capsule())

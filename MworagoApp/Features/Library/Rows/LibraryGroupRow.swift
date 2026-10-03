@@ -40,11 +40,7 @@ struct LibraryGroupRow<Route: Hashable>: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
-                Image(systemName: "chevron.right")
-                    // 설정의 줄 끝에 서는 것과 같은 11 이다. 같은 기호가 같은 일을
-                    // 하는데 화면마다 1pt 씩 다르면, 탭을 옮길 때 줄 끝만 흔들린다.
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.grey3)
+                RowChevron()
             }
             .padding(.horizontal, Theme.gutter)
             .padding(.vertical, 17)

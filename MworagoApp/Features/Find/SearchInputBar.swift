@@ -42,7 +42,7 @@ struct SearchInputBar: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
-            .glassSurface(cornerRadius: 18)
+            .glassSurface(cornerRadius: Theme.Radius.bar)
             // 스플래시가 마지막에 여기로 와서 앉는다. 화면 좌표로 올려야
             // 스플래시가 제 좌표계로 옮겨 쓸 수 있다.
             .background {

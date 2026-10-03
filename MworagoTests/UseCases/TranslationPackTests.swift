@@ -38,4 +38,15 @@ struct TranslationPackTests {
         #expect(TranslationPack.needsDownload.notice?.contains("낱말") == true)
         #expect(TranslationPack.unsupported.notice?.contains("낱말") == true)
     }
+
+    /// 앱을 열지 않고 띄운 작은 창에는 낱말 뜻이 따로 없다. 거기서 "낱말 뜻은 그대로
+    /// 나와요"라고 하면 없는 것을 약속하게 된다.
+    @Test("낱말 뜻이 없는 자리에서는 그 말을 빼고, 받는 길은 그대로 말한다")
+    func 낱말없는자리() {
+        let 받으면됨 = TranslationPack.needsDownload.notice(mentioningWords: false)
+        #expect(받으면됨?.contains("낱말") == false)
+        #expect(받으면됨?.contains("설정") == true)
+        #expect(TranslationPack.unsupported.notice(mentioningWords: false)?.contains("낱말") == false)
+        #expect(TranslationPack.ready.notice(mentioningWords: false) == nil)
+    }
 }

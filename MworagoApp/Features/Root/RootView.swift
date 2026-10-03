@@ -212,9 +212,6 @@ struct RootView: View {
         // **탭바 자리는 시스템에 맡긴다.** 아이폰은 아래, 아이패드는 위(iPadOS 26 의
         // 떠 있는 알약)다. 한때 아이패드에서도 아래에 두려고 사이즈 클래스를 속였는데,
         // 그 대가로 화면이 두 벌 그려졌다 — 자세한 것은 `MworagoApp.swift` 에 적어 두었다.
-        // **글은 전부 한국어다.** 기기 언어가 영어면 날짜만 "August 31"로 나와
-        // 화면에서 그 한 줄만 남의 말이 된다. 이 앱이 쓰는 말로 고정한다.
-        .environment(\.locale, Locale(identifier: "ko_KR"))
     }
 
     /// 옮길 수 있는 언어쌍인지 묻고, 세션 설정을 만든다.
@@ -228,26 +225,19 @@ struct RootView: View {
     /// 세션 설정은 **한 번만** 만든다. 앞으로 돌아올 때마다 새로 만들면 `.translationTask`
     /// 가 그때마다 세션을 다시 열고, 줄도 그때마다 새로 난다.
     private func checkTranslation() async {
-        let korean = Locale.Language(identifier: "ko")
         let availability = LanguageAvailability()
-        for (identifier, current, keep) in
-                [("ja", fromJapanese, { fromJapanese = $0 }),
-                 ("en", fromEnglish, { fromEnglish = $0 })]
-                as [(String, TranslationSession.Configuration?, (TranslationSession.Configuration) -> Void)] {
-            let language = Locale.Language(identifier: identifier)
-            let status = await availability.status(from: language, to: korean)
-            if identifier == "ja" {
-                desk.japanesePack = switch status {
-                case .installed: .ready
-                case .supported: .needsDownload
-                case .unsupported: .unsupported
-                @unknown default: .unknown
-                }
+        for (language, current, keep) in
+                [(Locale.Language.japanese, fromJapanese, { fromJapanese = $0 }),
+                 (Locale.Language.english, fromEnglish, { fromEnglish = $0 })]
+                as [(Locale.Language, TranslationSession.Configuration?, (TranslationSession.Configuration) -> Void)] {
+            let status = await availability.status(from: language, to: .korean)
+            if language == .japanese {
+                desk.japanesePack = TranslationPack(status)
             }
             // 못 하는 기기에서는 설정을 만들지 않는다 — 열어 두고 실패를 삼키면
             // 애플이 대신 시트를 띄운다.
             guard status != .unsupported, current == nil else { continue }
-            keep(TranslationSession.Configuration(source: language, target: korean))
+            keep(TranslationSession.Configuration(source: language, target: .korean))
         }
     }
 }

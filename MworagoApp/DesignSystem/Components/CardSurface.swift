@@ -7,9 +7,9 @@ import SwiftUI
 struct CardSurface: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(Theme.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(Theme.paper, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                     .strokeBorder(Theme.grey3.opacity(0.45), lineWidth: 0.5)
             )
             .shadow(color: .black.opacity(0.04), radius: 10, y: 3)

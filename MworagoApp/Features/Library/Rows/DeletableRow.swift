@@ -12,7 +12,7 @@ struct DeletableRow<Content: View>: View {
             if editing {
                 Button(action: onRemove) {
                     Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 21))
+                        .font(Theme.icon(.mark))
                         .foregroundStyle(Theme.destructive)
                         .padding(.leading, Theme.gutter)
                         .padding(.vertical, 8)

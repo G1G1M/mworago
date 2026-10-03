@@ -63,7 +63,7 @@ struct KanaQuizCard: View {
             Button { speaker.speak(item.kana, pace: .kana) } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "speaker.wave.2")
-                        .font(.system(size: 20))
+                        .font(Theme.icon(.mark))
                     Text(KanaToHangul.transliterate(item.kana))
                         .font(Theme.korean(.display))
                 }

@@ -48,12 +48,8 @@ struct KanaDetail: View {
                 ToolbarItem(placement: .principal) {
                     PagerPosition(index: position, total: Glyph.all.count)
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("닫기") { dismiss() }
-                        .font(Theme.korean(.body))
-                        .foregroundStyle(Theme.ink)
-                }
             }
+            .closeToolbar { dismiss() }
         }
     }
 
@@ -68,7 +64,7 @@ struct KanaDetail: View {
                         .foregroundStyle(Theme.ink)
                     HStack(spacing: 9) {
                         Image(systemName: "speaker.wave.2")
-                            .font(.system(size: 15))
+                            .font(Theme.icon(.control))
                         Text(hangul(kana))
                             .font(Theme.korean(.title))
                     }
@@ -100,13 +96,7 @@ struct KanaDetail: View {
     /// 둘 중 어느 것이 새것인지 매번 가려내야 했다. **모르는 쪽만 남긴다.**
     private func pair(_ kana: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("같은 소리")
-                    .font(Theme.korean(.tag))
-                    .tracking(0.6)
-                    .foregroundStyle(Theme.grey2)
-                Theme.rule()
-            }
+            SectionLabel(title: "같은 소리")
             form(katakana ? "히라가나" : "가타카나",
                  katakana ? hiragana(kana) : katakanaForm(kana))
         }

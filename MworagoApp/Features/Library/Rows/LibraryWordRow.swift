@@ -46,7 +46,7 @@ struct LibraryWordRow: View {
                 Button(action: onRemove) {
                     Image(systemName: "bookmark.fill")
                         // 찾기의 갈피표와 같은 15 다. 같은 기호가 같은 일(담기·빼기)을 한다.
-                        .font(.system(size: 15))
+                        .font(Theme.icon(.control))
                         .foregroundStyle(Theme.ink)
                 }
                 .buttonStyle(.plain)

@@ -74,13 +74,8 @@ struct PracticeView: View {
 
     /// 고를 것이 있는가. 묶음이 하나뿐이면 고르는 일이 아니라 전체와 같은 말이다.
     private var canPick: Bool { pickableFolders.count > 1 }
-    private var current: CollectedWord? {
-        words.first { $0.id == currentID } ?? words.first
-    }
     /// 몇 번째 장인가. 보고 있던 낱말이 사라졌으면 첫 장으로 친다.
-    private var index: Int {
-        words.firstIndex { $0.id == currentID } ?? 0
-    }
+    private var index: Int { words.pageIndex(currentID) ?? 0 }
 
     var body: some View {
         ZStack {
@@ -121,7 +116,7 @@ struct PracticeView: View {
         }
         // 첫 장. 담긴 것이 없다가 생겼을 때도 여기서 잡힌다.
         //
-        // **`current` 로 묻지 않는다.** 그것은 못 찾으면 첫 낱말을 내주므로 목록이
+        // **"없으면 첫 낱말" 로 묻지 않는다.** 그렇게 물으면 목록이
         // 비지 않는 한 `nil` 이 아니고, 그러면 `currentID` 는 영영 비어 있게 된다 —
         // 화면은 첫 장을 보여 주는데 넘긴 자리를 아무도 들고 있지 않은 꼴이다.
         .onAppear {
@@ -216,18 +211,17 @@ struct PracticeView: View {
     }
 
     /// 한 장 앞으로. 끝에서 누르면 처음으로 돈다.
-    private func next() { go(to: index + 1) }
+    private func next() { go(by: 1) }
 
     /// 한 장 뒤로. 첫 장에서 누르면 마지막 장으로 돌아간다 — `다음` 이 끝에서
     /// 처음으로 도는 것과 짝을 맞춘다.
-    private func previous() { go(to: index - 1) }
+    private func previous() { go(by: -1) }
 
     /// 단추로 넘길 때. 미는 손과 같은 자리로 가야 하므로 **보고 있는 낱말을 바꾸고**,
     /// 페이지는 그것을 따라 미끄러진다. 뒤집힌 것을 도로 덮는 일은 `currentID` 가
     /// 바뀔 때 한꺼번에 한다 — 밀어서 넘겼을 때와 같은 자리에서 처리해야 어긋나지 않는다.
-    private func go(to position: Int) {
-        guard !words.isEmpty else { return }
-        let wrapped = (position % words.count + words.count) % words.count
-        withAnimation(.snappy(duration: 0.18)) { currentID = words[wrapped].id }
+    private func go(by offset: Int) {
+        guard let id = words.pageID(from: currentID, by: offset) else { return }
+        withAnimation(.select) { currentID = id }
     }
 }

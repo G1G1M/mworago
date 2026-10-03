@@ -188,7 +188,7 @@ struct Settings: View {
             ForEach(Appearance.allCases) { option in
                 let selected = option == appearance
                 Button {
-                    withAnimation(.snappy(duration: 0.18)) {
+                    withAnimation(.select) {
                         appearance = option
                         option.save(in: preferences)
                     }
@@ -214,13 +214,7 @@ struct Settings: View {
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: Theme.blockGap) {
-            VStack(alignment: .leading, spacing: Theme.lineGap) {
-                Text(title)
-                    .font(Theme.korean(.tag))
-                    .tracking(0.6)
-                    .foregroundStyle(Theme.grey2)
-                Theme.rule()
-            }
+            SectionLabel(title: title)
             content()
         }
     }
@@ -235,9 +229,7 @@ struct Settings: View {
                 .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey2)
             if chevron {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.grey3)
+                RowChevron()
             }
         }
         .padding(.vertical, Self.rowPadding)

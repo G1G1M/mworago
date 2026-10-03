@@ -1,16 +1,8 @@
 import SwiftUI
 
-/// 담긴 것이 없을 때. 남은 자리 한가운데 글 덩어리 하나가 선다 —
-/// 연습의 빈 화면과 같은 자리다. 글줄은 왼쪽에서 시작한다.
-///
-/// 좌우 여백을 폭 **안쪽**에 둔다. 폭을 잰 뒤에 붙이면 덩어리가
-/// `readWidth + 여백` 이 되어 재 둔 폭이 실제와 어긋난다.
 /// 담긴 것이 없을 때. **연습의 빈 화면과 같은 자리에 선다** — 화면 한가운데
-/// 글 덩어리 하나가 가운데 정렬로 놓인다. 빈 화면은 읽으라고 두는 것이라
-/// 목록처럼 위에서부터 왼쪽에 채울 것이 없다.
-///
-/// 두 화면이 **같은 문법으로 선다** — 폭 안쪽 여백 · `readWidth` · 공유 높이 ·
-/// 남은 자리 채우기. 결과만 비슷하게 맞춰 두면 한쪽을 손볼 때 다시 어긋난다.
+/// 글 덩어리 하나가 놓이고 글줄은 왼쪽에서 시작한다(`emptyBlockFrame`).
+/// 빈 화면은 읽으라고 두는 것이라 목록처럼 위에서부터 채울 것이 없다.
 struct LibraryEmptyState: View {
     /// 묶음을 먼저 만들어 두는 길. 이름 받는 판은 책장이 쥔다.
     let onCreateFolder: () -> Void
@@ -21,7 +13,7 @@ struct LibraryEmptyState: View {
                 Text("아직 책장이 비어 있어요")
                     .font(Theme.korean(.heading, weight: .semibold))
                     .foregroundStyle(Theme.ink)
-                Text.bookmarkGuide("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓여요.")
+                Text.bookmarkGuide("찾기에서 낱말 옆의 갈피표를 누르면,\n어느 묶음에 넣을지 물어보고 여기 쌓여요.")
                     .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey2)
             }
@@ -46,10 +38,6 @@ struct LibraryEmptyState: View {
             .matteButton()
             .padding(.top, 4)
         }
-        .padding(.horizontal, Theme.gutter)
-        .frame(maxWidth: Theme.readWidth, alignment: .leading)
-        // 첫 줄을 연습의 빈 화면과 같은 높이에 세운다 — 자세한 까닭은 `emptyBlockHeight`.
-        .frame(minHeight: Theme.emptyBlockHeight, alignment: .topLeading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .emptyBlockFrame()
     }
 }

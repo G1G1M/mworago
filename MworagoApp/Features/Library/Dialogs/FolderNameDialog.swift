@@ -69,7 +69,7 @@ struct FolderNameDialog: View {
                 .onSubmit { confirm() }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
-                .background(Theme.grey4, in: RoundedRectangle(cornerRadius: 10))
+                .background(Theme.grey4, in: RoundedRectangle(cornerRadius: Theme.Radius.field))
 
             // 같은 이름을 쳤을 때 **무슨 일이 일어나는지 미리 말한다.** 새로 만들기는
             // 아무 일도 없어서 단추가 안 눌리는 까닭이 보여야 하고, 이름 바꾸기는

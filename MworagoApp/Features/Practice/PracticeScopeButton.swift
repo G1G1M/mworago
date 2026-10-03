@@ -17,7 +17,7 @@ struct PracticeScopeButton: View {
                     .font(Theme.korean(.sub))
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .medium))
+                    .font(Theme.icon(.caret, weight: .medium))
             }
         }
         .matteButton()

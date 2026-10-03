@@ -13,7 +13,7 @@ struct NewFolderRow: View {
         Button(action: action) {
             HStack(spacing: 11) {
                 Image(systemName: "plus")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.icon(.action, weight: .medium))
                     .frame(width: 16)
                 Text("새 묶음 만들기")
                     .font(Theme.korean(.body))

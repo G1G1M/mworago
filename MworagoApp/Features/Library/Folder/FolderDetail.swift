@@ -160,25 +160,18 @@ struct FolderDetail: View {
         }
         // **지우는 것만 시스템 알림으로 묻는다.** 되돌릴 수 없는 일은 앱의 얼굴보다
         // 사용자가 이미 아는 "정말요?" 얼굴이 낫다.
-        .alert("고른 낱말을 지울까요?", isPresented: $removingWords) {
-            Button("지우기", role: .destructive) { removeSelected() }
-            Button("그만두기", role: .cancel) { }
-        } message: {
-            Text("\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.")
-        }
-        .alert("묶음을 없앨까요?", isPresented: $removing) {
-            Button("없애기", role: .destructive) {
-                if let folder { onRemoveFolder(folder) }
-                dismiss()
-            }
-            Button("그만두기", role: .cancel) { }
-        } message: {
-            // 무엇이 남는지 먼저 말한다. 담은 것이 사라진다고 오해하면 누를 수 없다.
-            // 빈 묶음에는 남을 낱말이 없으므로 그 말을 하지 않는다 — 없는 것을 세면
-            // "낱말 0개는 그대로 남고" 처럼 읽을 수 없는 말이 된다.
-            Text(words.isEmpty
-                 ? "담긴 낱말이 없어 이름만 없어져요."
-                 : "담은 낱말 \(words.count)개는 그대로 남고 '아직 안 넣은 것'으로 가요. 이름만 없어져요.")
+        .confirmRemoval("고른 낱말을 지울까요?", isPresented: $removingWords, action: "지우기",
+                        message: "\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.",
+                        perform: removeSelected)
+        // 무엇이 남는지 먼저 말한다. 담은 것이 사라진다고 오해하면 누를 수 없다.
+        // 빈 묶음에는 남을 낱말이 없으므로 그 말을 하지 않는다 — 없는 것을 세면
+        // "낱말 0개는 그대로 남고" 처럼 읽을 수 없는 말이 된다.
+        .confirmRemoval("묶음을 없앨까요?", isPresented: $removing, action: "없애기",
+                        message: words.isEmpty
+                            ? "담긴 낱말이 없어 이름만 없어져요."
+                            : "담은 낱말 \(words.count)개는 그대로 남고 '아직 안 넣은 것'으로 가요. 이름만 없어져요.") {
+            if let folder { onRemoveFolder(folder) }
+            dismiss()
         }
     }
 
@@ -251,7 +244,7 @@ struct FolderDetail: View {
                                        if selecting {
                                            endSelecting()
                                        } else {
-                                           withAnimation(.snappy(duration: 0.18)) { selecting = true }
+                                           withAnimation(.select) { selecting = true }
                                        }
                                    },
                                    onRename: { renaming = true },
@@ -283,7 +276,7 @@ struct FolderDetail: View {
     }
 
     private func endSelecting() {
-        withAnimation(.snappy(duration: 0.18)) {
+        withAnimation(.select) {
             selecting = false
             selection = []
         }

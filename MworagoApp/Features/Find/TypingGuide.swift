@@ -108,32 +108,14 @@ struct TypingGuide: View {
             .background(Theme.paper)
             .navigationDestination(isPresented: $showingCredits) { Credits() }
             .koreanNavigationTitle("한글로 어떻게 치나요?")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("닫기") { dismiss() }
-                        .font(Theme.korean(.body))
-                        .foregroundStyle(Theme.ink)
-                }
-            }
+            .closeToolbar { dismiss() }
         }
     }
 
     /// 한 갈래.
-    ///
-    /// 섹션 이름은 **작은 라벨**로 물러나고 그 아래 얇은 선이 갈래를 가른다.
-    /// 이름을 본문만큼 키우면 규칙 이름과 섞여서, 무엇이 묶음이고 무엇이 항목인지
-    /// 눈이 매번 다시 판단해야 한다.
     private func section(_ title: String, rules: [Rule]) -> some View {
         VStack(alignment: .leading, spacing: Theme.blockGap) {
-            VStack(alignment: .leading, spacing: Self.lineGap) {
-                Text(title)
-                    .font(Theme.korean(.tag))
-                    .tracking(0.6)
-                    .foregroundStyle(Theme.grey2)
-                Rectangle()
-                    .fill(Theme.grey3)
-                    .frame(height: 0.5)
-            }
+            SectionLabel(title: title)
 
             // **섹션 하나를 통째로 격자에 세운다.** 규칙마다 격자를 따로 만들면 그 안에서만
             // 열이 맞아서, 화살표가 규칙을 건널 때마다 다른 자리에 놓인다. 같은 것을
@@ -163,7 +145,7 @@ struct TypingGuide: View {
                             // 두 열을 잇는 유일한 표시다. 10pt 회색으로는 거의 안 보여
                             // 친 것과 나온 것이 따로 놓인 두 덩어리로 읽혔다.
                             Image(systemName: "arrow.right")
-                                .font(.system(size: 12))
+                                .font(Theme.icon(.chevron))
                                 .foregroundStyle(Theme.grey2)
                             // **이 표의 답이다.** 친 것과 같은 크기면 무엇이 물음이고
                             // 무엇이 답인지 눈이 매번 다시 판단한다.

@@ -40,7 +40,7 @@ struct Onboarding: View {
     private var tabMap: some View {
         OnboardingTabMap(focusedTab: pages[page].tab) { tab in
             guard let target = pages.firstIndex(where: { $0.tab == tab }) else { return }
-            withAnimation(.snappy(duration: 0.18)) { page = target }
+            withAnimation(.select) { page = target }
         }
     }
 
@@ -156,7 +156,7 @@ struct Onboarding: View {
                     // **첫 장에서도 자리는 남긴다.** 통째로 빼면 `다음` 이 좌우로
                     // 움직여, 같은 곳을 누르려는 손이 장마다 다시 겨눈다.
                     Button("이전") {
-                        withAnimation(.snappy(duration: 0.18)) { page -= 1 }
+                        withAnimation(.select) { page -= 1 }
                     }
                     .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey2)
@@ -177,7 +177,7 @@ struct Onboarding: View {
                     // 오른쪽에 생겨, 왼쪽 여백(점들)보다 오른쪽이 넓어 보였다. 두 낱말을
                     // `다음` · `시작` 으로 글자 수까지 맞춰 두면 남는 자리 자체가 거의 없다.
                     Button(page == pages.count - 1 ? "시작" : "다음") {
-                        withAnimation(.snappy(duration: 0.18)) {
+                        withAnimation(.select) {
                             if page == pages.count - 1 { onDone() } else { page += 1 }
                         }
                     }

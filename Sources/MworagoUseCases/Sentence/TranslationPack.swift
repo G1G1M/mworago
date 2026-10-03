@@ -24,16 +24,23 @@ public enum TranslationPack: Sendable, Equatable {
     ///
     /// **할 일이 있는 쪽과 없는 쪽을 가른다.** 한 문장으로 뭉뚱그리면 받을 수 없는
     /// 기기를 쓰는 사람을 설정 앱으로 헛걸음시킨다.
-    public var notice: String? {
+    public var notice: String? { notice(mentioningWords: true) }
+
+    /// 같은 안내에서 "낱말 뜻은 그대로 나와요"를 뺄 수 있다.
+    ///
+    /// 앱을 열지 않고 띄운 작은 창에는 낱말 뜻이 따로 없다 — 거기서 그 말을 하면
+    /// 없는 것을 약속하게 된다.
+    public func notice(mentioningWords: Bool) -> String? {
+        let words = mentioningWords ? " 낱말 뜻은 그대로 나와요." : ""
         switch self {
         case .unknown, .ready:
-            nil
+            return nil
         case .needsDownload:
-            "문장 뜻은 기기에 번역 언어팩이 있어야 뜹니다. "
-                + "설정 앱 › 일반 › 언어 및 지역 › 번역 언어에서 일본어를 받으세요. "
-                + "낱말 뜻은 그대로 나옵니다."
+            return "문장 뜻은 기기에 번역 언어팩이 있어야 떠요. "
+                + "설정 앱 › 일반 › 언어 및 지역 › 번역 언어에서 일본어를 받아 주세요."
+                + words
         case .unsupported:
-            "이 기기에서는 문장 뜻을 옮겨 드릴 수 없습니다. 낱말 뜻은 그대로 나옵니다."
+            return "이 기기에서는 문장 뜻을 옮겨 드릴 수 없어요." + words
         }
     }
 }

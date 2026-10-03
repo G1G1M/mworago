@@ -26,6 +26,10 @@ struct SearchNotice: View {
     let title: String
     let detail: String
 
+    /// 사전에서 아무것도 못 찾았을 때. 앱을 열지 않고 띄운 작은 창도 같은 말을 쓴다.
+    static let notFoundTitle = "찾지 못했어요"
+    static let notFoundDetail = "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요."
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(Theme.korean(.title, weight: .medium)).foregroundStyle(Theme.ink)

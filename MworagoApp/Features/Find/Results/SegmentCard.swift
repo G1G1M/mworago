@@ -36,12 +36,6 @@ struct SegmentCard: View {
     /// 자리는 눈으로 볼 길이 없다 — `--picking` · `--menu` 와 같은 까닭이다.
     @State private var expanded = LaunchOptions.current.has("expanded")
 
-    /// 담아 두는 곳. 갈피표가 이것을 쓴다.
-    ///
-    /// **넘겨받지 않고 환경에서 꺼낸다.** 예전에는 옵셔널로 받아 없으면 갈피표를
-    /// 그리지 않았는데, 그 nil 분기가 이 카드를 거쳐 찾기 화면까지 붙어 있었다.
-    /// 환경에 없으면 그 자리에서 멎으므로, 조립 루트가 빠뜨린 것을 바로 알게 된다.
-    @Environment(CollectionStore.self) private var collection
     @Environment(TranslationDesk.self) private var desk
 
     private var top: SearchResult? { segment.results.first }
@@ -122,7 +116,9 @@ struct SegmentCard: View {
 
                 Spacer(minLength: 8)
                 SpeakButton(text: result.reading)
-                bookmark(result, in: collection)
+                BookmarkButton(word: CollectedWord(result: result, hangul: segment.hangul,
+                                                   gloss: korean(of: result.entry)),
+                               name: result.reading, onCollect: onCollect)
             }
 
             // **한글 발음은 늘 보인다.** 한때는 다이얼로 껐다 켰는데, 층이 가나와 한글
@@ -155,7 +151,7 @@ struct SegmentCard: View {
             HStack(spacing: 6) {
                 Text(segment.hangul)
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(Theme.icon(.caret, weight: .medium))
                 Text(sound)
             }
             .font(Theme.korean(.sub))
@@ -169,35 +165,6 @@ struct SegmentCard: View {
 
     /// 담기.
     ///
-    /// **자동으로 모으지 않는다.** 찾아본 것을 다 쌓으면 오타와 헛짚은 것까지 교재가 된다.
-    /// 무엇이 내게 걸린 말이었는지는 사용자만 안다.
-    ///
-    /// 담긴 것은 채워진 갈피표다. 강조를 색으로 나누지 않으므로 채움과 비움으로만 가른다.
-    ///
-    /// **담을 때는 어디에 넣을지 묻고, 뺄 때는 묻지 않는다.** 무르는 일에까지 확인을
-    /// 붙이면 잘못 누른 것을 되돌리는 데 두 번이 든다.
-    private func bookmark(_ result: SearchResult, in collection: CollectionStore) -> some View {
-        let word = CollectedWord(headword: result.headword,
-                                 reading: result.reading,
-                                 hangul: segment.hangul,
-                                 gloss: korean(of: result.entry),
-                                 partOfSpeech: result.entry.wordClass.displayName)
-        let held = collection.contains(word)
-        return Button {
-            if held { collection.remove(word) } else { onCollect(word) }
-        } label: {
-            Image(systemName: held ? "bookmark.fill" : "bookmark")
-                .font(.system(size: 15))
-                .foregroundStyle(held ? Theme.ink : Theme.grey3)
-        }
-        .buttonStyle(.plain)
-        // **손끝에도 알린다.** 갈피표는 그림만 채워지고 마는데, 누른 자리와 바뀌는
-        // 자리가 같아서 눈으로는 "됐나?" 가 남는다. 담을 때와 뺄 때의 결을 나눈다 —
-        // 담기는 무언가 얹히는 일이고 빼기는 도로 무르는 일이다.
-        .sensoryFeedback(held ? .increase : .decrease, trigger: held)
-        .accessibilityLabel(held ? "\(result.reading) 빼기" : "\(result.reading) 담기")
-    }
-
     // MARK: 나머지 후보
     //
     // 1위가 정답인 비율은 93%지만 3위 안에 있을 비율은 98%다.
@@ -219,13 +186,13 @@ struct SegmentCard: View {
     /// 것은 갈피표와 소리이고, 이것은 "더 있다"는 표시일 뿐이라 그 둘과 무게를 겨루면 안 된다.
     private var moreButton: some View {
         Button {
-            withAnimation(.snappy(duration: 0.18)) { expanded = true }
+            withAnimation(.select) { expanded = true }
         } label: {
             HStack(spacing: 5) {
                 Text("다른 뜻 \(alternates.count)")
                     .font(Theme.korean(.sub))
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .medium))
+                    .font(Theme.icon(.caret, weight: .medium))
             }
             .foregroundStyle(Theme.grey3)
             .contentShape(Rectangle())
@@ -249,7 +216,7 @@ struct SegmentCard: View {
                 }
             }
             Button {
-                withAnimation(.snappy(duration: 0.18)) { expanded = false }
+                withAnimation(.select) { expanded = false }
             } label: {
                 Text("접기")
                     .font(Theme.korean(.sub))

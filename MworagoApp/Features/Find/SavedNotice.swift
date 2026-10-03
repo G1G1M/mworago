@@ -27,7 +27,7 @@ struct SavedNotice: View {
                 // 누를 수 있다는 것은 화살표가 말한다. 색은 쓰지 않는다 —
                 // 이 앱에서 색으로 강조하는 자리가 없다.
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(Theme.icon(.caret, weight: .medium))
                     .foregroundStyle(Theme.grey2)
             }
             .padding(.horizontal, 14)

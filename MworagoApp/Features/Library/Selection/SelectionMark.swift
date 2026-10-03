@@ -9,7 +9,7 @@ struct SelectionMark: View {
 
     var body: some View {
         Image(systemName: isPicked ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 21))
+            .font(Theme.icon(.mark))
             .foregroundStyle(isPicked ? Theme.ink : Theme.grey3)
             .padding(.leading, Theme.gutter)
             .accessibilityHidden(true)   // 줄 전체가 이미 고르는 단추다

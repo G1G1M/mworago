@@ -122,7 +122,7 @@ struct LibraryView: View {
     private func destination(_ route: Route) -> some View {
         switch route {
         case .folder(let name):
-            FolderDetail(title: name ?? "아직 안 넣은 것",
+            FolderDetail(title: name ?? FolderRoute.unfiledTitle,
                          words: collection.words.filter { $0.folder == name },
                          folder: name,
                          onPractice: onPractice,
@@ -133,7 +133,7 @@ struct LibraryView: View {
                          onMoveWord: { collection.move($0, to: $1) },
                          folderNames: collection.folderNames)
         case .day(let date):
-            FolderDetail(title: date.formatted(.dateTime.month(.wide).day().locale(Theme.locale)),
+            FolderDetail(title: date.dayTitle,
                          words: days.first { $0.date == date }?.words ?? [],
                          onPractice: onPractice,
                          onFind: onPick,
@@ -250,14 +250,9 @@ struct LibraryView: View {
                 moveSelected(to: destination)
             }
         }
-        // **지우는 것만 시스템 알림으로 묻는다.** 되돌릴 수 없는 일은 앱의 얼굴보다
-        // 사용자가 이미 아는 "정말요?" 얼굴이 낫다.
-        .alert("고른 낱말을 지울까요?", isPresented: $removingWords) {
-            Button("지우기", role: .destructive) { removeSelected() }
-            Button("그만두기", role: .cancel) { }
-        } message: {
-            Text("\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.")
-        }
+        .confirmRemoval("고른 낱말을 지울까요?", isPresented: $removingWords, action: "지우기",
+                        message: "\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.",
+                        perform: removeSelected)
         .dialog(isPresented: $naming) {
             FolderNameDialog(title: "새 묶음",
                              hint: "보기 전에 자리를 만들어 두면, 담을 때 그 자리를 고를 수 있어요.",
@@ -331,7 +326,7 @@ struct LibraryView: View {
     }
 
     private func endSelecting() {
-        withAnimation(.snappy(duration: 0.18)) {
+        withAnimation(.select) {
             selecting = false
             selection = []
         }
@@ -361,7 +356,7 @@ struct LibraryView: View {
                         // 그래서 여기서는 되묻지 않는다. 이름 없는 무리는 지울 자리가 없다.
                         DeletableRow(editing: editing,
                                      onRemove: { if let name = folder.name { collection.removeFolder(name) } }) {
-                            LibraryGroupRow(name: folder.name ?? "아직 안 넣은 것",
+                            LibraryGroupRow(name: folder.name ?? FolderRoute.unfiledTitle,
                                             dim: folder.name == nil,
                                             words: folder.words,
                                             route: Route.folder(folder.name))
@@ -375,7 +370,7 @@ struct LibraryView: View {
                     // 날짜 묶음에는 지우는 단추를 두지 않는다. 날짜는 사람이 만든 자리가
                     // 아니라 담은 때가 만든 자리라, 지운다는 말이 성립하지 않는다.
                     ForEach(days) { day in
-                        LibraryGroupRow(name: day.date.formatted(.dateTime.month(.wide).day().locale(Theme.locale)),
+                        LibraryGroupRow(name: day.date.dayTitle,
                                         dim: false,
                                         words: day.words,
                                         route: Route.day(day.date))
@@ -430,7 +425,7 @@ struct LibraryView: View {
                                 grouping: grouping,
                                 editing: $editing,
                                 onStartSelecting: {
-                                    withAnimation(.snappy(duration: 0.18)) { selecting = true }
+                                    withAnimation(.select) { selecting = true }
                                 })
             }
             // 담긴 것이 없으면 무엇으로 묶어 볼지도 없다. 고르는 중에도 감춘다 —
@@ -459,9 +454,14 @@ struct LibraryView: View {
         HStack(spacing: 6) {
             ForEach(Grouping.allCases) { option in
                 ChoiceChip(title: option.label, isSelected: option == grouping) {
-                    withAnimation(.snappy(duration: 0.18)) { grouping = option }
+                    withAnimation(.select) { grouping = option }
                 }
             }
         }
     }
+}
+
+extension Date {
+    /// 날짜 묶음의 이름 — `10월 4일`. 책장 줄과 그 묶음 화면의 제목이 같은 말이어야 한다.
+    var dayTitle: String { formatted(.dateTime.month(.wide).day().locale(Theme.locale)) }
 }

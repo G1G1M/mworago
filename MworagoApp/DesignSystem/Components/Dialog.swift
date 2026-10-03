@@ -92,7 +92,7 @@ private struct DialogCard<Body: View>: View {
             content()
                 .frame(width: 320)
                 .background(Theme.paper,
-                            in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                 // 판이 바탕에서 떠 있다는 것은 그림자가 말한다. 이 앱에서
                 // 그림자를 쓰는 자리는 여기뿐이라, 떠 있는 것이 하나임이 보인다.
                 .shadow(color: Theme.ink.opacity(0.18), radius: 26, y: 10)
