@@ -116,8 +116,7 @@ struct KanaView: View {
             }
             .padding(.horizontal, Theme.gutter)
             .padding(.bottom, 36)
-            .frame(maxWidth: Self.contentWidth, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .column(Self.contentWidth)
         }
         .scrollBounceBehavior(.basedOnSize)
     }

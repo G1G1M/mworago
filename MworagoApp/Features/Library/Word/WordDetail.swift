@@ -82,11 +82,7 @@ struct WordDetail: View {
                         collectedAt(word)
                         actions(word)
                     }
-                    .padding(.horizontal, Theme.gutter)
-                    .padding(.top, 8)
-                    .padding(.bottom, Theme.screenBottom)
-                    .frame(maxWidth: Theme.readWidth, alignment: .leading)
-                    .frame(maxWidth: .infinity)
+                    .readingPage(top: 8)
                 }
                 .scrollBounceBehavior(.basedOnSize)
             }

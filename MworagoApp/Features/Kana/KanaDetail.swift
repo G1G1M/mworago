@@ -85,8 +85,7 @@ struct KanaDetail: View {
         .padding(.horizontal, 28)
         .padding(.top, 8)
         .padding(.bottom, 36)
-        .frame(maxWidth: 460, alignment: .leading)
-        .frame(maxWidth: .infinity)
+        .column(460)
     }
 
     /// 같은 소리를 적는 **짝 글자 하나**.

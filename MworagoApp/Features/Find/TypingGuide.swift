@@ -98,11 +98,7 @@ struct TypingGuide: View {
                     section("신경 쓰지 않아도 되는 것", rules: Self.forgiving)
                     section("가려 적어야 하는 것", rules: Self.careful)
                 }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, Theme.screenTop)
-                .padding(.bottom, Theme.screenBottom)
-                .frame(maxWidth: Theme.readWidth, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .readingPage(top: Theme.screenTop)
             }
             .scrollBounceBehavior(.basedOnSize)
             .background(Theme.paper)

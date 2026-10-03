@@ -171,8 +171,7 @@ struct LibraryView: View {
                     // 헤더도 목록과 같은 폭 안에 선다. 목록만 가운데 모이고 헤더가
                     // 화면 끝에 붙으면 같은 화면의 것이 두 자리에서 시작한다.
                     header
-                        .frame(maxWidth: Self.contentWidth, alignment: .leading)
-                        .frame(maxWidth: .infinity)
+                        .column(Self.contentWidth)
                     content
                 }
                 .transition(.opacity)
@@ -203,8 +202,7 @@ struct LibraryView: View {
                 // **한 박자 뒤에 켠다.** 보기를 바꾸면 손을 떼게 해 두었으므로,
                 // 같은 자리에서 보기를 바꾸고 고르기를 켜면 방금 켠 것이 곧바로 풀린다.
                 Task { @MainActor in
-                    selecting = true
-                    selection = Set(collection.words.map(\.id))
+                    selection.begin(picking: collection.words.map(\.id))
                     moving = launch.has("list-moving")
                 }
             }
@@ -227,7 +225,7 @@ struct LibraryView: View {
         // 보기를 넘어 이어지면, 눌렀을 때 무엇이 지워질지 알 수 없다.
         .onChange(of: grouping) { _, _ in
             editing = false
-            if selecting { endSelecting() }
+            if selection.isActive { endSelecting() }
         }
         // **비면 손을 뗀다.** 지우기를 켜 둔 채 마지막 묶음까지 지우면 목록이 통째로
         // 빈 화면으로 갈리는데, 켜 둔 손은 `@State` 라 그대로 살아 있다. 빈 화면에는
@@ -237,22 +235,16 @@ struct LibraryView: View {
         .onChange(of: isEmpty) { _, empty in
             guard empty else { return }
             editing = false
-            if selecting { endSelecting() }
+            if selection.isActive { endSelecting() }
         }
-        .dialog(isPresented: $moving) {
-            let picked = pickedFolder
-            FolderChooserDialog(title: "어디로 옮길까요?",
-                                hint: "고른 낱말 \(selection.count)개가 한꺼번에 가요.",
-                                folderNames: collection.folderNames,
-                                current: picked.name,
-                                marksCurrent: picked.unanimous,
-                                isPresented: $moving) { destination in
-                moveSelected(to: destination)
-            }
-        }
-        .confirmRemoval("고른 낱말을 지울까요?", isPresented: $removingWords, action: "지우기",
-                        message: "\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.",
-                        perform: removeSelected)
+        .wordSelectionActions(count: selection.count,
+                              moving: $moving,
+                              removing: $removingWords,
+                              folderNames: collection.folderNames,
+                              current: pickedFolder.name,
+                              marksCurrent: pickedFolder.unanimous,
+                              onMove: moveSelected,
+                              onRemove: removeSelected)
         .dialog(isPresented: $naming) {
             FolderNameDialog(title: "새 묶음",
                              hint: "보기 전에 자리를 만들어 두면, 담을 때 그 자리를 고를 수 있어요.",
@@ -290,26 +282,18 @@ struct LibraryView: View {
     /// 될 것처럼 들리는데 여기서 되는 일은 지우는 것 하나다.
     @State private var editing = false
 
-    /// 낱말을 고르는 손이 얹혔는가. **`모두` 목록에서만 쓴다.**
+    /// 낱말을 고르는 손. **`모두` 목록에서만 쓴다.**
     ///
     /// 묶음별에서 지우는 것은 *묶음*이고 여기서 고르는 것은 *낱말*이라, 한 상태로 묶으면
     /// 같은 단추가 보기에 따라 다른 것을 지운다. 묶음 화면의 고르기와 같은 문법이다 —
     /// 골라 두고 한꺼번에 옮기거나 지운다.
-    @State private var selecting = false
-    /// 고른 낱말들. 낱말 자체가 아니라 `id` 를 담는다 — 옮기고 나면 낱말의 값이
-    /// 바뀌는데, 값으로 들고 있으면 옮긴 뒤에 같은 것을 못 알아본다.
-    @State private var selection: Set<String> = []
+    @State private var selection = WordSelection()
     /// 고른 것을 어디로 옮길지 묻는 판.
     @State private var moving = false
     /// 고른 것을 지울지 묻는 자리. 되돌릴 수 없으므로 시스템 알림으로 묻는다.
     @State private var removingWords = false
 
-    private var pickedWords: [CollectedWord] {
-        collection.words.filter { selection.contains($0.id) }
-    }
-    private var allPicked: Bool {
-        !collection.words.isEmpty && selection.count == collection.words.count
-    }
+    private var pickedWords: [CollectedWord] { selection.picked(in: collection.words) }
     /// 고른 것들이 **모두 같은 자리에** 있는가. 서로 다른 묶음에서 골라 왔으면
     /// "지금"이라 찍을 자리가 없다.
     private var pickedFolder: (name: String?, unanimous: Bool) {
@@ -317,19 +301,8 @@ struct LibraryView: View {
         return (folders.count == 1 ? folders.first! : nil, folders.count == 1)
     }
 
-    private func toggle(_ word: CollectedWord) {
-        if selection.contains(word.id) {
-            selection.remove(word.id)
-        } else {
-            selection.insert(word.id)
-        }
-    }
-
     private func endSelecting() {
-        withAnimation(.select) {
-            selecting = false
-            selection = []
-        }
+        withAnimation(.select) { selection.end() }
     }
 
     /// 고른 것을 한꺼번에 옮긴다. **하나씩 옮기는 길과 같은 길을 쓴다** —
@@ -385,19 +358,18 @@ struct LibraryView: View {
                         // 층에 붙는다. 글의 첫 줄에 맞춰 세운다 — 고르는 것은 낱말이고,
                         // 낱말은 맨 윗줄에 있다.
                         HStack(alignment: .firstTextBaseline, spacing: 0) {
-                            if selecting { SelectionMark(isPicked: selection.contains(word.id)) }
+                            if selection.isActive { SelectionMark(isPicked: selection.contains(word.id)) }
                             LibraryWordRow(word: word,
-                                           selecting: selecting,
+                                           selecting: selection.isActive,
                                            isPicked: selection.contains(word.id),
-                                           onTap: { if selecting { toggle(word) } else { detail = word } },
+                                           onTap: { if selection.isActive { selection.toggle(word.id) } else { detail = word } },
                                            onRemove: { collection.remove(word) })
                         }
                         rowDivider
                     }
                 }
             }
-            .frame(maxWidth: Self.contentWidth, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .column(Self.contentWidth)
         }
         // **밀 것이 없으면 안 밀린다.** 묶음이 둘셋뿐이라 목록이 화면을 안 채우는데도
         // 당기면 화면이 통째로 따라 내려갔다가 튀어 올랐다 — "스크롤이 살짝 멈췄다
@@ -417,7 +389,7 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 12) {
             // **고르는 중에는 이 줄이 통째로 바뀐다.** 묶음 화면과 같은 문법이다 —
             // 이름 자리에 무엇을 고르는 중인지가 서고, 그 낱말들로 할 수 있는 일이 뒤따른다.
-            if selecting {
+            if selection.isActive {
                 selectionHead
             } else {
                 LibraryTitleRow(wordCount: collection.words.count,
@@ -425,12 +397,12 @@ struct LibraryView: View {
                                 grouping: grouping,
                                 editing: $editing,
                                 onStartSelecting: {
-                                    withAnimation(.select) { selecting = true }
+                                    withAnimation(.select) { selection.begin() }
                                 })
             }
             // 담긴 것이 없으면 무엇으로 묶어 볼지도 없다. 고르는 중에도 감춘다 —
             // 고르다 말고 보기를 바꾸면 고른 것이 어디로 갔는지 알 수 없다.
-            if !collection.words.isEmpty && !selecting { dial }
+            if !collection.words.isEmpty && !selection.isActive { dial }
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, 18)
@@ -440,10 +412,8 @@ struct LibraryView: View {
     /// 고르는 중의 머리줄. 묶음 화면과 **같은 것**을 쓴다 — `SelectionHead`.
     private var selectionHead: some View {
         SelectionHead(count: selection.count,
-                      allPicked: allPicked,
-                      onToggleAll: {
-                          selection = allPicked ? [] : Set(collection.words.map(\.id))
-                      },
+                      allPicked: selection.allPicked(of: collection.words.map(\.id)),
+                      onToggleAll: { selection.toggleAll(collection.words.map(\.id)) },
                       onMove: { moving = true },
                       onRemove: { removingWords = true },
                       onDone: { endSelecting() })

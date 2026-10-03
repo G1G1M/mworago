@@ -53,10 +53,7 @@ struct FolderDetail: View {
     ///
     /// 미는 몸짓 대신 고르는 자리를 둔다 — 목록이 `LazyVStack` 이라 직접 만들면
     /// 훑는 손(세로)과 미는 손(가로)이 같은 자리에서 다툰다.
-    @State private var selecting = false
-    /// 고른 낱말들. 낱말 자체가 아니라 `id` 를 담는다 — 옮기고 나면 낱말의 값이
-    /// 바뀌는데, 값으로 들고 있으면 옮긴 뒤에 같은 것을 못 알아본다.
-    @State private var selection: Set<String> = []
+    @State private var selection = WordSelection()
     /// 고른 것을 어디로 옮길지 묻는 판.
     @State private var moving = false
     /// 고른 것을 지울지 묻는 자리. 되돌릴 수 없으므로 시스템 알림으로 묻는다.
@@ -71,11 +68,11 @@ struct FolderDetail: View {
                     if words.isEmpty { FolderEmptyState(isNamed: folder != nil) }
                     ForEach(words) { word in
                         HStack(spacing: 0) {
-                            if selecting { SelectionMark(isPicked: selection.contains(word.id)) }
+                            if selection.isActive { SelectionMark(isPicked: selection.contains(word.id)) }
                             FolderWordRow(word: word,
-                                          selecting: selecting,
+                                          selecting: selection.isActive,
                                           isPicked: selection.contains(word.id)) {
-                                if selecting { toggle(word) } else { detail = word }
+                                if selection.isActive { selection.toggle(word.id) } else { detail = word }
                             }
                         }
                         Theme.rule().padding(.horizontal, Theme.gutter)
@@ -84,8 +81,7 @@ struct FolderDetail: View {
                 .padding(.bottom, Theme.screenBottom)
                 // 훑는 목록이지만 가나와 뜻이 **두 열로 갈린다.** 목록 폭(640)을 쓰면
                 // 아이패드에서 두 열이 멀어져 한 줄을 눈으로 가로질러야 한다.
-                .frame(maxWidth: Theme.readWidth, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .column()
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -127,8 +123,7 @@ struct FolderDetail: View {
             // `--picking` 은 고르는 중(전부 고른 채)으로, `--moving` 은 그 위에
             // 옮기는 판까지 펼친 채로 띄운다.
             if launch.has("picking") || launch.has("moving") {
-                selecting = true
-                selection = Set(words.map(\.id))
+                selection.begin(picking: words.map(\.id))
                 moving = launch.has("moving")
             }
         }
@@ -149,20 +144,15 @@ struct FolderDetail: View {
                 dismiss()
             }
         }
-        .dialog(isPresented: $moving) {
-            FolderChooserDialog(title: "어디로 옮길까요?",
-                                hint: "고른 낱말 \(selection.count)개가 한꺼번에 가요.",
-                                folderNames: folderNames,
-                                current: folder,
-                                isPresented: $moving) { destination in
-                moveSelected(to: destination)
-            }
-        }
+        .wordSelectionActions(count: selection.count,
+                              moving: $moving,
+                              removing: $removingWords,
+                              folderNames: folderNames,
+                              current: folder,
+                              onMove: moveSelected,
+                              onRemove: removeSelected)
         // **지우는 것만 시스템 알림으로 묻는다.** 되돌릴 수 없는 일은 앱의 얼굴보다
         // 사용자가 이미 아는 "정말요?" 얼굴이 낫다.
-        .confirmRemoval("고른 낱말을 지울까요?", isPresented: $removingWords, action: "지우기",
-                        message: "\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.",
-                        perform: removeSelected)
         // 무엇이 남는지 먼저 말한다. 담은 것이 사라진다고 오해하면 누를 수 없다.
         // 빈 묶음에는 남을 낱말이 없으므로 그 말을 하지 않는다 — 없는 것을 세면
         // "낱말 0개는 그대로 남고" 처럼 읽을 수 없는 말이 된다.
@@ -182,7 +172,7 @@ struct FolderDetail: View {
     /// 머리줄이 그 모드의 것으로 바뀌는 편이 맞다 — 무엇을 하는 중인지가 제자리에서 보인다.
     @ViewBuilder
     private var head: some View {
-        if selecting { selectionHead } else { titleHead }
+        if selection.isActive { selectionHead } else { titleHead }
     }
 
     private var titleHead: some View {
@@ -235,16 +225,16 @@ struct FolderDetail: View {
                         .contentShape(Rectangle())
                         .ignoresSafeArea()
                         .onTapGesture { closeMenu() }
-                    FolderMenuList(selecting: selecting,
+                    FolderMenuList(selecting: selection.isActive,
                                    hasWords: !words.isEmpty,
                                    isNamed: folder != nil,
                                    onClose: { closeMenu() },
                                    onPractice: { onPractice(words, title) },
                                    onToggleSelecting: {
-                                       if selecting {
+                                       if selection.isActive {
                                            endSelecting()
                                        } else {
-                                           withAnimation(.select) { selecting = true }
+                                           withAnimation(.select) { selection.begin() }
                                        }
                                    },
                                    onRename: { renaming = true },
@@ -263,38 +253,19 @@ struct FolderDetail: View {
 
     // MARK: 고르기
 
-    private func toggle(_ word: CollectedWord) {
-        if selection.contains(word.id) {
-            selection.remove(word.id)
-        } else {
-            selection.insert(word.id)
-        }
-    }
-
-    private var allPicked: Bool {
-        !words.isEmpty && selection.count == words.count
-    }
-
     private func endSelecting() {
-        withAnimation(.select) {
-            selecting = false
-            selection = []
-        }
+        withAnimation(.select) { selection.end() }
     }
 
     /// 고른 것을 한꺼번에 옮긴다. **하나씩 옮기는 길과 같은 길을 쓴다** —
     /// 여기만 따로 저장하면 지난번 묶음을 건드리는지 같은 규칙이 두 벌이 된다.
     private func moveSelected(to destination: String?) {
-        for word in words where selection.contains(word.id) {
-            onMoveWord(word, destination)
-        }
+        for word in selection.picked(in: words) { onMoveWord(word, destination) }
         endSelecting()
     }
 
     private func removeSelected() {
-        for word in words where selection.contains(word.id) {
-            onRemoveWord(word)
-        }
+        for word in selection.picked(in: words) { onRemoveWord(word) }
         endSelecting()
     }
 
@@ -302,10 +273,8 @@ struct FolderDetail: View {
     /// 이름 자리에 무엇을 고르는 중인지가 서고, 줄임표 자리에 그 낱말들로 할 수 있는 일이 선다.
     private var selectionHead: some View {
         SelectionHead(count: selection.count,
-                      allPicked: allPicked,
-                      onToggleAll: {
-                          selection = allPicked ? [] : Set(words.map(\.id))
-                      },
+                      allPicked: selection.allPicked(of: words.map(\.id)),
+                      onToggleAll: { selection.toggleAll(words.map(\.id)) },
                       onMove: { moving = true },
                       onRemove: { removingWords = true },
                       onDone: { endSelecting() })

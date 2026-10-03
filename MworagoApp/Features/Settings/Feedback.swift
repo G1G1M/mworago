@@ -96,10 +96,7 @@ struct Feedback: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.horizontal, Theme.gutter)
-            .padding(.bottom, Theme.screenBottom)
-            .frame(maxWidth: Theme.readWidth, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .readingPage()
         }
         .background(Theme.paper)
         .koreanNavigationTitle("의견 보내기")

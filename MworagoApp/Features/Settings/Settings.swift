@@ -158,11 +158,7 @@ struct Settings: View {
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, Self.topPadding)
-                .padding(.bottom, Theme.screenBottom)
-                .frame(maxWidth: Theme.readWidth, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .readingPage(top: Self.topPadding)
             }
             .background(Theme.paper)
             .koreanNavigationTitle("설정")

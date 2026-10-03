@@ -181,8 +181,7 @@ struct PracticeView: View {
                 PracticeScopeButton(title: scope?.title ?? "전체") { picking = true }
             }
         }
-        .frame(maxWidth: Theme.readWidth, alignment: .leading)
-        .frame(maxWidth: .infinity)
+        .column()
         .padding(.horizontal, Theme.gutter)
     }
 
