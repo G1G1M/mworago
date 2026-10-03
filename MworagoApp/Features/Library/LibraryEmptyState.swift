@@ -21,7 +21,7 @@ struct LibraryEmptyState: View {
                 Text("아직 책장이 비어 있어요")
                     .font(Theme.korean(.heading, weight: .semibold))
                     .foregroundStyle(Theme.ink)
-                Text("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓입니다.")
+                Text("찾기에서 낱말 옆의 갈피표를 누르면, 어느 묶음에 넣을지 물어보고 여기 쌓여요.")
                     .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey2)
             }

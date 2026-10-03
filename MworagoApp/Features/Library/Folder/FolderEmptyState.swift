@@ -15,8 +15,8 @@ struct FolderEmptyState: View {
                 .font(Theme.korean(.title, weight: .medium))
                 .foregroundStyle(Theme.grey1)
             Text(isNamed
-                 ? "찾기에서 낱말 옆의 갈피표를 누르고 이 묶음을 고르면 여기 모입니다."
-                 : "찾기에서 낱말 옆의 갈피표를 누르면 여기 모입니다.")
+                 ? "찾기에서 낱말 옆의 갈피표를 누르고 이 묶음을 고르면 여기 모여요."
+                 : "찾기에서 낱말 옆의 갈피표를 누르면 여기 모여요.")
                 .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
         }

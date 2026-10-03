@@ -43,6 +43,9 @@ struct WordDetail: View {
     /// 누르는 자리)만 시트로 남는다 — 그쪽은 낱말을 손에 들고 와서 **새 묶음을 만들며**
     /// 담는 자리라 목록이 길고, 판보다 시트가 맞다.
     @State private var moving = false
+    /// 빼기 전에 한 번 묻는 중인가. 목록에서 골라 지울 때와 같은 물음을 같은 얼굴로 묻는다 —
+    /// 한 낱말을 빼는 일도 되돌릴 수 없기는 마찬가지다.
+    @State private var removing = false
 
     init(words: [CollectedWord],
          start: CollectedWord.ID,
@@ -100,6 +103,17 @@ struct WordDetail: View {
                         .foregroundStyle(Theme.ink)
                 }
             }
+        }
+        .alert("이 낱말을 뺄까요?", isPresented: $removing) {
+            Button("빼기", role: .destructive) {
+                if let word = current {
+                    onRemove(word)
+                    dismiss()
+                }
+            }
+            Button("그만두기", role: .cancel) { }
+        } message: {
+            Text("책장에서 빼요. 되돌릴 수 없어요.")
         }
         .dialog(isPresented: $moving) {
             if let word = current {
@@ -176,10 +190,9 @@ struct WordDetail: View {
                 .matteButton(prominent: true)
 
                 Button {
-                    onRemove(word)
-                    dismiss()
+                    removing = true
                 } label: {
-                    Text("교재에서 빼기")
+                    Text("책장에서 빼기")
                         .font(Theme.korean(.body))
                 }
                 .matteButton()

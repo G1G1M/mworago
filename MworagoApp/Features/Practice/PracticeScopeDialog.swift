@@ -22,7 +22,7 @@ struct PracticeScopeDialog: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DialogHead(title: "무엇을 연습할까요?", hint: "고른 묶음만 넘겨 봅니다.")
+            DialogHead(title: "무엇을 연습할까요?", hint: "고른 묶음만 넘겨 봐요.")
             // 줄이 적으면 스크롤을 두지 않는다 — `ScrollView` 는 준 높이를 늘 다 차지해서
             // 묶음이 둘뿐인데도 판 아래가 그 높이만큼 비어 보인다.
             if folders.count > 4 {

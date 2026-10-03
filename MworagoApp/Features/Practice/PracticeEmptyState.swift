@@ -11,10 +11,10 @@ struct PracticeEmptyState: View {
             Text("연습할 것이 없어요")
                 .font(Theme.korean(.heading, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-            Text("모은 낱말을 가나만 보고 떠올려 보는 자리입니다.")
+            Text("모은 낱말을 가나만 보고 떠올려 보는 자리예요.")
                 .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
-            Text("소리 내어 따라 하고 얼마나 닮았는지 보는 것은 그다음이에요.")
+            Text("찾기에서 낱말 옆의 갈피표를 누르면 여기로 와요.")
                 .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey3)
         }

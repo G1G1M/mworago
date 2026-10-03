@@ -136,7 +136,7 @@ struct FolderDetail: View {
         // 다른 얼굴로 뜨면 같은 일을 두 번 배워야 한다.
         .dialog(isPresented: $renaming) {
             FolderNameDialog(title: "이름 바꾸기",
-                             hint: "이 묶음에 담긴 낱말이 다 따라갑니다.",
+                             hint: "이 묶음에 담긴 낱말이 다 따라가요.",
                              placeholder: title,
                              existing: folderNames.filter { $0 != folder },
                              mergesOnDuplicate: true,
@@ -151,7 +151,7 @@ struct FolderDetail: View {
         }
         .dialog(isPresented: $moving) {
             FolderChooserDialog(title: "어디로 옮길까요?",
-                                hint: "고른 낱말 \(selection.count)개가 한꺼번에 갑니다.",
+                                hint: "고른 낱말 \(selection.count)개가 한꺼번에 가요.",
                                 folderNames: folderNames,
                                 current: folder,
                                 isPresented: $moving) { destination in
@@ -164,7 +164,7 @@ struct FolderDetail: View {
             Button("지우기", role: .destructive) { removeSelected() }
             Button("그만두기", role: .cancel) { }
         } message: {
-            Text("\(selection.count)개를 책장에서 뺍니다. 되돌릴 수 없어요.")
+            Text("\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.")
         }
         .alert("묶음을 없앨까요?", isPresented: $removing) {
             Button("없애기", role: .destructive) {
@@ -177,8 +177,8 @@ struct FolderDetail: View {
             // 빈 묶음에는 남을 낱말이 없으므로 그 말을 하지 않는다 — 없는 것을 세면
             // "낱말 0개는 그대로 남고" 처럼 읽을 수 없는 말이 된다.
             Text(words.isEmpty
-                 ? "담긴 낱말이 없어 이름만 없어집니다."
-                 : "담은 낱말 \(words.count)개는 그대로 남고 '아직 안 넣은 것'으로 갑니다. 이름만 없어집니다.")
+                 ? "담긴 낱말이 없어 이름만 없어져요."
+                 : "담은 낱말 \(words.count)개는 그대로 남고 '아직 안 넣은 것'으로 가요. 이름만 없어져요.")
         }
     }
 

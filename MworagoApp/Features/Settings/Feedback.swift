@@ -56,7 +56,7 @@ struct Feedback: View {
                     // 어떻게 나왔는지 되물을 수 있다.
                     Button(action: sendMail) {
                         way(title: "메일로 보내기",
-                            detail: "앱 버전과 기기가 본문에 미리 적힙니다. 보내는 분의 메일 주소가 함께 갑니다.")
+                            detail: "앱 버전과 기기가 본문에 미리 적혀요. 보내는 분의 메일 주소가 함께 가요.")
                     }
                     .buttonStyle(.plain)
 
@@ -74,7 +74,7 @@ struct Feedback: View {
                         Theme.rule()
                         Link(destination: form) {
                             way(title: "이름 없이 보내기",
-                                detail: "브라우저로 의견 폼이 열립니다. 이름도 메일 주소도 묻지 않습니다.")
+                                detail: "브라우저로 의견 폼이 열려요. 이름도 메일 주소도 묻지 않아요.")
                         }
                         .buttonStyle(.plain)
                     }
@@ -83,7 +83,7 @@ struct Feedback: View {
                 // **무엇을 적어야 할지 알려 준다.** "의견을 보내 주세요"만 두면 무엇을
                 // 적어야 할지 몰라 대개 "안 돼요" 한 줄이 온다. 그 한 줄로는 고칠 수 없다.
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("이렇게 적어 주시면 가장 빠릅니다")
+                    Text("이렇게 적어 주시면 가장 빨라요")
                         .font(Theme.korean(.sub))
                         .foregroundStyle(Theme.ink)
                     Text("""

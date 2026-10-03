@@ -97,7 +97,7 @@ struct Credits: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 19) {
-                Text("이 앱은 여러 사람이 공개해 둔 자료로 만들어졌습니다.")
+                Text("이 앱은 여러 사람이 공개해 둔 자료로 만들었어요.")
                     .font(Theme.korean(.body))
                     .foregroundStyle(Theme.grey1)
                     .padding(.top, 4)
@@ -165,7 +165,7 @@ struct Credits: View {
                     // 문구도 그대로 적는다 — 화면이 말하는 것과 가 보면 있는 것이 같아야 한다.
                     if let address = Self.sourceAddress {
                         Link(destination: address) {
-                            Text("색인과 빈도 목록을 여기서 받을 수 있습니다")
+                            Text("색인과 빈도 목록을 여기서 받을 수 있어요")
                                 .font(Theme.korean(.sub))
                                 .foregroundStyle(Theme.grey1)
                                 .underline(pattern: .solid)
@@ -200,7 +200,7 @@ struct Credits: View {
                     // 어디서 읽는지 알 길이 없다. 자료 절의 링크와 같은 꼴로 둔다.
                     if let address = Self.privacyAddress {
                         Link(destination: address) {
-                            Text("개인정보 처리방침 전문이 여기에 있습니다")
+                            Text("개인정보 처리방침 전문이 여기 있어요")
                                 .font(Theme.korean(.sub))
                                 .foregroundStyle(Theme.grey1)
                                 .underline(pattern: .solid)

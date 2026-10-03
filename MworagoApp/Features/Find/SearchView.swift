@@ -240,13 +240,13 @@ struct SearchView: View {
     @ViewBuilder
     private var content: some View {
         if let failure = engine.failure {
-            resting { SearchNotice(title: "사전을 열지 못했습니다", detail: failure) }
+            resting { SearchNotice(title: "사전을 열지 못했어요", detail: failure) }
         } else if input.isEmpty {
             // **손이 얹히면 안내문은 물러난다.** 읽으라고 둔 글인데, 치기 시작한 사람에게는
             // 이미 읽은 글이다. 키보드가 올라오는 좁은 자리를 그 글이 차지하고 있을 이유가 없다.
             if !inputFocused { resting { SearchPrompt() } }
         } else if engine.segments.isEmpty {
-            resting { SearchNotice(title: "찾지 못했습니다", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.") }
+            resting { SearchNotice(title: "찾지 못했어요", detail: "다르게 들렸을 수도 있어요. 한 글자만 바꿔 보세요.") }
         } else {
             results
         }

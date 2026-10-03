@@ -242,7 +242,7 @@ struct LibraryView: View {
         .dialog(isPresented: $moving) {
             let picked = pickedFolder
             FolderChooserDialog(title: "어디로 옮길까요?",
-                                hint: "고른 낱말 \(selection.count)개가 한꺼번에 갑니다.",
+                                hint: "고른 낱말 \(selection.count)개가 한꺼번에 가요.",
                                 folderNames: collection.folderNames,
                                 current: picked.name,
                                 marksCurrent: picked.unanimous,
@@ -256,7 +256,7 @@ struct LibraryView: View {
             Button("지우기", role: .destructive) { removeSelected() }
             Button("그만두기", role: .cancel) { }
         } message: {
-            Text("\(selection.count)개를 책장에서 뺍니다. 되돌릴 수 없어요.")
+            Text("\(selection.count)개를 책장에서 빼요. 되돌릴 수 없어요.")
         }
         .dialog(isPresented: $naming) {
             FolderNameDialog(title: "새 묶음",
