@@ -33,7 +33,7 @@
     <td align="center"><b>찾기</b><br><sub>들린 대로 치면<br>원문이 나온다</sub></td>
     <td align="center"><b>문장</b><br><sub>조각으로 갈라 주고<br>문장 뜻까지</sub></td>
     <td align="center"><b>책장</b><br><sub>담은 것이<br>교재가 된다</sub></td>
-    <td align="center"><b>연습</b><br><sub>가나를 보고<br>뜻을 떠올린다</sub></td>
+    <td align="center"><b>연습</b><br><sub>보고 떠올리고<br>듣고 받아쓴다</sub></td>
     <td align="center"><b>글자</b><br><sub>막히면<br>오십음도</sub></td>
   </tr>
 </table>
