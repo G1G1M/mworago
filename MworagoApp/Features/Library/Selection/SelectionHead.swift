@@ -14,6 +14,10 @@ import SwiftUI
 /// 폭을 직접 재서 기기로 가르지 않고 `ViewThatFits` 에 맡긴다. 들어가면 한 줄,
 /// 안 들어가면 두 줄이다 — 아이패드는 한 줄 그대로고, 글자 크기를 키운 아이폰도
 /// 알아서 두 줄로 내려간다.
+///
+/// **상태 글은 고르는 동안 바뀌지 않는다.** 한때 하나를 고르면 `1개 골랐어요` 로 바뀌었는데,
+/// 그 글이 짧아 한 줄에 들어가 버려 **단추 넷이 둘째 줄 왼쪽에서 첫 줄 오른쪽 위로 튀었다.**
+/// 누르려던 자리에서 단추가 달아나는 셈이다. 몇 개를 골랐는지는 줄마다 선 표시가 이미 말한다.
 struct SelectionHead: View {
     let count: Int
     let allPicked: Bool
@@ -42,15 +46,19 @@ struct SelectionHead: View {
     }
 
     private var status: some View {
-        Text(count == 0 ? "고를 낱말을 누르세요" : "\(count)개 골랐어요")
-            .font(Theme.korean(.title, weight: count == 0 ? .regular : .semibold))
-            .foregroundStyle(count == 0 ? Theme.grey2 : Theme.ink)
+        Text("고를 낱말을 누르세요")
+            .font(Theme.korean(.title))
+            .foregroundStyle(Theme.grey2)
             .lineLimit(1)
+            // 눈에는 줄마다 선 표시가 말해 주지만, 읽어 주기에는 개수를 준다.
+            .accessibilityValue(count > 0 ? "\(count)개 골랐어요" : "")
     }
 
     @ViewBuilder
     private var actions: some View {
-        headButton(allPicked ? "모두 풀기" : "모두", action: onToggleAll)
+        // `모두` 와 `모두 풀기` 는 폭이 달라, 다 고르는 순간 뒤의 셋이 옆으로 밀렸다.
+        // 긴 쪽의 자리를 늘 잡아 둔다.
+        headButton(allPicked ? "모두 풀기" : "모두", reserving: "모두 풀기", action: onToggleAll)
         // 고른 것이 없으면 옮길 것도 지울 것도 없다. 눌러 보고 알게 하지 않는다.
         headButton("옮기기", filled: true, disabled: count == 0, action: onMove)
         headButton("지우기", destructive: true, disabled: count == 0, action: onRemove)
@@ -59,9 +67,13 @@ struct SelectionHead: View {
 
     /// 머리줄의 단추. 강조는 반전 하나로만 — 지금 하려던 일이 채워진다.
     @ViewBuilder
-    private func headButton(_ title: String, filled: Bool = false, destructive: Bool = false,
+    private func headButton(_ title: String, reserving widest: String? = nil,
+                            filled: Bool = false, destructive: Bool = false,
                             disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        let label = Text(title)
+        let label = ZStack {
+            if let widest { Text(widest).hidden() }
+            Text(title)
+        }
             .font(Theme.korean(.sub))
             // **접히지 않는다.** 자리가 모자랄 때 접히라고 두면 알약이 동그라미가 된다.
             // 모자라면 줄을 나눌 일이지 글자를 접을 일이 아니다.

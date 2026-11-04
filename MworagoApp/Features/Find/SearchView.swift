@@ -37,6 +37,10 @@ struct SearchView: View {
     @State private var collecting: CollectedWord?
     /// 바닥에 뜬 것들(담은 자리 줄 · 입력 바)의 높이. 답 목록이 이만큼 그 밑으로 흘러든다.
     @State private var dockHeight: CGFloat = 0
+    /// 최근 찾은 소리. 기기 안에만 적어 둔다(`RecentQueries`).
+    var preferences: any PreferenceStoring = InMemoryPreferences()
+    @State private var recents: [String] = []
+    static let recentsKey = "recent-searches"
 
     var body: some View {
         ZStack {
@@ -116,6 +120,7 @@ struct SearchView: View {
                     SearchInputBar(text: $input,
                                    focused: $inputFocused,
                                    onClear: {
+                                       remember()
                                        input = ""
                                        engine.search("")
                                    },
@@ -145,6 +150,13 @@ struct SearchView: View {
             // 색인·규칙표·캐시를 손 얹히기 전에 한 번 지나가게 한다.
             engine.prewarm()
         }
+        // **답을 읽으려고 키보드를 내렸으면 그것이 찾던 것이다.** 치는 도중의 글자
+        // (`다이`, `다이죠`)까지 남기면 목록이 반쪽짜리 소리로 찬다. 손을 뗀 순간 ·
+        // 지울 때 · 담을 때 · 탭을 떠날 때만 적는다.
+        .onChange(of: inputFocused) { _, focused in
+            if !focused { remember() }
+        }
+        .onDisappear { remember() }
         .onChange(of: input) { _, new in
             // 조각이 다시 나뉘므로 번호로 잡아 둔 선택은 뜻을 잃는다.
             selected = nil
@@ -158,6 +170,14 @@ struct SearchView: View {
             incoming?.wrappedValue = nil
         }
         .onAppear {
+            recents = RecentQueries.decode(preferences.string(forKey: Self.recentsKey))
+            // `--recents=갓코,다이죠부` 는 최근 찾은 것을 채운 채 띄운다. 시뮬레이터로는
+            // 키보드를 내리는 손을 흉내 낼 수 없어 이 목록을 눈으로 볼 길이 없었다.
+            if let seeded = LaunchOptions.current.value(for: "recents") {
+                recents = seeded.split(separator: ",").map(String.init)
+                // 목록은 바를 눌러야 펴지므로, 눈으로 보려면 손을 얹힌 채 띄워야 한다.
+                inputFocused = true
+            }
             // `--collect` 는 검색 결과를 전부 담는다. 담기와 모은 것 화면을
             // 손으로 두드리지 않고 확인하기 위한 것이다.
             if LaunchOptions.current.has("collect") {
@@ -203,6 +223,7 @@ struct SearchView: View {
                          folderNames: collection.folderNames,
                          lastFolder: collection.lastFolder,
                          onPick: { folder in
+                             remember()
                              collection.add(word, to: folder)
                              justSaved = FolderRoute(name: folder)
                          },
@@ -238,7 +259,35 @@ struct SearchView: View {
         } else if input.isEmpty {
             // **손이 얹히면 안내문은 물러난다.** 읽으라고 둔 글인데, 치기 시작한 사람에게는
             // 이미 읽은 글이다. 키보드가 올라오는 좁은 자리를 그 글이 차지하고 있을 이유가 없다.
-            if !inputFocused { resting { SearchPrompt() } }
+            resting {
+                VStack(alignment: .leading, spacing: 0) {
+                    if !inputFocused { SearchPrompt() }
+                    // **바를 눌렀을 때만 편다.** 처음부터 안내문 밑에 깔아 두었더니 빈 화면이
+                    // 어수선해졌다. 칠 셈으로 바를 누른 순간이 「아까 그것」이 쓸모 있는 때다.
+                    if inputFocused, !recents.isEmpty {
+                        RecentSearchList(queries: recents,
+                                         onPick: { input = $0 },
+                                         onRemove: { query in
+                                             withAnimation(.easeOut(duration: 0.15)) {
+                                                 recents = RecentQueries.removing(query, from: recents)
+                                             }
+                                             preferences.set(RecentQueries.encode(recents),
+                                                             forKey: Self.recentsKey)
+                                         },
+                                         onClear: {
+                                             recents = []
+                                             preferences.set(nil, forKey: Self.recentsKey)
+                                         })
+                        // **제자리에서 스며 나왔다 스며 사라진다.** 바가 키보드를 따라 올라가는
+                        // 동안 함께 떠 있으면 목록이 위아래로 날아다녀 정신없었다. 나올 때는
+                        // 바가 내려앉은 뒤(0.25초 — 키보드와 같은 길이)에 그 자리에서 나타나고,
+                        // 사라질 때는 바가 움직이기 전에 먼저 걷힌다.
+                        .transition(.asymmetric(
+                            insertion: .opacity.animation(.easeOut(duration: 0.2).delay(0.25)),
+                            removal: .opacity.animation(.easeOut(duration: 0.12))))
+                    }
+                }
+            }
         } else if engine.segments.isEmpty {
             resting { SearchNotice(title: SearchNotice.notFoundTitle, detail: SearchNotice.notFoundDetail) }
         } else {
@@ -259,6 +308,15 @@ struct SearchView: View {
             .onTapGesture { inputFocused = false }
     }
 
+    /// 지금 입력을 최근 찾은 것에 올린다. 답이 있을 때만 — 못 찾은 소리는 다시 누를 까닭이 없다.
+    private func remember() {
+        guard hasResults else { return }
+        let next = RecentQueries.adding(input, to: recents)
+        guard next != recents else { return }
+        recents = next
+        preferences.set(RecentQueries.encode(next), forKey: Self.recentsKey)
+    }
+
     /// 조각 하나를 비슷한 소리로 바꾼다. 사람이 띄어 쓴 자리는 그대로 남는다.
     /// 화면의 번호에는 통째 후보가 섞여 있으므로, 조각 사이의 차례로 바꿔 넘긴다.
     private func replace(at index: Int, with hangul: String) {
@@ -272,12 +330,14 @@ struct SearchView: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     // 입력이 엉뚱하게 갈렸고, 한 글자만 고치면 한 낱말로 닿는다 — 맨 위에서 묻는다.
                     if let correction = engine.correction {
-                        SoundAlikeRow(alike: correction, lead: "혹시 \(correction.hangul)?") {
+                        SoundAlikeRow(alike: correction, lead: "혹시 \(correction.hangul)?",
+                                      prominent: true) {
                             input = correction.hangul
                         }
+                        .column()
                         .padding(.horizontal, Theme.gutter)
-                        .padding(.vertical, 12)
-                        Theme.rule().padding(.horizontal, Theme.gutter)
+                        .padding(.top, 14)
+                        .padding(.bottom, 6)
                     }
                     // 되살린 원문이 맨 위에 온다. 문장을 치고 들어왔으니 문장부터 돌려준다.
                     //

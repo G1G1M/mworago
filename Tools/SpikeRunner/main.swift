@@ -143,7 +143,7 @@ let positional: [String] = {
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
                 || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction" || args[i] == "--mt-share"
                 || args[i] == "--longvowel"
-                || args[i] == "--gloss-top" || args[i] == "--identity" || args[i] == "--sound-alike-typing"
+                || args[i] == "--gloss-top" || args[i] == "--identity" || args[i] == "--sound-alike-typing" || args[i] == "--top1"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -421,6 +421,17 @@ if args.contains("--sound-alike") {
             let kinds = byKind.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value.1)/\($0.value.0)" }.joined(separator: "  ")
             print("margin \(Int(margin))\tmin \(Int(minimum))\t조각잡음 \(noise)/\(correct.count)\t통째잡음 \(wholeNoise)/\(correct.count)\t건짐 \(rescued)/\(broken)\t헛짚음 \(wrong)\t\(kinds)")
         }
+    }
+    exit(0)
+}
+
+// 흔한 낱말 N 개를 그 소리대로 한글로 쳐서 1위를 적는다. **규칙을 바꾸기 전과 뒤에 한 번씩
+// 돌려 diff 를 본다** — 케이스 150개로는 안 보이는, 고친 규칙이 넓게 무엇을 건드렸는지가 보인다.
+if let n = flagValues("--top1").first.flatMap(Int.init), let frequency {
+    for (_, writing, reading) in frequency.sortedEntries().prefix(n) {
+        let hangul = KanaToHangul.transliterate(reading)
+        let top = Ranker.search(hangul, in: index, frequency: frequency, weights: wordWeights).first
+        print("\(hangul)\t\(writing)\t\(top.map { "\($0.headword)(\($0.reading))" } ?? "-")")
     }
     exit(0)
 }

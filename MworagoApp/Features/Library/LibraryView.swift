@@ -327,7 +327,8 @@ struct LibraryView: View {
                     ForEach(collection.folders) { folder in
                         // 묶음을 없애도 **낱말은 남는다** — 묶음은 담아 둔 자리일 뿐이다.
                         // 그래서 여기서는 되묻지 않는다. 이름 없는 무리는 지울 자리가 없다.
-                        DeletableRow(editing: editing,
+                        // 이름 없는 무리에는 빼기 단추를 세우지 않는다 — 눌러도 아무 일이 없었다.
+                        DeletableRow(editing: editing && folder.name != nil,
                                      onRemove: { if let name = folder.name { collection.removeFolder(name) } }) {
                             LibraryGroupRow(name: folder.name ?? FolderRoute.unfiledTitle,
                                             dim: folder.name == nil,
@@ -395,6 +396,7 @@ struct LibraryView: View {
                 LibraryTitleRow(wordCount: collection.words.count,
                                 isEmpty: isEmpty,
                                 grouping: grouping,
+                                hasFolders: !collection.folderNames.isEmpty,
                                 editing: $editing,
                                 onStartSelecting: {
                                     withAnimation(.select) { selection.begin() }

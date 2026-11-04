@@ -11,6 +11,8 @@ struct LibraryTitleRow: View {
     /// 낱말도 묶음도 없는가. 그때는 손볼 것이 없다.
     let isEmpty: Bool
     let grouping: LibraryView.Grouping
+    /// 사람이 만든 묶음이 있는가. 「아직 안 넣은 것」뿐이면 손볼 묶음이 없다.
+    var hasFolders = true
     /// 묶음을 지우는 손이 얹혔는가. `묶음별` 에서만 켠다.
     @Binding var editing: Bool
     /// `모두` 에서 낱말 고르기를 켠다. 고르는 상태는 책장이 쥔다.
@@ -37,11 +39,15 @@ struct LibraryTitleRow: View {
             // 예전에는 거기서도 단추가 떠 있었지만 눌러도 아무 일이 없었다.
             if !isEmpty {
                 switch grouping {
-                case .folders:
+                // **「지우기」 가 아니라 「편집」 이다.** 제목 바로 옆, 화면에서 가장 먼저 눈이 가는
+                // 자리에 지운다는 말이 서 있으면 책장이 무엇보다 지우는 곳처럼 읽힌다. 누르면 하는
+                // 일은 같다 — 묶음마다 빼기 단추가 선다(iOS 목록의 「편집」 과 같은 문법).
+                // 만든 묶음이 없으면 세우지 않는다 — 눌러도 뺄 것이 없었다.
+                case .folders where hasFolders:
                     Button {
                         withAnimation(.select) { editing.toggle() }
                     } label: {
-                        Text(editing ? "완료" : "지우기")
+                        Text(editing ? "완료" : "편집")
                             .font(Theme.korean(.body, weight: editing ? .medium : .regular))
                             .foregroundStyle(editing ? Theme.ink : Theme.grey2)
                     }
@@ -54,7 +60,7 @@ struct LibraryTitleRow: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("낱말을 골라 옮기거나 지웁니다")
-                case .days:
+                case .folders, .days:
                     EmptyView()
                 }
             }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 지울 수 있는 줄. 편집 중일 때만 단추가 앞에 선다.
 struct DeletableRow<Content: View>: View {
-    /// 지우는 손이 얹혔는가. 책장 머리의 `지우기` · `완료` 가 켜고 끈다.
+    /// 지우는 손이 얹혔는가. 책장 머리의 `편집` · `완료` 가 켜고 끈다.
     let editing: Bool
     let onRemove: () -> Void
     @ViewBuilder var content: () -> Content

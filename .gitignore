@@ -62,3 +62,6 @@ docs/*
 !docs/privacy.md
 !docs/support.md
 !docs/screenshots/
+
+# App Store Connect 키 ID·발급자 ID (Tools/release/testflight.sh)
+Tools/release/asc.env

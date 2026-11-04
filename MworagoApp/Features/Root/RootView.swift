@@ -160,7 +160,8 @@ struct RootView: View {
         // 아이패드에서 탭바가 위아래로 **두 번** 그려졌다.
         TabView(selection: $tab) {
             Tab(value: RootTab.find) {
-                SearchView(incoming: $pendingQuery, onOpenFolder: goLibrary)
+                SearchView(incoming: $pendingQuery, onOpenFolder: goLibrary,
+                           preferences: preferences)
             } label: {
                 Image(systemName: "magnifyingglass")
                     .accessibilityLabel("찾기")
@@ -178,7 +179,8 @@ struct RootView: View {
                              onClearSubset: {
                                  practiceSubset = nil
                                  practiceLabel = nil
-                             })
+                             },
+                             preferences: preferences)
             } label: {
                 // **소리가 아니라 카드다.** `waveform` 은 소리 파형이라 녹음·발음으로 읽힌다.
                 // 이 탭이 하는 일은 담아 둔 낱말을 한 장씩 넘겨 보는 것이므로 카드 더미로 적는다.

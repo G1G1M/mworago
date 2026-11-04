@@ -28,6 +28,8 @@ struct PracticeView: View {
     private static var argumentLabel: String? { LaunchOptions.current.value(for: "practice-subset") }
     /// 하루치에서 빠져나와 전체로 돌아간다.
     var onClearSubset: () -> Void = {}
+    /// 귀 단추를 알려 준 적이 있는지 적어 두는 자리.
+    var preferences: any PreferenceStoring = InMemoryPreferences()
 
     /// 지금 보고 있는 낱말. **`id` 로 들고 있다** — 자리(번호)로 들면 하루치를 바꾸거나
     /// 낱말을 뺐을 때 같은 번호가 딴 낱말을 가리킨다.
@@ -58,6 +60,13 @@ struct PracticeView: View {
     @State private var typed = LaunchOptions.current.value(for: "typed") ?? ""
     @State private var verdict: Dictation.Verdict?
     @FocusState private var typing: Bool
+    /// 귀 단추(듣고 받아쓰기)를 알려 주는 말풍선이 떠 있는가.
+    ///
+    /// 두 연습을 글 대신 그림(눈 · 귀)으로 바꾸면서 줄은 조용해졌지만, 처음 온 사람은
+    /// 귀가 연습을 바꾸는 단추인지 알 길이 없다. **한 번만 알려 준다** — 눌러 보았거나
+    /// 말풍선을 닫았으면 다시 띄우지 않는다. `--listen-hint` 로 언제든 다시 띄운다.
+    @State private var showsListenHint = false
+    static let listenHintKey = "practice-listen-hint-seen"
     @Environment(\.speaker) private var speaker
 
     /// 들고 온 묶음의 이름. 실행 인자로 띄운 것도 같은 자리에 선다.
@@ -191,6 +200,8 @@ struct PracticeView: View {
         }
         // 받아쓰기로 바꾸면 덮고 첫 소리를 들려준다. 보던 장이 문장이면 빠지므로 첫 낱말로 간다.
         .onChange(of: mode) { _, new in
+            // 귀를 눌러 보았으면 알려 줄 것이 없다.
+            if new == .listen { preferences.mark(Self.listenHintKey); showsListenHint = false }
             revealed = false; typed = ""; verdict = nil
             if words.first(where: { $0.id == currentID }) == nil { currentID = words.first?.id }
             if new == .listen { play() } else { typing = false }
@@ -264,6 +275,27 @@ struct PracticeView: View {
         .labelStyle(.iconOnly)
         .pickerStyle(.segmented)
         .fixedSize()
+        .popover(isPresented: $showsListenHint, arrowEdge: .top) {
+            Text("귀를 누르면 소리만 듣고\n한글로 받아써 볼 수 있어요")
+                .font(Theme.korean(.sub))
+                .foregroundStyle(Theme.ink)
+                .fixedSize()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .presentationCompactAdaptation(.popover)
+        }
+        .onChange(of: showsListenHint) { _, shown in
+            if !shown { preferences.mark(Self.listenHintKey) }
+        }
+        // 카드가 한 장이라도 있을 때만 — 빈 화면에서 단추를 가리키면 누를 것이 없다.
+        .task(id: words.isEmpty) {
+            let forced = LaunchOptions.current.has("listen-hint")
+            guard !words.isEmpty, mode == .look,
+                  forced || !preferences.isMarked(Self.listenHintKey) else { return }
+            // 탭이 넘어오는 결이 끝난 뒤에 띄운다. 곧바로 띄우면 말풍선이 자리를 못 잡는다.
+            try? await Task.sleep(for: .milliseconds(600))
+            if !Task.isCancelled { showsListenHint = true }
+        }
     }
 
     /// 받아쓰기 입력 줄. 치고 나서 자판의 완료나 아래 `확인` 을 누르면 카드가 뒤집히며
