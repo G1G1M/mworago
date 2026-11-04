@@ -44,6 +44,11 @@ targets:
           - ZenMaruGothic-Regular.ttf
           - ZenMaruGothic-Medium.ttf
           - GowunDodum-Regular.ttf
+        # **아이폰은 세로 하나만 연다(2026-11-04).** 가로 화면은 하지 않는다 —
+        # 카드 · 받아쓰기 · 탭 바가 모두 세로 한 손 쓰기를 전제로 놓였다.
+        # 적지 않으면 아이폰에서 어느 방향으로 열릴지 정해 두지 않은 셈이 된다.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
