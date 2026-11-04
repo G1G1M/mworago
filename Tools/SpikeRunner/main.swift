@@ -77,6 +77,10 @@ let doSegmentSweep = args.contains("--segment-sweep")
 // 틀린 케이스만 찍는다. 성적표는 얼마나 틀렸는지는 알려 주지만
 // **무엇이** 틀렸는지는 안 알려 준다. 원인을 나누려면 실물을 봐야 한다.
 let doSegmentFails = args.contains("--segment-fails")
+// 앱과 같은 값으로 **한 번만** 재어 성적 줄만 찍는다. 고치고 재기를 되풀이할 때 쓴다 —
+// 줄 머리가 고정이라 `grep "^segment_exact:"` 로 뽑아 읽는다. 낱말 케이스도 함께 찍어
+// 분절을 고치다 낱말 순위를 잃는지 한 번에 본다.
+let doSegmentScore = args.contains("--segment-score")
 // 어절 첫머리에 선 조사에 무는 벌점. 0 이면 그 규칙을 쓰지 않는다.
 let boundPenalty = flagValues("--bound").first.flatMap(Double.init) ?? Segmenter.defaultBoundPenalty
 // 그 벌점만 훑는다. 조각을 찾아본 결과는 벌점과 무관하므로 한 벌을 물려 써서 빠르다.
@@ -138,7 +142,7 @@ let positional: [String] = {
     var i = 1
     while i < args.count {
         if args[i].hasPrefix("--") {
-            let consumesValues = args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
+            let consumesValues = args[i] == "--shard" || args[i] == "--explain" || args[i] == "--build-cases" || args[i] == "--segment" || args[i] == "--cost" || args[i] == "--segment-cases" || args[i] == "--build-frequency" || args[i] == "--freq"
                 || args[i] == "--build-index" || args[i] == "--index" || args[i] == "--deinf-penalty"
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
                 || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction" || args[i] == "--mt-share"
@@ -934,16 +938,49 @@ if let buildFrequencyLimit {
 // 분절 정답은 Tanaka Corpus 에서 온다. 사람이 손으로 나눈 낱말 경계라 내가 정할 게 없다.
 
 if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep
-    || doJunctionSweep || doIdentitySweep {
+    || doJunctionSweep || doIdentitySweep || doSegmentScore {
     let corpusPath = "Tools/data/examples.utf"
     let count = segmentCaseCount ?? 300
     log("Tanaka Corpus 읽는 중… \(corpusPath)")
+    // `--shard i/n` 은 케이스를 n 몫으로 나눠 i 번째만 잰다(0 부터). 한 번에 13분 걸리는
+    // 1200문장을 여러 프로세스로 나눠 돌리려고 둔다. 케이스 자체와 채점은 그대로다.
+    let shard = flagValues("--shard").first.map { $0.split(separator: "/").compactMap { Int($0) } }
     let segmentCases = SegmentCaseBuilder.build(from: corpusPath, limit: count)
+        .enumerated()
+        .filter { shard.map { $0.count == 2 ? $0[1] > 0 : false } == true
+            ? $0.offset % shard![1] == shard![0] : true }
+        .map(\.element)
     log("분절 케이스 \(segmentCases.count)개")
 
     guard !segmentCases.isEmpty else {
         FileHandle.standardError.write(Data("케이스를 못 만들었다. Tools/fetch/fetch-tanaka.sh 를 먼저 실행\n".utf8))
         exit(1)
+    }
+
+    if doSegmentScore {
+        let cost = flagValues("--cost").first.flatMap(Double.init) ?? Segmenter.defaultSegmentCost
+        let started = Date()
+        let score = SegmentEval.evaluate(segmentCases, index: index, frequency: frequency,
+                                         weights: tunedWeights, segmentCost: cost,
+                                         boundPenalty: boundPenalty,
+                                         junctionBonus: junctionBonus,
+                                         cache: SearchCache(limit: .max))
+        var t1 = 0, t3 = 0
+        for testCase in cases {
+            let results = Ranker.search(testCase.hangul, in: index,
+                                        frequency: frequency, weights: wordWeights)
+            let matches = makeMatcher(testCase)
+            if results.first.map(matches) ?? false { t1 += 1 }
+            if results.prefix(3).contains(where: matches) { t3 += 1 }
+        }
+        print(String(format: "segment_exact: %.4f", score.exactRate))
+        print("segment_exact_count: \(score.exact)/\(score.total)")
+        print(String(format: "segment_f1: %.4f", score.f1))
+        print(String(format: "segment_sense: %.4f", score.senseRate))
+        print("word_top1: \(t1)/\(cases.count)")
+        print("word_top3: \(t3)/\(cases.count)")
+        print(String(format: "seconds: %.1f", Date().timeIntervalSince(started)))
+        exit(0)
     }
 
     if doSegmentFails {
