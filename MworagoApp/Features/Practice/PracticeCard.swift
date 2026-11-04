@@ -16,6 +16,8 @@ struct PracticeCard: View {
     /// 받아쓰기라면 그 판. 있으면 앞면이 가나 대신 소리가 된다.
     var dictation: DictationFace? = nil
 
+    @Environment(\.speaker) private var speaker
+
     /// 받아쓰기 한 장의 형편 — 무엇을 쳤고, 그것이 이 낱말에 닿는지.
     struct DictationFace: Equatable {
         var typed: String
@@ -100,14 +102,43 @@ struct PracticeCard: View {
     /// 소리 단추를 크게 두고, 장이 넘어오면 화면이 먼저 한 번 들려준다(`PracticeView`).
     private var listening: some View {
         VStack(alignment: .leading, spacing: 18) {
-            SpeakButton(text: word.reading, size: 44)
-                .accessibilityLabel("다시 듣기")
+            // **두 단추를 한 벌로 세운다.** 큰 스피커 그림 옆에 작은 거북이와 글자를 붙였더니
+            // 크기도 꼴도 달라 하나는 그림, 하나는 글줄처럼 보였다. 같은 크기의 동그라미 둘로
+            // 세워, 같은 일(소리 듣기)의 두 빠르기라는 것이 꼴로 읽히게 한다.
+            // 이름(「듣기」·「느리게」)은 달지 않는다 — 그림이 이미 말하고, 글이 붙으면 카드의
+            // 안내문과 겹쳐 시끄러웠다. 읽어 주기에는 이름을 준다.
+            HStack(spacing: 14) {
+                listenButton("speaker.wave.2.fill", tint: Theme.ink, pace: .of(word.reading))
+                    .accessibilityLabel("다시 듣기")
+                listenButton("tortoise.fill", tint: Theme.grey1, pace: .kana)
+                    .accessibilityLabel("느리게 듣기")
+            }
             Text("들린 대로 한글로 쳐 보세요")
                 .font(Theme.korean(.body))
                 .foregroundStyle(Theme.grey2)
             if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
         }
         .frame(minHeight: Self.faceHeight, alignment: .leading)
+    }
+
+    /// 받아쓰기의 소리 단추 하나 — 동그라미 안에 그림.
+    ///
+    /// **느리게는 받아쓰기에서만 선다.** 낱말은 자막에서 만나는 빠르기로 읽는데
+    /// (`SpeechPace.word`), 그 빠르기로 두세 번 들어도 안 잡히는 소리는 늦춰 들어야 어느
+    /// 글자가 어긋났는지 보인다 — 촉음·장음이 그렇다. 글자 익히기가 쓰는 가장 느린
+    /// 빠르기(`kana`)를 빌린다.
+    private func listenButton(_ icon: String, tint: Color, pace: SpeechPace) -> some View {
+        Button {
+            speaker.speak(word.reading, pace: pace)
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 21, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 56, height: 56)
+                .background(Theme.grey4, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// 두 면이 함께 쓰는 최소 높이. **앞뒤가 크게 다르면 뒤집는 순간 카드가 늘었다
