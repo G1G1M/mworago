@@ -130,6 +130,17 @@ struct PracticeView: View {
                 // 는 같은 자리에 있어야 손이 그 자리를 기억한다. 머리줄도 장마다 같은
                 // 말("연습")을 다시 적으므로, 밀 때마다 같은 글자가 옆에서 흘러들어와
                 // 넘어간 것이 아니라 화면이 흔들린 것처럼 보였다.
+                //
+                // **화면에 다 안 들어가면 위아래로 민다.** 카드 자리는 글자 크기를 따라
+                // 자라는데(`cardArea`), 글자를 키운 작은 폰(SE)에서는 머리줄 · 카드 ·
+                // 입력 줄 · 단추를 합친 높이가 화면을 넘었다. 넘친 만큼 위아래로 밀려나
+                // 「연습」 줄은 시계 밑으로, 단추는 탭 바 뒤로 숨었다.
+                // 들어갈 때는 아래 `minHeight` 가 화면 높이를 채워 예전처럼 가운데 서고,
+                // 넘칠 때만 밀린다(`basedOnSize`). 둘을 갈아 끼우지 않는 것은 입력 줄이
+                // 새로 만들어지면 자판이 내려가기 때문이다 — 자판이 오르내리며 높이가
+                // 바뀔 때마다 그 일이 되풀이된다.
+                GeometryReader { viewport in
+                ScrollView(.vertical) {
                 VStack(spacing: 0) {
                     header
                     // **카드와 단추가 한 덩어리로 가운데 선다.**
@@ -156,6 +167,11 @@ struct PracticeView: View {
                 }
                 .padding(.top, Theme.screenTop)
                 .padding(.bottom, Theme.screenBottom)
+                .frame(minHeight: viewport.size.height)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(.hidden)
+                }
             }
         }
         // 첫 장. 담긴 것이 없다가 생겼을 때도 여기서 잡힌다.
@@ -245,6 +261,10 @@ struct PracticeView: View {
                     .foregroundStyle(Theme.grey2)
                     .monospacedDigit()
             }
+            // 글자를 아주 키운 SE 에서 「연습」 이 「연 / 습」 으로 한 자씩 꺾였다.
+            // 머리줄은 한 줄로 두고, 모자라면 조금 줄여서 넣는다.
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             Spacer(minLength: 8)
             modePicker
             // 들고 온 묶음이 있으면 그 이름표가 이 자리에 선다. 그때 고르는 단추는 서지
