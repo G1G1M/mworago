@@ -279,7 +279,12 @@ if let useIndexPath, buildIndexPath == nil {
             for line in text.split(separator: "\n") where !line.hasPrefix("#") {
                 let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
                 guard columns.count >= 3, !columns[2].isEmpty else { continue }
-                koreanGlosses["\(columns[0])\t\(columns[1])"] = String(columns[2])
+                // 넷째 칸(영어 첫 뜻)이 있으면 표기 없는 낱말 중 그 항목 하나만 고친다.
+                // 같은 읽기의 표기 없는 낱말끼리 열쇠를 나눠 쓰기 때문이다(`DictionaryStore.build`).
+                let key = columns.count >= 4 && !columns[3].isEmpty
+                    ? "\(columns[0])\t\(columns[1])\t\(columns[3])"
+                    : "\(columns[0])\t\(columns[1])"
+                koreanGlosses[key] = String(columns[2])
                 고친것 += 1
             }
             log("사람이 고친 뜻 \(고친것)개 (\(correctedPath))")

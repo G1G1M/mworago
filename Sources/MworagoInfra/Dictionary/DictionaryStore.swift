@@ -161,9 +161,15 @@ public final class DictionaryStore: DictionaryLookup, @unchecked Sendable {
             // **읽기만으로 찾는 길은 표기가 없는 낱말에만 연다.** 표기가 있는데도 열어 두면
             // 소리가 같다는 이유로 남의 뜻을 물려받는다 — 家(か)가 조사 か 의 "질문 표시"를
             // 가져가 화면에 그대로 나왔다. 조사와 한자어가 소리를 나눠 갖는 일은 흔하다.
+            //
+            // **표기 없는 낱말끼리는 읽기 열쇠 하나를 나눠 쓴다.** `それ`(그것)와 감탄사
+            // `それ`(자!)가 같은 열쇠 `それ\tそれ` 의 뜻을 받아 둘 다 「그것」이 되었다.
+            // 그래서 영어 첫 뜻까지 붙인 열쇠(`それ\tそれ\tthere!`)를 먼저 본다 —
+            // 사람이 고친 표(`corrected-gloss.tsv` 넷째 칸)가 한 항목만 집어 고칠 수 있다.
             let korean = entry.readings.lazy.compactMap { reading -> String? in
                 if entry.usableWritings.isEmpty {
-                    return koreanGlosses["\(reading.text)\t\(reading.text)"]
+                    return koreanGlosses["\(reading.text)\t\(reading.text)\t\(entry.glosses.first ?? "")"]
+                        ?? koreanGlosses["\(reading.text)\t\(reading.text)"]
                 }
                 return entry.usableWritings.lazy.compactMap {
                     koreanGlosses["\($0.text)\t\(reading.text)"]

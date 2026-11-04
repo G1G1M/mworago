@@ -152,6 +152,30 @@ struct DictionaryStoreTests {
         #expect(포인트.koreanGloss == "요점")
     }
 
+    @Test("표기 없는 낱말끼리 소리가 같으면 영어 첫 뜻으로 한 항목만 고친다")
+    func 가나낱말_하나만() throws {
+        let path = NSTemporaryDirectory() + "mworago-kana-one-\(UUID().uuidString).db"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        // 대명사 それ 와 감탄사 それ 는 둘 다 표기가 없어 열쇠 `それ\tそれ` 를 나눠 쓴다.
+        // 감탄사만 고치려면 영어 첫 뜻까지 붙인 열쇠로 집어야 한다.
+        let entries = [
+            DictEntry(readings: [DictForm(text: "それ", priority: 102)], writings: [],
+                      glosses: ["that"], partsOfSpeech: ["pn"]),
+            DictEntry(readings: [DictForm(text: "それ", priority: 0)], writings: [],
+                      glosses: ["there!"], partsOfSpeech: ["int"]),
+        ]
+        try DictionaryStore.build(entries: entries, at: path,
+                                  koreanGlosses: ["それ\tそれ": "그것", "それ\tそれ\tthere!": "자!"])
+        let store = try DictionaryStore(path: path)
+
+        let 뜻 = Dictionary(uniqueKeysWithValues: store.lookup("それ").map {
+            ($0.entry.glosses.first ?? "", $0.entry.koreanGloss ?? "")
+        })
+        #expect(뜻["that"] == "그것")
+        #expect(뜻["there!"] == "자!")
+    }
+
     @Test("한국어 뜻을 구워 넣고 꺼낸다")
     func 한국어뜻() throws {
         let path = NSTemporaryDirectory() + "mworago-korean-\(UUID().uuidString).db"
