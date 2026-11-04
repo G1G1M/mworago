@@ -30,6 +30,7 @@ struct BookmarkButton: View {
             Image(systemName: held ? "bookmark.fill" : "bookmark")
                 .font(Theme.icon(.control))
                 .foregroundStyle(held ? Theme.ink : Theme.grey3)
+                .touchTarget(around: Theme.IconSize.control.rawValue)
         }
         .buttonStyle(.plain)
         // **손끝에도 알린다.** 갈피표는 그림만 채워지고 마는데, 누른 자리와 바뀌는

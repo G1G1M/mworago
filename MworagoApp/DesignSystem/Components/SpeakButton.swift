@@ -25,7 +25,7 @@ struct SpeakButton: View {
             Image(systemName: "speaker.wave.2")
                 .font(.system(size: size))
                 .foregroundStyle(Theme.grey2)
-                .contentShape(Rectangle())
+                .touchTarget(around: size)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("소리 듣기")
