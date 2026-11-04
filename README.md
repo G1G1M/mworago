@@ -5,6 +5,14 @@
 애니를 보다 걸린 대사 한 마디를 소리 그대로 쳐서 찾고, 담아 두고, 다시 연습한다.
 가나를 못 읽어도 되고 띄어 쓰지 않아도 된다.
 
+<p align="center">
+  <a href="https://apps.apple.com/kr/app/id6828305969">
+    <img src="docs/badges/app-store-ko.svg" alt="App Store에서 다운로드" height="54">
+  </a>
+  <br>
+  <sub>iPhone · 무료 · 계정 없음 · 낱말은 인터넷 없이 찾는다</sub>
+</p>
+
 ```
 아타마가이타이   →  頭が痛い      머리가 아프다
 다이죠부데스카   →  大丈夫ですか  大丈夫 · です · か

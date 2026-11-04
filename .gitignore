@@ -54,14 +54,16 @@ xcuserdata/
 
 # 만들면서 남긴 기록 — 저장소에 올리지 않는다.
 #
-# **셋은 예외다.** 앱과 심사가 그 주소를 가리키고 있어, 닫히면 지키지 못하는 것이 생긴다.
+# **넷은 예외다.** 앱과 심사가 그 주소를 가리키고 있어, 닫히면 지키지 못하는 것이 생긴다.
 #   privacy.md    앱 안의 링크(`Credits.privacyAddress`)와 심사 5.1.1 의 등록 주소
 #   support.md    등록의 지원 주소이자 저장소 About 의 Website
-#   screenshots/  README 의 화면 다섯
+#   screenshots/  README 의 화면
+#   badges/       README 의 App Store 배지(애플 마케팅 도구에서 받은 그대로)
 docs/*
 !docs/privacy.md
 !docs/support.md
 !docs/screenshots/
+!docs/badges/
 
 # App Store Connect 키 ID·발급자 ID (Tools/release/testflight.sh)
 Tools/release/asc.env
