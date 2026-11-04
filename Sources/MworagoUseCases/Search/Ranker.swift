@@ -314,6 +314,10 @@ public enum Ranker {
                               frequency: FrequencyList? = nil,
                               weights: Weights = Weights()) -> [SearchResult] {
         var results: [SearchResult] = []
+        // 표기 없이 가나로만 실렸고 사전 표시도 없는 낱말이 가나 줄에서 받아 간 몫.
+        // 같은 읽기를 사전이 「흔하다」고 표시한 다른 낱말이 있으면 아래에서 깎는다.
+        var bareKanaShares: [(index: Int, key: String, share: Double)] = []
+        var markedReadings: Set<String> = []
 
         // 도메인 빈도가 없으면 JMdict 점수라도 써야 한다. 그러지 않으면 모두 0점이 되어
         // 후보 순서만으로 줄을 세우게 된다.
@@ -354,6 +358,11 @@ public enum Ranker {
                     } ?? 0
                     if domain > 0, weights.domainWeight != 0 {
                         score += weights.domainWeight * domain
+                        if hit.entry.usableWritings.isEmpty, hit.priority == 0,
+                           hit.entry.wordClass == .noun {
+                            bareKanaShares.append((results.count, KanaTable.lookupKey(hit.reading),
+                                                   weights.domainWeight * domain))
+                        }
                     } else {
                         score += jmdictWeight * Double(hit.priority)
                     }
@@ -369,6 +378,7 @@ public enum Ranker {
                     // 낱말이면 제대로 친 답을 밀어낸다.
                     score -= weights.longVowelPenalty * 3 * Double(candidate.geminatesAdded)
                     if deinflection.rule != nil { score -= weights.deinflectionPenalty }
+                    if hit.priority > 0 { markedReadings.insert(KanaTable.lookupKey(hit.reading)) }
 
                     results.append(SearchResult(entry: hit.entry,
                                                 // 찾기는 사전에 실린 철자 그대로 하고,
@@ -379,6 +389,23 @@ public enum Ranker {
                                                 score: score))
                 }
             }
+        }
+
+        // **가나 줄의 주인이 따로 있으면 표시 없는 가나 낱말은 그 줄을 다 가져가지 못한다.**
+        //
+        // `캇코` 를 치면 `かっこ`(게타·나막신, 표기 없음)가 `括弧`(괄호) 위에 섰다 — 48.8 대
+        // 48.7. 말뭉치의 가나 줄 `かっこ`(3,717위)는 사람들이 `格好`·`括弧` 를 가나로 적은
+        // 것인데, 표기가 없는 낱말은 가나가 곧 제 꼴이라 그 줄을 깎지 않고 통째로 물려받았다.
+        //
+        // 혼자일 때는 그것이 맞다(`して`). 그런데 **같은 읽기에 사전이 우선 표시를 단 낱말이
+        // 함께 걸렸으면** 줄의 주인은 그쪽이다. `癖`·`曲` 을 가른 것과 같은 잣대를 쓴다 —
+        // 표시 없는 쪽이 받아 간 몫에 `unmarkedKanaWeight` 를 곱한다.
+        for (index, key, share) in bareKanaShares where markedReadings.contains(key) {
+            let result = results[index]
+            results[index] = SearchResult(entry: result.entry, reading: result.reading,
+                                          matchedKana: result.matchedKana,
+                                          deinflection: result.deinflection,
+                                          score: result.score - share * (1 - Self.unmarkedKanaWeight))
         }
 
         // 점수가 같으면 규칙이 먼저 낸 쪽이 앞. 정렬이 실행마다 뒤바뀌지 않도록 한다.

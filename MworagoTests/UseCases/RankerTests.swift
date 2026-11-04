@@ -202,6 +202,47 @@ struct RankerTests {
         #expect(Ranker.search("쿠세", in: index, frequency: frequency).first?.headword == "癖")
     }
 
+    @Test("표기 없는 명사도 같은 읽기의 표시된 낱말이 있으면 가나 줄을 다 가져가지 못한다")
+    func 표기없는_명사는_주인에게_양보한다() {
+        // `캇코` 를 치면 `かっこ`(게타·나막신, 표기 없음)가 `括弧`(괄호) 위에 섰다 — 48.8 대 48.7.
+        // 표기 없는 낱말은 가나가 곧 제 꼴이라 가나 줄을 깎지 않았는데, 같은 읽기에
+        // 사전이 우선 표시를 단 `括弧` 가 함께 걸렸으면 줄의 주인은 그쪽이다.
+        let index = DictIndex(entries: [
+            DictEntry(readings: [DictForm(text: "かっこ", priority: 0)], writings: [],
+                      glosses: ["geta"], partsOfSpeech: ["n"]),
+            DictEntry(readings: [DictForm(text: "かっこ", priority: 47)],
+                      writings: [DictForm(text: "括弧", priority: 47)],
+                      glosses: ["parentheses"], usuallyKana: true, partsOfSpeech: ["n"]),
+        ])
+        let frequency = FrequencyList(tsv: """
+        term\treading\trank\tcount
+        かっこ\tかっこ\t3717\t530
+        """)
+        #expect(Ranker.search("캇코", in: index, frequency: frequency).first?.headword == "括弧")
+    }
+
+    @Test("표기 없는 명사가 혼자면 가나 줄을 그대로 받는다")
+    func 표기없는_명사가_혼자면_그대로() {
+        // 다툴 낱말이 없으면 깎을 근거가 없다 — 가나가 곧 제 꼴이다.
+        let index = DictIndex(entries: [
+            DictEntry(readings: [DictForm(text: "かっこ", priority: 0)], writings: [],
+                      glosses: ["geta"], partsOfSpeech: ["n"]),
+        ])
+        let frequency = FrequencyList(tsv: """
+        term\treading\trank\tcount
+        かっこ\tかっこ\t3717\t530
+        """)
+        let 점수 = Ranker.search("캇코", in: index, frequency: frequency).first?.score ?? 0
+        let 겨룰때 = Ranker.search("캇코", in: DictIndex(entries: [
+            DictEntry(readings: [DictForm(text: "かっこ", priority: 0)], writings: [],
+                      glosses: ["geta"], partsOfSpeech: ["n"]),
+            DictEntry(readings: [DictForm(text: "かっこ", priority: 47)],
+                      writings: [DictForm(text: "括弧", priority: 47)],
+                      glosses: ["parentheses"], usuallyKana: true, partsOfSpeech: ["n"]),
+        ]), frequency: frequency).first { $0.headword == "かっこ" }?.score ?? 0
+        #expect(점수 > 겨룰때)
+    }
+
     @Test("사전이 흔하다고 표시한 읽기면 가나 줄을 그대로 받는다")
     func 표시된_읽기는_그대로() {
         // 깎는 근거는 "사전이 이 읽기를 흔하다고 안 했다"는 것뿐이다. 표시가 있으면
