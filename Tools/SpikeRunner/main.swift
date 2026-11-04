@@ -143,7 +143,7 @@ let positional: [String] = {
                 || args[i] == "--translate" || args[i] == "--translate-cases" || args[i] == "--typing"
                 || args[i] == "--jmdict" || args[i] == "--mt-cases" || args[i] == "--bound" || args[i] == "--junction" || args[i] == "--mt-share"
                 || args[i] == "--longvowel"
-                || args[i] == "--gloss-top" || args[i] == "--identity"
+                || args[i] == "--gloss-top" || args[i] == "--identity" || args[i] == "--sound-alike-typing"
             i += 1
             if consumesValues { while i < args.count && !args[i].hasPrefix("--") { i += 1 } }
         } else {
@@ -326,6 +326,104 @@ let frequency: FrequencyList? = {
 log(frequency.map { "도메인 빈도 \($0.count)개 (\(frequencyPath))\n" } ?? "도메인 빈도 없음 — JMdict 점수만 사용\n")
 
 // MARK: --explain
+
+// 한 글자만 다르게 들은 소리(`SoundAlikes`)를 잰다. **주 순위는 그대로이므로** 여기서 볼 것은 둘이다.
+//   잡음 — 제대로 친 케이스에 「~로 들렸다면」이 붙는가. 붙으면 카드마다 헛것이 한 줄 는다.
+//   건짐 — 한 글자를 틀리게 친 케이스에서, 1위는 틀렸지만 곁들인 소리가 정답을 가리키는가.
+if args.contains("--sound-alike") {
+    let cache = SearchCache(limit: 200_000)
+    let lookup = SoundAlikes.lookup(in: index, frequency: frequency, cache: cache)
+    func split(_ hangul: String) -> [Segment] {
+        Segmenter.segment(hangul, in: index, frequency: frequency, cache: cache)
+    }
+    // 잡음을 재는 바른 입력 — 낱말 케이스와, 가나로 적어 둔 문장을 앱의 음차로 옮긴 것.
+    let sentences: [String] = ((try? String(contentsOfFile: "Tools/data/sound-alike-sentences.tsv", encoding: .utf8)) ?? "")
+        .split(separator: "\n").filter { !$0.hasPrefix("#") }
+        .map { KanaToHangul.transliterate(String($0)) }
+    let correct = cases.map(\.hangul) + sentences
+
+    // 틀리게 친 소리를 만든다 — `SoundAlikes.neighbors` 의 거꾸로다.
+    let aspirated: [Character: Character] = ["ㄱ": "ㅋ", "ㄷ": "ㅌ", "ㅂ": "ㅍ", "ㅈ": "ㅊ"]
+    func mistypes(_ hangul: String) -> [(String, String)] {
+        guard let syllables = HangulSyllable.decompose(hangul) else { return [] }
+        var out: [(String, String)] = []
+        func add(_ i: Int, _ s: HangulSyllable?, _ kind: String) {
+            guard let s else { return }
+            var copy = syllables; copy[i] = s
+            out.append((String(copy.map(\.character)), kind))
+        }
+        for (i, s) in syllables.enumerated() {
+            if let to = aspirated[s.initial] { add(i, HangulSyllable(initial: to, medial: s.medial, final: s.final), "탁음") }
+            if s.initial == "ㄹ" { add(i, HangulSyllable(initial: "ㄷ", medial: s.medial, final: s.final), "ㄹ→ㄷ") }
+            if s.final == "ㄴ" || s.final == "ㅇ" || s.final == "ㅁ" { add(i, HangulSyllable(initial: s.initial, medial: s.medial, final: nil), "ん빠짐") }
+            if s.final == nil, i < syllables.count - 1 { add(i, HangulSyllable(initial: s.initial, medial: s.medial, final: "ㄴ"), "ん더함") }
+        }
+        return out
+    }
+    let verbose = args.contains("--verbose")
+    // 치는 동안 드는 값. 화면은 글자마다 다시 찾으므로 한 글자씩 늘려 가며 잰다.
+    if let typed = flagValues("--sound-alike-typing").first {
+        let fresh = SearchCache()
+        var total = 0.0, worst = 0.0
+        for n in 1...typed.count {
+            let prefix = String(typed.prefix(n))
+            let begin = Date()
+            let parts = SoundAlikes.attach(to: Segmenter.segment(prefix, in: index, frequency: frequency, cache: fresh),
+                                           in: index, frequency: frequency, cache: fresh)
+            _ = SoundAlikes.wholeSuggestion(for: prefix, segments: parts,
+                                            lookup: SoundAlikes.lookup(in: index, frequency: frequency, cache: fresh))
+            let ms = -begin.timeIntervalSinceNow * 1000
+            total += ms; worst = max(worst, ms)
+        }
+        print(String(format: "%@ · 글자 %d · 합 %.0fms · 가장 긴 한 글자 %.0fms", typed, typed.count, total, worst))
+        exit(0)
+    }
+
+    for margin in [0.0, 10, 20] {
+        for minimum in [0.0, 30, 50, 70] {
+            var noise = 0, wholeNoise = 0
+            for hangul in correct {
+                let parts = SoundAlikes.attach(to: split(hangul), in: index, frequency: frequency, margin: margin, cache: cache)
+                if parts.contains(where: { !$0.results.isEmpty && !$0.soundAlikes.isEmpty }) { noise += 1 }
+                if let w = SoundAlikes.wholeSuggestion(for: hangul, segments: parts, minimumScore: minimum, lookup: lookup) {
+                    wholeNoise += 1
+                    if verbose, margin == 0 { print("통째잡음\t\(minimum)\t\(hangul)\t→ \(w.hangul) \(w.result.headword) \(Int(w.result.score))") }
+                }
+                if verbose, minimum == 0, let seg = parts.first(where: { !$0.results.isEmpty && !$0.soundAlikes.isEmpty }) {
+                    print("조각잡음\t\(margin)\t\(hangul)\t\(seg.hangul) \(seg.results[0].headword) \(Int(seg.results[0].score)) → \(seg.soundAlikes[0].hangul) \(seg.soundAlikes[0].result.headword) \(Int(seg.soundAlikes[0].result.score))")
+                }
+            }
+            var broken = 0, rescued = 0, wrong = 0, byKind: [String: (Int, Int)] = [:]
+            for testCase in cases {
+                let matches = makeMatcher(testCase)
+                for (typed, kind) in mistypes(testCase.hangul) {
+                    let raw = split(typed)
+                    let pieces = raw.filter { !$0.isWhole }
+                    // 틀리게 쳤어도 1위가 정답이면 고칠 것이 없다.
+                    let firstOK = (raw.first?.results.first).map(matches) ?? false
+                    if firstOK && (raw.first!.isWhole || pieces.count == 1) { continue }
+                    broken += 1
+                    let parts = SoundAlikes.attach(to: raw, in: index, frequency: frequency, margin: margin, cache: cache)
+                    let piece = parts.contains { $0.soundAlikes.contains { matches($0.result) } }
+                    let offered = SoundAlikes.wholeSuggestion(for: typed, segments: parts, minimumScore: minimum, lookup: lookup)
+                    let whole = offered.map { matches($0.result) } ?? false
+                    // 고친 소리를 냈는데 정답이 아니면 헛짚은 것이다 — 건진 것만 세면 이것이 안 보인다.
+                    if let offered, !whole {
+                        wrong += 1
+                        if verbose, margin == 0 { print("헛짚음\t\(minimum)\t\(typed)\t→ \(offered.hangul) \(offered.result.headword) \(Int(offered.result.score))\t정답 \(testCase.writing)") }
+                    }
+                    var row = byKind[kind] ?? (0, 0)
+                    row.0 += 1
+                    if piece || whole { rescued += 1; row.1 += 1 }
+                    byKind[kind] = row
+                }
+            }
+            let kinds = byKind.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value.1)/\($0.value.0)" }.joined(separator: "  ")
+            print("margin \(Int(margin))\tmin \(Int(minimum))\t조각잡음 \(noise)/\(correct.count)\t통째잡음 \(wholeNoise)/\(correct.count)\t건짐 \(rescued)/\(broken)\t헛짚음 \(wrong)\t\(kinds)")
+        }
+    }
+    exit(0)
+}
 
 if !explainWords.isEmpty {
     for word in explainWords {

@@ -41,6 +41,26 @@ public struct HangulSyllable: Equatable, Sendable {
         self.final = Self.finals[index % 28]
     }
 
+    /// 자모 셋으로 음절을 세운다. 표에 없는 자모면 nil.
+    ///
+    /// 분해만 있던 자리에 조립을 더한다 — 비슷한 소리를 만들려면 초성이나 받침 하나만
+    /// 바꾼 음절을 다시 글자로 적어야 한다(`SoundAlikes`).
+    public init?(initial: Character, medial: Character, final: Character?) {
+        guard Self.initials.contains(initial), Self.medials.contains(medial),
+              Self.finals.contains(final) else { return nil }
+        self.initial = initial
+        self.medial = medial
+        self.final = final
+    }
+
+    /// 완성형 글자 하나로 되돌린다.
+    public var character: Character {
+        let i = UInt32(Self.initials.firstIndex(of: initial)!)
+        let m = UInt32(Self.medials.firstIndex(of: medial)!)
+        let f = UInt32(Self.finals.firstIndex(of: final)!)
+        return Character(Unicode.Scalar(Self.base + i * 588 + m * 28 + f)!)
+    }
+
     /// 문자열 전체를 분해한다. 한 글자라도 완성형 한글이 아니면 nil.
     public static func decompose(_ text: String) -> [HangulSyllable]? {
         var result: [HangulSyllable] = []

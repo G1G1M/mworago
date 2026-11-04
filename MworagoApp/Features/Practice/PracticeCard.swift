@@ -13,10 +13,18 @@ struct PracticeCard: View {
     let word: CollectedWord
     /// 뒤집혔는가. 넘기면 도로 덮이는 일은 연습 화면이 한다.
     let revealed: Bool
+    /// 받아쓰기라면 그 판. 있으면 앞면이 가나 대신 소리가 된다.
+    var dictation: DictationFace? = nil
+
+    /// 받아쓰기 한 장의 형편 — 무엇을 쳤고, 그것이 이 낱말에 닿는지.
+    struct DictationFace: Equatable {
+        var typed: String
+        var verdict: Dictation.Verdict?
+    }
 
     var body: some View {
         FlipCard(angle: revealed ? 180 : 0) {
-            face { question }
+            face { if dictation != nil { listening } else { question } }
         } back: {
             face { answer }
         }
@@ -61,6 +69,10 @@ struct PracticeCard: View {
     /// 답의 일부지 문제는 아니다.
     private var answer: some View {
         VStack(alignment: .leading, spacing: 9) {
+            if let dictation, let verdict = dictation.verdict {
+                DictationVerdictLine(typed: dictation.typed, verdict: verdict)
+                    .padding(.bottom, 6)
+            }
             // 무엇의 답인지. 앞면보다 작게 두어 답과 섞이지 않는다.
             //
             // **한자는 뒷면에만 단다.** 앞면은 문제이고 한자는 뜻을 반쯤 알려 준다 —
@@ -84,6 +96,20 @@ struct PracticeCard: View {
         .frame(minHeight: Self.faceHeight, alignment: .leading)
     }
 
+    /// 받아쓰기의 앞면 — **가나를 가린다.** 글자를 보이면 받아쓰기가 아니라 옮겨 적기다.
+    /// 소리 단추를 크게 두고, 장이 넘어오면 화면이 먼저 한 번 들려준다(`PracticeView`).
+    private var listening: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            SpeakButton(text: word.reading, size: 44)
+                .accessibilityLabel("다시 듣기")
+            Text("들린 대로 한글로 쳐 보세요")
+                .font(Theme.korean(.body))
+                .foregroundStyle(Theme.grey2)
+            if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
+        }
+        .frame(minHeight: Self.faceHeight, alignment: .leading)
+    }
+
     /// 두 면이 함께 쓰는 최소 높이. **앞뒤가 크게 다르면 뒤집는 순간 카드가 늘었다
     /// 줄었다 한다** — 겹쳐 두었으므로 높이는 큰 쪽으로 굳지만, 바닥값을 함께 두어야
     /// 짧은 낱말과 긴 낱말 사이에서도 카드가 들썩이지 않는다.
@@ -99,6 +125,58 @@ struct PracticeCard: View {
         HStack(alignment: .firstTextBaseline, spacing: 14) {
             if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
             SpeakButton(text: word.reading, size: 18)
+        }
+    }
+}
+
+/// 받아쓰기의 답 한 줄 — 친 소리가 이 낱말에 닿는지.
+///
+/// **맞았다 · 틀렸다로 말하지 않는다.** 한글로 적는 정답은 하나가 아니고, 묻는 것은
+/// 「이렇게 쳐도 찾아지는가」다. 닿지 않았을 때도 어느 글자를 다르게 들었는지를 말해 준다 —
+/// 그 한 글자가 다음에 같은 소리를 들을 때 고칠 자리다.
+struct DictationVerdictLine: View {
+    let typed: String
+    let verdict: Dictation.Verdict
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(Theme.korean(.body, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+            if let detail {
+                Text(detail)
+                    .font(Theme.korean(.sub))
+                    .foregroundStyle(Theme.grey2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var title: String {
+        switch verdict {
+        case .reached: "\(typed) — 이렇게 쳐도 찾아져요"
+        case .close: "\(typed) — 한 글자만 달랐어요"
+        case .missed: "\(typed) — 다르게 들렸어요"
+        case .empty: "아직 안 쳤어요"
+        }
+    }
+
+    private var detail: String? {
+        switch verdict {
+        case .close(let hangul, let change):
+            "\(hangul)\(SoundAlike.ro(after: hangul)) 치면 닿아요. \(Self.reason(change))"
+        case .missed: "아래 한글 소리와 견줘 보세요."
+        case .reached, .empty: nil
+        }
+    }
+
+    static func reason(_ change: SoundAlike.Change) -> String {
+        switch change {
+        case .voicing: "탁음(ㄱ·ㄷ·ㅂ·ㅈ)을 거센소리로 들었어요."
+        case .liquid: "ら행은 ㄹ과 ㄷ 사이로 들려요."
+        case .finalDropped: "없는 받침을 들었어요."
+        case .nasalAdded: "ん(ㄴ 받침)을 흘려들었어요."
         }
     }
 }
