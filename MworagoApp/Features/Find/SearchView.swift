@@ -259,10 +259,26 @@ struct SearchView: View {
             .onTapGesture { inputFocused = false }
     }
 
+    /// 조각 하나를 비슷한 소리로 바꾼다. 사람이 띄어 쓴 자리는 그대로 남는다.
+    /// 화면의 번호에는 통째 후보가 섞여 있으므로, 조각 사이의 차례로 바꿔 넘긴다.
+    private func replace(at index: Int, with hangul: String) {
+        let position = engine.segments.prefix(index).filter { !$0.isWhole }.count
+        input = SoundAlikes.replacing(input, segments: engine.segments, at: position, with: hangul)
+    }
+
     private var results: some View {
         ScrollViewReader { scroller in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
+                    // 입력이 엉뚱하게 갈렸고, 한 글자만 고치면 한 낱말로 닿는다 — 맨 위에서 묻는다.
+                    if let correction = engine.correction {
+                        SoundAlikeRow(alike: correction, lead: "혹시 \(correction.hangul)?") {
+                            input = correction.hangul
+                        }
+                        .padding(.horizontal, Theme.gutter)
+                        .padding(.vertical, 12)
+                        Theme.rule().padding(.horizontal, Theme.gutter)
+                    }
                     // 되살린 원문이 맨 위에 온다. 문장을 치고 들어왔으니 문장부터 돌려준다.
                     //
                     // 조각이 하나뿐이면 내보내지 않는다. 그때는 문장이 곧 낱말이라
@@ -280,7 +296,8 @@ struct SearchView: View {
                     ForEach(Array(engine.segments.enumerated()), id: \.offset) { index, segment in
                         SegmentCard(segment: segment,
                                     isSelected: selected == index,
-                                    onCollect: { collecting = $0 })
+                                    onCollect: { collecting = $0 },
+                                    onReplace: { replace(at: index, with: $0) })
                             .id(index)
                         Theme.rule().padding(.horizontal, Theme.gutter)
                     }

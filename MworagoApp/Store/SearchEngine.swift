@@ -16,6 +16,9 @@ import MworagoCore
 final class SearchEngine {
 
     private(set) var segments: [Segment] = []
+    /// 입력을 통째로 한 글자 고치면 한 낱말로 닿는 소리(`SoundAlikes.wholeSuggestion`).
+    /// 엉뚱하게 갈린 입력 위에 「혹시 ~?」로 선다.
+    private(set) var correction: SoundAlike?
     private(set) var isReady = false
     private(set) var failure: String?
 
@@ -58,6 +61,7 @@ final class SearchEngine {
         searching?.cancel()
         guard let lexicon, !trimmed.isEmpty else {
             segments = []
+            correction = nil
             return
         }
         let cache = self.cache
@@ -68,7 +72,28 @@ final class SearchEngine {
             }.value
             guard !Task.isCancelled else { return }
             self?.segments = found
+            self?.correction = nil
+
+            // **비슷한 소리는 답이 선 다음에 단다.** 한 글자 바꾼 소리마다 사전을 다시
+            // 찾아야 해서, 일곱 글자 낱말에서 한 글자에 0.26초까지 들었다(답만 찾을 때는
+            // 0.05초). 답을 먼저 세우고 이것은 뒤에서 돌린다 — 다음 글자가 들어오면 이 일도
+            // 함께 물리므로, 손이 멈췄을 때에만 끝까지 간다.
+            let (dressed, correction) = await Task.detached(priority: .utility) {
+                Self.soundAlikes(for: trimmed, segments: found, lexicon: lexicon, cache: cache)
+            }.value
+            guard !Task.isCancelled else { return }
+            self?.segments = dressed
+            self?.correction = correction
         }
+    }
+
+    /// 조각마다 곁들일 소리와, 입력을 통째로 고친 소리.
+    nonisolated private static func soundAlikes(for input: String, segments: [Segment],
+                                                lexicon: Lexicon, cache: SearchCache) -> ([Segment], SoundAlike?) {
+        let dressed = SoundAlikes.attach(to: segments, in: lexicon.dictionary,
+                                         frequency: lexicon.frequency, cache: cache)
+        let lookup = SoundAlikes.lookup(in: lexicon.dictionary, frequency: lexicon.frequency, cache: cache)
+        return (dressed, SoundAlikes.wholeSuggestion(for: input, segments: dressed, lookup: lookup))
     }
 
     /// 첫 글자를 칠 때 몰릴 일을 미리 해 둔다.
@@ -99,9 +124,11 @@ final class SearchEngine {
         searching?.cancel()
         guard let lexicon, !trimmed.isEmpty else {
             segments = []
+            correction = nil
             return
         }
-        segments = Segmenter.segment(trimmed, in: lexicon.dictionary,
-                                     frequency: lexicon.frequency, cache: cache)
+        let found = Segmenter.segment(trimmed, in: lexicon.dictionary,
+                                      frequency: lexicon.frequency, cache: cache)
+        (segments, correction) = Self.soundAlikes(for: trimmed, segments: found, lexicon: lexicon, cache: cache)
     }
 }

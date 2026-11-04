@@ -22,6 +22,8 @@ struct SegmentCard: View {
     /// 담아 달라고 위로 알린다. **카드가 직접 담지 않는다** — 어디에 넣을지 묻는 모달은
     /// 화면에 하나여야 하는데, 카드마다 시트를 달면 조각 수만큼 생긴다.
     var onCollect: (CollectedWord) -> Void = { _ in }
+    /// 비슷한 소리를 골랐다 — 이 조각을 그 한글로 바꿔 다시 찾아 달라고 위로 알린다.
+    var onReplace: (String) -> Void = { _ in }
 
     /// 다른 뜻을 펼쳐 놓았는가.
     ///
@@ -70,6 +72,10 @@ struct SegmentCard: View {
                     Text(gloss)
                         .font(Theme.korean(.body))
                         .foregroundStyle(Theme.grey1)
+                }
+                // 탁음 하나만 다르게 들었다면 더 흔한 낱말에 닿는다 — 1위는 그대로 두고 곁에 묻는다.
+                ForEach(Array(segment.soundAlikes.enumerated()), id: \.offset) { _, alike in
+                    SoundAlikeRow(alike: alike, lead: alike.heardAs) { onReplace(alike.hangul) }
                 }
                 if !alternates.isEmpty {
                     if expanded {
@@ -231,14 +237,20 @@ struct SegmentCard: View {
 
     // MARK: 못 찾은 조각
 
+    /// 구멍으로 끝내지 않는다 — 한 글자만 바꿔 사전에 닿는 소리가 있으면 그 아래 늘어놓는다.
     private var notFound: some View {
-        HStack(spacing: 10) {
-            Text(segment.hangul)
-                .font(Theme.korean(.title))
-                .foregroundStyle(Theme.grey2)
-            Text("사전에 없어요")
-                .font(Theme.korean(.sub))
-                .foregroundStyle(Theme.grey3)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text(segment.hangul)
+                    .font(Theme.korean(.title))
+                    .foregroundStyle(Theme.grey2)
+                Text("사전에 없어요")
+                    .font(Theme.korean(.sub))
+                    .foregroundStyle(Theme.grey3)
+            }
+            ForEach(Array(segment.soundAlikes.enumerated()), id: \.offset) { _, alike in
+                SoundAlikeRow(alike: alike, lead: alike.heardAs) { onReplace(alike.hangul) }
+            }
         }
     }
 }

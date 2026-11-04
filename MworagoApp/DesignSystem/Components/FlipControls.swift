@@ -19,6 +19,12 @@ struct FlipControls: View {
 
     @Binding var revealed: Bool
     var size: Size = .regular
+    /// 덮인 면에서 가운데 단추가 뒤집기 대신 할 일.
+    ///
+    /// 받아쓰기는 「확인」이다 — 친 것을 맞대 보고 나서 뒤집는다. 입력 줄 옆에
+    /// 따로 `확인` 을 세웠더니 카드 아래 단추가 넷이 되어, 무엇을 눌러야 하는지가
+    /// 흐려졌다. 확인하는 것도 결국 답을 펼치는 일이라 뒤집기 자리를 함께 쓴다.
+    var cover: (title: String, action: () -> Void)? = nil
     let onPrevious: () -> Void
     let onNext: () -> Void
 
@@ -26,8 +32,12 @@ struct FlipControls: View {
         HStack(spacing: size == .large ? 12 : 10) {
             // 되돌아갈 길. 지나친 것을 다시 보려고 한 바퀴를 돌 이유가 없다.
             button("이전", filled: false, action: onPrevious)
-            button(revealed ? "다시 덮기" : "뒤집기", filled: true) {
-                withAnimation(Flip.motion) { revealed.toggle() }
+            if !revealed, let cover {
+                button(cover.title, filled: true, action: cover.action)
+            } else {
+                button(revealed ? "다시 덮기" : "뒤집기", filled: true) {
+                    withAnimation(Flip.motion) { revealed.toggle() }
+                }
             }
             button("다음", filled: false, action: onNext)
         }
