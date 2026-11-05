@@ -366,6 +366,20 @@ public enum Segmenter {
     public static let defaultWeights: Ranker.Weights = {
         var weights = Ranker.Weights()
         weights.deinflectionPenalty = 5
+        // **표기 후보의 순서를 분절에서는 믿는다.** 한글 하나가 여러 가나로 읽힐 때
+        // 앞의 것이 보수적인 추측이다(`Transliterator.KanaCandidate.rank`). 낱말 검색은
+        // 이 순서를 점수에 넣지 않는데, 분절에서는 넣어야 했다 — 가운데 `가` 를 `か` 로
+        // 읽는 뒷순위 후보가 조사 `が` 를 삼키고 있었다(`네코가` → `ネコ科`).
+        //
+        // Tanaka 1,200문장(--segment-score, 네 몫으로 나눠 잼)에서 훑었다.
+        //
+        //     벌점 0   완전일치 578/1200
+        //     벌점 3   완전일치 604/1200   ← 고른 값
+        //
+        // 값은 가운데에 `を`·`が` 를 품은 연어에 벌점을 함께 걸어 둔 채 훑었다(그 규칙은
+        // 2문장밖에 못 벌어 뺐다). 그때 2 · 3 · 4 · 6 이 603 · 606 · 605 · 595 였다.
+        // 2~4 가 거의 같아 가운데를 골랐다. 낱말 케이스는 어느 값에서나 137/150 그대로다.
+        weights.rankPenalty = 3
         return weights
     }()
 

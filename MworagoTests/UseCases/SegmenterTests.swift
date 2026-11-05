@@ -102,13 +102,27 @@ struct SegmenterTests {
 
     @Test("조사는 자립어 뒤가 제자리다")
     func 조사가_삼켜지는_것() {
+        // 표기 후보 순서 벌점을 끄고 본다. `가이마스` 의 `가` 를 `か` 로 읽는 것은
+        // 뒤에 나온 후보라 그 벌점이 따로 삼킴을 막는다 — 보너스만의 몫을 보려면 꺼야 한다.
+        var 순서벌점없이 = Segmenter.defaultWeights
+        순서벌점없이.rankPenalty = 0
+
         // 보너스가 없으면 조각을 덜 만드는 쪽이 이겨서 조사가 통째로 삼켜진다.
-        let 보너스없이 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전, junctionBonus: 0)
+        let 보너스없이 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전,
+                                      weights: 순서벌점없이, junctionBonus: 0)
         #expect(보너스없이.filter { !$0.isWhole }.map(\.hangul) == ["쿄다이", "가이마스"])
 
         // 자립어 뒤에 조사가 서는 경계를 편들면 제자리를 찾는다.
-        let 보너스주고 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전, junctionBonus: 40)
+        let 보너스주고 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전,
+                                      weights: 순서벌점없이, junctionBonus: 40)
         #expect(보너스주고.filter { !$0.isWhole }.map(\.hangul) == ["쿄다이", "가", "이마스"])
+    }
+
+    @Test("가운데 「가」 를 か 로 읽는 것은 뒤에 나온 추측이라 덜 믿는다")
+    func 순서벌점이_삼킴을_막는다() {
+        // 보너스가 없어도 기본 가중치(표기 후보 순서 벌점)만으로 조사가 제자리를 찾는다.
+        let 기본 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전, junctionBonus: 0)
+        #expect(기본.filter { !$0.isWhole }.map(\.hangul) == ["쿄다이", "가", "이마스"])
     }
 
     @Test("보너스는 조사 앞이 자립어일 때만 붙는다")
