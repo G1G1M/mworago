@@ -81,4 +81,16 @@ final class TranslationDesk {
     /// 뜻은 미리 구워서 싣지만 22,610 개까지가 지금 자리고, 나머지는 영어로 남아 있다.
     /// 굽기가 닿지 않은 낱말을 화면에서 만난 그 자리에서 메운다.
     let english = Translations()
+
+    /// `--meaning=大丈夫ですか=괜찮으세요?` 로 그 문장의 뜻을 이미 옮긴 것처럼 넣어 둔다.
+    ///
+    /// **시뮬레이터에는 일→한 언어팩이 없다.** 문장 뜻 줄이 언제나 「옮겨 드릴 수 없어요」로
+    /// 나와, 스토어 스크린샷을 찍으려면 실기기를 써야 했다 — 그러면 그 한 장만 상단 막대
+    /// (시각 · 통신사 · 배터리)가 달라진다. 넣는 말은 실기기에서 같은 문장이 실제로
+    /// 옮겨진 것을 쓴다. `--query` · `--collect` 와 같은 갈래다.
+    init() {
+        guard let seed = LaunchOptions.current.value(for: "meaning"),
+              let mark = seed.firstIndex(of: "=") else { return }
+        japanese.receive([(source: String(seed[..<mark]), target: String(seed[seed.index(after: mark)...]))])
+    }
 }
