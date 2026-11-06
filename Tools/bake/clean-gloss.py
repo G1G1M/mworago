@@ -42,6 +42,12 @@ def clean(head, gloss):
                       or any(p in POS for p in parts)):
             parts=[p for p in parts if p not in POS and p!=head]
             if parts: g=parts[-1]
+    # 2b) "명사, 계곡" · "아이돌, 명사" 처럼 쉼표 조각 하나가 통째로 품사 이름이면 그 조각을 뺀다.
+    #     `조사`(調査) · `연어`(鮭) · `표현`(表現)은 품사 이름이기도 하지만 흔한 낱말이라 남긴다.
+    pieces=[p.strip() for p in g.split(",")]
+    if len(pieces) > 1:
+        kept=[p for p in pieces if p not in POS or p=="조사"]
+        if kept: g=", ".join(kept)
     # 3) 모델이 흘린 마크다운 강조(**그**, *그*)를 걷어낸다
     g=re.sub(r"\*{1,3}([^*]+)\*{1,3}", r"\1", g)
     g=g.replace("*","")
