@@ -44,24 +44,4 @@ public struct HanjaReading: Sendable {
         }
         return result.isEmpty ? nil : result
     }
-
-    /// 표기에 든 한자를 **글자마다** 읽는다. 한자가 하나도 없으면 빈 배열.
-    ///
-    /// 화면에는 이어 읽은 것(`reading(of:)`)이 아니라 이것을 보인다. 이어 읽으면
-    /// 한국어 낱말처럼 읽혀서, 뜻이 다른 말이 뜻인 척 선다 — `大変`(큰일) → "대변",
-    /// `仲間`(동료) → "중간", `大丈夫`(괜찮다) → "대장부". 글자마다 떼어 `大 대 · 変 변` 으로
-    /// 두면 낱말로 읽히지 않고, 글자를 외우는 고리로만 남는다.
-    ///
-    /// 같은 한자는 한 번만 적는다. `々`(앞 글자를 되풀이하는 표시)는 한자가 아니라 건너뛴다 —
-    /// `人々` 는 `人 인` 하나다.
-    public func characters(of writing: String) -> [(hanja: Character, reading: String)] {
-        var seen: Set<Character> = []
-        var result: [(hanja: Character, reading: String)] = []
-        for character in writing where !seen.contains(character) {
-            guard let reading = table[character] else { continue }
-            seen.insert(character)
-            result.append((character, reading))
-        }
-        return result
-    }
 }
