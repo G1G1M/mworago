@@ -41,7 +41,7 @@ Tools/data/korean-gloss.redo.tsv
 
 # 폰트는 Google Fonts(OFL)에서 받는다 (Tools/fetch/fetch-fonts.sh)
 MworagoApp/Resources/Fonts/
-MworagoApp/Resources/hanja-reading.tsv
+Tools/data/hanja-reading.tsv
 Tools/data/*.log
 
 # Xcode 개인 설정 — 사람마다 다르고 공유할 것이 없다

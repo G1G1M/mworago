@@ -67,22 +67,11 @@ struct SegmentCard: View {
         VStack(alignment: .leading, spacing: 12) {
             if let top {
                 headline(top)
-                let gloss = korean(of: top.entry)
-                if !gloss.isEmpty {
-                    Text(gloss)
-                        .font(Theme.korean(.body))
-                        .foregroundStyle(Theme.grey1)
-                }
+                meanings(top)
                 // 탁음 하나만 다르게 들었다면 더 흔한 낱말에 닿는다 — 1위는 그대로 두고 곁에 묻는다.
+                // 뜻 목록 **뒤에** 둔다. 번호 줄 사이에 끼면 이것도 뜻 하나처럼 읽힌다.
                 ForEach(Array(segment.soundAlikes.enumerated()), id: \.offset) { _, alike in
                     SoundAlikeRow(alike: alike, lead: alike.heardAs) { onReplace(alike.hangul) }
-                }
-                if !alternates.isEmpty {
-                    if expanded {
-                        alternateList
-                    } else {
-                        moreButton
-                    }
                 }
             } else {
                 notFound
@@ -106,9 +95,7 @@ struct SegmentCard: View {
     private func headline(_ result: SearchResult) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                // **가나 옆에 한자를 단다.** 소리로 찾아온 사람이 그다음에 알고 싶은
-                // 것은 "그래서 무슨 낱말이냐"이고, 그 답이 한자다.
-                Headword(reading: result.reading, kanji: result.kanji, size: .hero)
+                Headword(reading: result.reading, size: .hero)
 
                 // **품사.** 실제 사전이 하는 것과 같다 — 낱말마다 늘 있으므로 자리가 고정된다.
                 //
@@ -169,33 +156,96 @@ struct SegmentCard: View {
         }
     }
 
-    /// 담기.
-    ///
-    // MARK: 나머지 후보
-    //
-    // 1위가 정답인 비율은 93%지만 3위 안에 있을 비율은 98%다.
-    // 그 5%를 사용자가 직접 고를 수 있게 곁에 둔다.
+    // MARK: 뜻
 
-    /// 대안 후보는 **한자와 뜻**을 늘어놓는다.
+    /// 화면에 늘어놓을 뜻 한 줄. 소리가 1위와 다를 때만 가나를 앞에 단다.
+    private struct Sense {
+        let reading: String?
+        let gloss: String
+    }
+
+    /// 1위의 뜻과, 그 뒤에 곁들일 다른 뜻들.
     ///
-    /// 한때 뜻만 남긴 적이 있다. 앞에 가나를 붙였더니 한자를 안 그리던 시절이라
-    /// 그 가나가 **첫 줄과 똑같아졌기** 때문이다 — `やめる` 를 찾으면
-    /// `やめる 멈추다` · `やめる 퇴사하다` · `やめる sick` 이 되어 같은 글자가 세 번 났다.
+    /// 1위가 정답인 비율은 93%지만 3위 안에 있을 비율은 98%다. 그 5%를 사용자가 직접
+    /// 고를 수 있게 곁에 둔다.
     ///
-    /// **한자가 돌아오면서 그 자리가 정보를 되찾았다.** 止める · 辞める · 病める 는
-    /// 서로 다른 글자이고, 대안을 펴 보는 까닭이 바로 "1위가 헛짚었나" 를 보려는 것이라
-    /// 뜻만으로 고르게 두는 것보다 낱말을 함께 보이는 편이 낫다.
-    /// 한자가 없는 낱말은 그대로 뜻만 선다 — 없는 것을 지어내지 않는다.
+    /// **한자를 달지 않으므로 뜻이 낱말을 가른다.** 止める · 辞める · 病める 는 화면에서
+    /// 모두 `やめる` 라, 갈라 주는 것은 「그만두다」 · 「사직하다」 · 「병들다」뿐이다.
+    /// 그래서 **보이는 모양이 같은 줄은 한 번만 적는다** — 표제항은 달라도 소리와 뜻이
+    /// 같으면 화면에서는 같은 답이 두 번 서는 것이다.
+    private func senses(_ top: SearchResult) -> [Sense] {
+        var lines = [Sense(reading: nil, gloss: korean(of: top.entry))]
+        for result in alternates {
+            let gloss = korean(of: result.entry)
+            let reading = result.reading == top.reading ? nil : result.reading
+            guard !gloss.isEmpty,
+                  !lines.contains(where: { $0.gloss == gloss && $0.reading == reading })
+            else { continue }
+            lines.append(Sense(reading: reading, gloss: gloss))
+        }
+        return lines
+    }
+
+    /// 뜻이 하나면 번호 없이 한 줄, 여럿이면 **첫 뜻부터 `1.` `2.` `3.`**.
+    ///
+    /// 첫 뜻과 다른 뜻을 같은 모양으로 쓴다. 한때 다른 뜻은 한 단 작은 회색 글씨에 한자를
+    /// 앞세웠는데, 한자를 빼고 나니 무엇이 무엇의 뜻인지가 크기로만 갈렸다. 번호와 같은
+    /// 모양이면 「이 소리의 뜻이 셋 있고 1번이 가장 흔하다」가 한눈에 읽힌다.
+    ///
+    /// **접어 두고 누르면 편다.** 카드는 가나 · 한글 발음 · 뜻 세 층이 기본이고,
+    /// 더 볼 사람만 한 번 더 누른다. 접혀 있어도 첫 줄에 `1.` 을 달아 더 있다는 것을 알린다.
+    @ViewBuilder
+    private func meanings(_ top: SearchResult) -> some View {
+        let lines = senses(top)
+        if lines.count == 1 {
+            if !lines[0].gloss.isEmpty {
+                Text(lines[0].gloss)
+                    .font(Theme.korean(.body))
+                    .foregroundStyle(Theme.grey1)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Array(lines.prefix(expanded ? lines.count : 1).enumerated()), id: \.offset) { index, line in
+                    senseRow(number: index + 1, line)
+                }
+                if expanded {
+                    foldButton
+                } else {
+                    moreButton(count: lines.count - 1)
+                }
+            }
+        }
+    }
+
+    private func senseRow(number: Int, _ line: Sense) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(verbatim: "\(number).")
+                .font(Theme.korean(.body))
+                .foregroundStyle(Theme.grey3)
+                .monospacedDigit()
+            if let reading = line.reading {
+                Text(reading)
+                    .font(Theme.japanese(.body, weight: .medium))
+                    .foregroundStyle(Theme.grey1)
+            }
+            Text(line.gloss)
+                .font(Theme.korean(.body))
+                .foregroundStyle(Theme.grey1)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     /// 접혀 있을 때의 한 줄. **개수를 적는다** — 몇 개가 더 있는지 알아야 누를지 정한다.
     ///
     /// 글자를 회색으로만 두고 꼬리표나 테두리를 붙이지 않는다. 이 카드에서 눌러야 하는
     /// 것은 갈피표와 소리이고, 이것은 "더 있다"는 표시일 뿐이라 그 둘과 무게를 겨루면 안 된다.
-    private var moreButton: some View {
+    private func moreButton(count: Int) -> some View {
         Button {
             withAnimation(.select) { expanded = true }
         } label: {
             HStack(spacing: 5) {
-                Text("다른 뜻 \(alternates.count)")
+                Text("다른 뜻 \(count)")
                     .font(Theme.korean(.sub))
                 Image(systemName: "chevron.down")
                     .font(Theme.icon(.caret, weight: .medium))
@@ -206,32 +256,16 @@ struct SegmentCard: View {
         .buttonStyle(.plain)
     }
 
-    private var alternateList: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            ForEach(Array(alternates.enumerated()), id: \.offset) { _, result in
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    if let kanji = result.kanji {
-                        Text(kanji)
-                            .font(Theme.japanese(.sub, weight: .medium))
-                            .foregroundStyle(Theme.grey1)
-                    }
-                    Text(korean(of: result.entry))
-                        .font(Theme.korean(.sub))
-                        .foregroundStyle(Theme.grey2)
-                        .lineLimit(1)
-                }
-            }
-            Button {
-                withAnimation(.select) { expanded = false }
-            } label: {
-                Text("접기")
-                    .font(Theme.korean(.sub))
-                    .foregroundStyle(Theme.grey3)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 2)
+    private var foldButton: some View {
+        Button {
+            withAnimation(.select) { expanded = false }
+        } label: {
+            Text("접기")
+                .font(Theme.korean(.sub))
+                .foregroundStyle(Theme.grey3)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .padding(.top, 2)
     }
 

@@ -20,7 +20,7 @@ struct LibraryWordRow: View {
             Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Headword(reading: word.reading, kanji: word.kanji, size: .word)
+                        Headword(reading: word.reading, size: .word)
                         if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                     }
                     Text(word.hangul)

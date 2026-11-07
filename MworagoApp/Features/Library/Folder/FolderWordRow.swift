@@ -19,7 +19,7 @@ struct FolderWordRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Headword(reading: word.reading, kanji: word.kanji, size: .word)
+                        Headword(reading: word.reading, size: .word)
                         if let 품사 = word.partOfSpeech { PartOfSpeechTag(name: 품사) }
                     }
                 }

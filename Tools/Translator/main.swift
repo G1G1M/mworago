@@ -317,7 +317,7 @@ if arguments.contains("--audit") {
     // **한자어는 소리와 뜻이 우연히 같다.** `要素`(ようそ)의 한국어 뜻 "요소"는 음차와
     // 같은 글자지만 그것이 정말 뜻이다. 한국 독음표가 그 둘을 갈라 준다 —
     // 뜻이 **독음과도 같으면** 한자어라서 같은 것이고, 독음과 다르면 옮기다 만 것이다.
-    let hanja = HanjaReading(contentsOfFile: "MworagoApp/Resources/hanja-reading.tsv")
+    let hanja = HanjaReading(contentsOfFile: "Tools/data/hanja-reading.tsv")
     var 걸린것 = 0
     for (key, gloss) in glosses.sorted(by: { $0.key < $1.key }) {
         let parts = key.split(separator: "\t", omittingEmptySubsequences: false)
