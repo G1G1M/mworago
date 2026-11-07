@@ -79,6 +79,24 @@ public enum Ranker {
         /// 0.1 을 넘어가면 무너진다. 물려받은 빈도 점수(80점대)를 이 항이 덮기 시작해서,
         /// 동점을 가르는 일이 아니라 순위를 다시 매기는 일이 되기 때문이다.
         public var kanaIdentityWeight: Double
+        /// **활용을 되돌린 낱말은 말한 꼴 그대로의 빈도도 듣는다.** 0 이면 쓰지 않는다.
+        ///
+        /// `다마레` 가 `黙れ`(조용히 해) 대신 `溜まれ`(모여라)로 나왔다. 사전형끼리 견주면
+        /// `溜まる`·`たまる`(9,890위)가 `黙る`(15,417위)보다 흔한데, 말뭉치는 **말한 꼴**
+        /// `黙れ` 를 838번(2,505위) 보았고 `溜まれ` 는 한 번도 못 보았다. 명령형 · 과거형은
+        /// 낱말마다 쓰이는 정도가 크게 달라서 사전형 빈도로는 그것이 안 보인다.
+        /// 말한 꼴의 점수가 사전형보다 높을 때만 그 차이에 이 무게를 곱해 얹는다.
+        public var surfaceWeight: Double
+        /// **말뭉치가 다른 낱말의 것으로 본 소리를 근거 없이 활용으로 읽으면 깎는 값.** 0 이면 쓰지 않는다.
+        ///
+        /// `츠카레타` 가 `疲れた`(지쳤다) 대신 `吐く`(내쉬다)의 수동 과거로 나왔다. 사전형
+        /// `つく` 의 가나 줄이 흔해서다. 그런데 말뭉치는 `つかれた` 를 `疲れた` 로 465번
+        /// 보았고 `吐かれた` 는 한 번도 못 보았다. 소리에 이미 임자가 있는데 말한 꼴의
+        /// 근거가 없는 활용 읽기는 그만큼 덜 믿는다.
+        ///
+        /// 낱말 케이스 150개에서 맞은 가나가 145 → 146(20 과 10 이 같았다). 분절에서는
+        /// 끈다 — 까닭은 `Segmenter.defaultWeights` 에 적었다.
+        public var unattestedPenalty: Double
 
         /// 기본값은 손으로 정한 것이 아니라 케이스 50개를 훑어 고른 값이다
         /// (`SpikeRunner --sweep`). 케이스가 늘면 다시 훑어야 한다.
@@ -120,14 +138,62 @@ public enum Ranker {
                     deinflectionPenalty: Double = 25,
                     domainWeight: Double = 1,
                     jmdictWeight: Double = 1,
-                    kanaIdentityWeight: Double = 0.005) {
+                    kanaIdentityWeight: Double = 0.005,
+                    surfaceWeight: Double = 1,
+                    unattestedPenalty: Double = 10) {
             self.rankPenalty = rankPenalty
             self.longVowelPenalty = longVowelPenalty
             self.deinflectionPenalty = deinflectionPenalty
             self.domainWeight = domainWeight
             self.jmdictWeight = jmdictWeight
             self.kanaIdentityWeight = kanaIdentityWeight
+            self.surfaceWeight = surfaceWeight
+            self.unattestedPenalty = unattestedPenalty
         }
+    }
+
+    /// 화면 머리에 세울 읽기. `DictEntry.preferredReading` 에 하나를 더한다 —
+    /// **사전이 앞에 세운 읽기의 장음만 뺀 줄임꼴로 찾아왔으면 앞의 읽기로 세운다.**
+    ///
+    /// `데쇼` 가 `でしょう` 항목의 둘째 읽기 `でしょ` 로 걸려 머리에 `でしょ` 가 섰다.
+    /// 같은 낱말이고, 한국어로 적을 때 장음을 빼는 것은 사용자의 버릇이지 말한 소리가
+    /// 줄어든 것이 아니다. 점수는 찾은 읽기 그대로 둔다 — 순위는 바꾸지 않고 머리만 바꾼다.
+    static func headReading(_ hit: DictHit) -> String {
+        let preferred = hit.entry.preferredReading(hit.reading)
+        guard preferred == hit.reading, let primary = hit.entry.readings.first?.text,
+              primary != hit.reading, primary.hasPrefix(hit.reading),
+              primary.dropFirst(hit.reading.count).allSatisfy({ $0 == "う" || $0 == "ー" })
+        else { return preferred }
+        return primary
+    }
+
+    /// 활용한 꼴 그대로(`黙れ`)의 도메인 빈도 점수. 말뭉치에 없으면 0.
+    ///
+    /// 표기가 있는 낱말은 표기의 활용 꼴로 찾는다 — 사전형 `黙る`(だまる)와 말한 소리
+    /// `だまれ` 에서 어간 `黙` 을 지키고 끝만 바꿔 `黙れ` 를 만든다. 가나로 쓰는 낱말은
+    /// 가나 줄로 찾는다(`domainScore` 와 같은 갈래).
+    static func surfaceScore(_ entry: DictEntry, lemma: String, surface: String,
+                             in list: FrequencyList) -> Double {
+        var best = 0.0
+        if entry.usableWritings.isEmpty || entry.usuallyKana {
+            best = list.score(writing: nil, reading: surface)
+        }
+        for writing in entry.usableWritings {
+            guard let inflected = inflectedWriting(writing.text, lemma: lemma, surface: surface)
+            else { continue }
+            best = max(best, list.score(writing: inflected, reading: surface))
+        }
+        return best
+    }
+
+    /// 표기의 활용 꼴. 送り仮名(표기 끝의 가나)가 읽기 끝과 맞아야 어간을 가를 수 있다.
+    static func inflectedWriting(_ writing: String, lemma: String, surface: String) -> String? {
+        let okurigana = String(writing.reversed().prefix { $0.isKana }.reversed())
+        let stem = writing.dropLast(okurigana.count)
+        guard !stem.isEmpty, lemma.hasSuffix(okurigana) else { return nil }
+        let stemReading = lemma.dropLast(okurigana.count)
+        guard surface.hasPrefix(stemReading) else { return nil }
+        return String(stem) + surface.dropFirst(stemReading.count)
     }
 
     /// 표제항 하나의 도메인 빈도 점수.
@@ -303,6 +369,10 @@ public enum Ranker {
         // 같은 읽기를 사전이 「흔하다」고 표시한 다른 낱말이 있으면 아래에서 깎는다.
         var bareKanaShares: [(index: Int, key: String, share: Double)] = []
         var markedReadings: Set<String> = []
+        // 말뭉치가 본 소리(사전에 그대로 실린 꼴이거나, 활용한 꼴 그대로 실린 것)와
+        // 그 근거 없이 활용으로 읽은 결과의 자리. 아래에서 `unattestedPenalty` 를 문다.
+        var attestedKana: Set<String> = []
+        var unattested: [Int] = []
 
         // 도메인 빈도가 없으면 JMdict 점수라도 써야 한다. 그러지 않으면 모두 0점이 되어
         // 후보 순서만으로 줄을 세우게 된다.
@@ -337,10 +407,21 @@ public enum Ranker {
                     // 도메인 점수가 있으면 그것만 쓰고, 없을 때만 JMdict 로 메운다.
                     // "신문 빈도가 잡음"이라는 판단은 도메인 빈도가 말을 할 때의 이야기다.
                     var score = 0.0
-                    let domain = frequency.map {
+                    var domain = frequency.map {
                         domainScore(hit.entry, reading: hit.reading, in: $0,
                                     identityWeight: weights.kanaIdentityWeight)
                     } ?? 0
+                    if deinflection.rule != nil, let frequency {
+                        let surface = surfaceScore(hit.entry, lemma: hit.reading,
+                                                   surface: candidate.kana, in: frequency)
+                        if weights.surfaceWeight != 0, surface > domain {
+                            domain += weights.surfaceWeight * (surface - domain)
+                        }
+                        if surface > 0 { attestedKana.insert(candidate.kana) }
+                        else { unattested.append(results.count) }
+                    } else if domain > 0 {
+                        attestedKana.insert(candidate.kana)
+                    }
                     if domain > 0, weights.domainWeight != 0 {
                         score += weights.domainWeight * domain
                         if hit.entry.usableWritings.isEmpty, hit.priority == 0,
@@ -357,7 +438,15 @@ public enum Ranker {
                         score -= Self.datedPenalty
                     }
                     score -= weights.rankPenalty * Double(candidate.rank)
-                    score -= weights.longVowelPenalty * Double(candidate.longVowelsAdded)
+                    // **같은 낱말이 짧은 읽기도 함께 실어 두었으면 장음을 지어낸 것이 아니다.**
+                    // `데쇼` 가 `でしょう` 대신 같은 표제어의 `でしょ` 로 나왔다(0.7점 차).
+                    // 사전이 앞에 세운 읽기를 장음 벌점 때문에 뒤의 줄임꼴에 내줄 까닭이 없다.
+                    let listsShortForm = hit.entry.readings.first?.text == hit.reading
+                        && hit.entry.readings.contains { $0.text.count < hit.reading.count
+                            && hit.reading.hasPrefix($0.text) }
+                    if !listsShortForm {
+                        score -= weights.longVowelPenalty * Double(candidate.longVowelsAdded)
+                    }
                     // 촉음을 지어낸 것은 장음보다 과감한 추측이라 더 깎는다.
                     // 사용자가 **적지 않은 소리**를 넣는 것이어서, 지어낸 쪽이 더 흔한
                     // 낱말이면 제대로 친 답을 밀어낸다.
@@ -368,7 +457,7 @@ public enum Ranker {
                     results.append(SearchResult(entry: hit.entry,
                                                 // 찾기는 사전에 실린 철자 그대로 하고,
                                                 // 세우는 것은 사전이 권하는 철자로 한다.
-                                                reading: hit.entry.preferredReading(hit.reading),
+                                                reading: Self.headReading(hit),
                                                 matchedKana: candidate.kana,
                                                 deinflection: deinflection.rule,
                                                 score: score))
@@ -391,6 +480,16 @@ public enum Ranker {
                                           matchedKana: result.matchedKana,
                                           deinflection: result.deinflection,
                                           score: result.score - share * (1 - Self.unmarkedKanaWeight))
+        }
+
+        if weights.unattestedPenalty != 0 {
+            for index in unattested where attestedKana.contains(results[index].matchedKana) {
+                let result = results[index]
+                results[index] = SearchResult(entry: result.entry, reading: result.reading,
+                                              matchedKana: result.matchedKana,
+                                              deinflection: result.deinflection,
+                                              score: result.score - weights.unattestedPenalty)
+            }
         }
 
         // 점수가 같으면 규칙이 먼저 낸 쪽이 앞. 정렬이 실행마다 뒤바뀌지 않도록 한다.

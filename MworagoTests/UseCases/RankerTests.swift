@@ -299,4 +299,16 @@ struct RankerPreferredReadingTests {
         let 결과 = try #require(Ranker.search("콘방와", in: index).first)
         #expect(결과.sound == "콘반와")
     }
+
+    @Test("장음만 뺀 줄임꼴로 찾아와도 머리에는 사전의 앞 읽기를 세운다")
+    func 줄임꼴_머리읽기() {
+        // でしょう 항목은 でしょ 도 읽기로 싣는다. 데쇼 는 장음을 지어내지 않은 でしょ 로 먼저 걸린다.
+        let index = DictIndex(entries: [
+            DictEntry(readings: [DictForm(text: "でしょう", priority: 100),
+                                 DictForm(text: "でしょ", priority: 100)],
+                      writings: [], glosses: ["it seems"]),
+        ])
+        let 결과 = Ranker.search("데쇼", in: index)
+        #expect(결과.first?.reading == "でしょう")
+    }
 }

@@ -225,4 +225,12 @@ struct DeinflectorTests {
         // 가능형 규칙이 1단 사전형을 밀어내지 않는다
         #expect(Deinflector.candidates(for: "たべる").first?.form == "たべる")
     }
+
+    @Test("する·来る 의 불규칙 꼴: しなかった · こなかった · こられる")
+    func 불규칙_빠진꼴() {
+        // 어미 규칙만으로는 知る(しる)·凝る(こる)에 먼저 닿았다
+        #expect(찾기("しなかった", "する")?.rule == "부정 과거")
+        #expect(찾기("こなかった", "くる")?.rule == "부정 과거")
+        #expect(찾기("こられる", "くる")?.rule == "가능형")
+    }
 }
