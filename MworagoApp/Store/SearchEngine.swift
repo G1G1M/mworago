@@ -24,9 +24,6 @@ final class SearchEngine {
 
     /// 사전 색인과 빈도표 한 벌. 열지 못했으면 `nil` 이고 `failure` 에 사정이 적힌다.
     private let lexicon: Lexicon?
-    /// 한자를 한국 한자음으로 읽는 표. 낱말 자세히 화면이 글자마다 읽어 보인다.
-    /// 없어도 찾기는 돈다 — 그때는 빈 표라 한자음 줄이 서지 않는다.
-    let hanja: HanjaReading
     /// 조각을 찾아본 결과. **글자를 칠 때마다 다시 찾지 않으려고** 들고 있는다.
     private let cache = SearchCache()
     /// 돌고 있는 검색. 다음 글자가 들어오면 이것부터 물린다.
@@ -37,8 +34,6 @@ final class SearchEngine {
 
     /// 자원 자리를 받아 연다. 시험은 임시 자리를 준다.
     init(locating locator: some ResourceLocating) {
-        hanja = locator.path(forResource: "hanja-reading", ofType: "tsv")
-            .map(HanjaReading.init(contentsOfFile:)) ?? HanjaReading(tsv: "")
         do {
             lexicon = try Lexicon(locating: locator)
             isReady = true
@@ -49,9 +44,8 @@ final class SearchEngine {
     }
 
     /// 이미 연 재료를 그대로 받는다. 미리보기와 시험이 파일을 거치지 않고 세울 때 쓴다.
-    init(lexicon: Lexicon, hanja: HanjaReading = HanjaReading(tsv: "")) {
+    init(lexicon: Lexicon) {
         self.lexicon = lexicon
-        self.hanja = hanja
         isReady = true
     }
 
