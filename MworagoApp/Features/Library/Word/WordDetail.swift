@@ -31,6 +31,7 @@ struct WordDetail: View {
     var folderNames: [String] = []
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(SearchEngine.self) private var engine
     /// 지금 보고 있는 낱말. 넘기면 따라 바뀐다.
     ///
     /// **`id` 로 들고 있다.** 낱말 자체를 들면 묶음을 옮긴 뒤에 값이 달라져서
@@ -78,6 +79,7 @@ struct WordDetail: View {
                     VStack(alignment: .leading, spacing: 26) {
                         layers(word)
                         gloss(word)
+                        hanjaRow(word)
                         folderRow(word)
                         collectedAt(word)
                         actions(word)
@@ -147,6 +149,43 @@ struct WordDetail: View {
                     .font(Theme.korean(.title))
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// 한자를 **글자마다** 한국 한자음으로 읽는다 — `大 대 · 変 변`.
+    ///
+    /// 한국어를 쓰는 사람은 한자어를 이미 많이 안다. 글자 하나의 소리만 보여도
+    /// `変` 이 「변화」의 그 변이라는 고리가 생겨 한자를 외우기가 쉬워진다.
+    ///
+    /// **낱말째로 이어 읽지 않는다.** 이어 읽으면 한국어 낱말처럼 읽혀서 뜻이 다른 말이
+    /// 뜻인 척 선다 — `大変`(큰일) → 「대변」, `仲間`(동료) → 「중간」.
+    /// 글자 사이를 떼어 두면 낱말로 읽히지 않는다.
+    ///
+    /// **찾기 카드에는 달지 않는다.** 카드는 가나 · 한글 · 뜻 세 층이고, 이것은 낱말을
+    /// 담아 두고 들여다볼 때 필요한 것이다. 문장에는 달지 않는다 — 글자가 너무 많다.
+    @ViewBuilder
+    private func hanjaRow(_ word: CollectedWord) -> some View {
+        let pairs = word.kanji.map(engine.hanja.characters(of:)) ?? []
+        if !pairs.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("한자음")
+                    .font(Theme.korean(.tag))
+                    .foregroundStyle(Theme.grey3)
+                // 글자 짝이 많으면 줄을 넘겨야 하는데, 짝 하나가 쪼개지면 어느 소리가
+                // 어느 글자인지 모르게 된다. `Text` 를 이어 붙이고 짝 안은 줄을 안 바꾸는
+                // 빈칸(U+00A0)으로 묶는다.
+                pairs.enumerated().reduce(Text(verbatim: "")) { line, item in
+                    let (index, pair) = item
+                    let gap = Text(verbatim: index == 0 ? "" : "  ·  ").foregroundStyle(Theme.grey3)
+                    let hanja = Text(verbatim: String(pair.hanja))
+                        .font(Theme.japanese(.body, weight: .medium)).foregroundStyle(Theme.ink)
+                    let sound = Text(verbatim: "\u{00A0}" + pair.reading)
+                        .font(Theme.korean(.body)).foregroundStyle(Theme.grey1)
+                    return Text("\(line)\(gap)\(hanja)\(sound)")
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(pairs.map { "\($0.hanja) \($0.reading)" }.joined(separator: ", "))
             }
         }
     }
