@@ -51,7 +51,7 @@ struct SoundAlikeRow: View {
                     .font(Theme.korean(.sub))
                     .foregroundStyle(Theme.grey2)
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(alike.result.kanji ?? alike.result.reading)
+                    Text(alike.result.reading)
                         .font(Theme.japanese(.heading, weight: .medium))
                         .foregroundStyle(Theme.ink)
                     Text(gloss)
@@ -77,7 +77,7 @@ struct SoundAlikeRow: View {
             Text(lead)
                 .font(Theme.korean(.sub))
                 .foregroundStyle(Theme.grey2)
-            Text(alike.result.kanji ?? alike.result.reading)
+            Text(alike.result.reading)
                 .font(Theme.japanese(.sub, weight: .medium))
                 .foregroundStyle(Theme.grey1)
             Text(gloss)

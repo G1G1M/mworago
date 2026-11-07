@@ -76,11 +76,7 @@ struct PracticeCard: View {
                     .padding(.bottom, 6)
             }
             // 무엇의 답인지. 앞면보다 작게 두어 답과 섞이지 않는다.
-            //
-            // **한자는 뒷면에만 단다.** 앞면은 문제이고 한자는 뜻을 반쯤 알려 준다 —
-            // `病める` 를 보여 주고 뜻을 맞혀 보라는 것은 연습이 아니다.
-            // 뒤집은 뒤에는 "그 낱말이 이것이었다"는 정보라 답의 일부다.
-            Headword(reading: word.reading, kanji: word.kanji,
+            Headword(reading: word.reading,
                      size: .heading, weight: .regular, tint: Theme.grey2)
             Text(word.hangul)
                 .font(Theme.korean(.body))

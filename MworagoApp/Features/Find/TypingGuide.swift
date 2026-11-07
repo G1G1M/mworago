@@ -59,15 +59,15 @@ struct TypingGuide: View {
     /// 신경 쓰지 않아도 되는 것 — 어느 쪽으로 쳐도 같은 곳에 닿는다.
     private static let forgiving: [Rule] = [
         Rule(name: "길게 끄는 소리",
-             examples: [.init("아리가토", "아리가토우", result: "有難う")]),
+             examples: [.init("아리가토", "아리가토우", result: "ありがとう")]),
         Rule(name: "받침 ㄴ · ㅁ · ㅇ",
-             examples: [.init("센빠이", "셈빠이", result: "先輩")]),
+             examples: [.init("센빠이", "셈빠이", result: "せんぱい")]),
         Rule(name: "작은 っ 은 ㅅ 받침으로",
-             examples: [.init("잇쇼", result: "一緒")]),
+             examples: [.init("잇쇼", result: "いっしょ")]),
         Rule(name: "죠 · 쥬 · 쟈 를 조 · 주 · 자 로 적어도",
-             examples: [.init("쇼죠", "쇼조", result: "少女")]),
+             examples: [.init("쇼죠", "쇼조", result: "しょうじょ")]),
         Rule(name: "つ 는 츠로도 쓰로도",
-             examples: [.init("츠쿠에", "쓰쿠에", result: "机")]),
+             examples: [.init("츠쿠에", "쓰쿠에", result: "つくえ")]),
     ]
 
     /// 가려 적어야 하는 것.
@@ -80,8 +80,8 @@ struct TypingGuide: View {
     /// 짧은 도움말이 읽히는 도움말이다.
     private static let careful: [Rule] = [
         Rule(name: "탁음",
-             examples: [.init("갓코", result: "学校"),
-                        .init("캇코", result: "格好")],
+             examples: [.init("갓코", result: "がっこう"),
+                        .init("캇코", result: "かっこう")],
              note: "들리는 대로 가 · 카를 갈라 쳐요"),
     ]
 

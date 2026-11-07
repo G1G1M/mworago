@@ -21,7 +21,6 @@ cd "$(dirname "$0")/../.."
   | awk -F'\t' 'NR==1 || $4>=5' > Tools/data/jesc_freq.tsv
 
 [ -d MworagoApp/Resources/Fonts ] || ./Tools/fetch/fetch-fonts.sh
-[ -f MworagoApp/Resources/hanja-reading.tsv ] || ./Tools/fetch/fetch-hanja.sh
 
 mkdir -p MworagoApp/Resources
 cp Tools/data/mworago-dict.db MworagoApp/Resources/
