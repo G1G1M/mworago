@@ -965,13 +965,17 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep
                                          boundPenalty: boundPenalty,
                                          junctionBonus: junctionBonus,
                                          cache: SearchCache(limit: .max))
-        var t1 = 0, t3 = 0
+        var t1 = 0, t3 = 0, kana1 = 0
         for testCase in cases {
             let results = Ranker.search(testCase.hangul, in: index,
                                         frequency: frequency, weights: wordWeights)
             let matches = makeMatcher(testCase)
             if results.first.map(matches) ?? false { t1 += 1 }
             if results.prefix(3).contains(where: matches) { t3 += 1 }
+            // 카드 머리에 서는 가나가 정답 낱말의 가나와 같은가. 着る 자리에 切る 가 와도
+            // 화면에는 같은 きる 라 맞는 것으로 친다. 정답의 읽기는 후보 가운데 정답인 것에서 얻는다.
+            let truth = Set(results.filter(matches).map { SegmentEval.hiragana($0.reading) })
+            if let top = results.first, truth.contains(SegmentEval.hiragana(top.reading)) { kana1 += 1 }
         }
         print(String(format: "segment_exact: %.4f", score.exactRate))
         print("segment_exact_count: \(score.exact)/\(score.total)")
@@ -979,6 +983,8 @@ if segmentCaseCount != nil || doSegmentSweep || doSegmentFails || doBoundSweep
         print(String(format: "segment_sense: %.4f", score.senseRate))
         print("word_top1: \(t1)/\(cases.count)")
         print("word_top3: \(t3)/\(cases.count)")
+        print("segment_kana_count: \(score.kanaExact)/\(score.total)")
+        print("word_kana_top1: \(kana1)/\(cases.count)")
         print(String(format: "seconds: %.1f", Date().timeIntervalSince(started)))
         exit(0)
     }
