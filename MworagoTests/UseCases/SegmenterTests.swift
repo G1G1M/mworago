@@ -104,17 +104,20 @@ struct SegmenterTests {
     func 조사가_삼켜지는_것() {
         // 표기 후보 순서 벌점을 끄고 본다. `가이마스` 의 `가` 를 `か` 로 읽는 것은
         // 뒤에 나온 후보라 그 벌점이 따로 삼킴을 막는다 — 보너스만의 몫을 보려면 꺼야 한다.
+        // 문장 가운데의 `가` 를 맑게(か) 읽는 것을 깎는 벌점도 같은 까닭으로 끈다.
         var 순서벌점없이 = Segmenter.defaultWeights
         순서벌점없이.rankPenalty = 0
 
         // 보너스가 없으면 조각을 덜 만드는 쪽이 이겨서 조사가 통째로 삼켜진다.
         let 보너스없이 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전,
-                                      weights: 순서벌점없이, junctionBonus: 0)
+                                      weights: 순서벌점없이, junctionBonus: 0,
+                                      medialDevoicePenalty: 0)
         #expect(보너스없이.filter { !$0.isWhole }.map(\.hangul) == ["쿄다이", "가이마스"])
 
         // 자립어 뒤에 조사가 서는 경계를 편들면 제자리를 찾는다.
         let 보너스주고 = Segmenter.segment("쿄다이가이마스", in: Self.삼킴사전,
-                                      weights: 순서벌점없이, junctionBonus: 40)
+                                      weights: 순서벌점없이, junctionBonus: 40,
+                                      medialDevoicePenalty: 0)
         #expect(보너스주고.filter { !$0.isWhole }.map(\.hangul) == ["쿄다이", "가", "이마스"])
     }
 
@@ -248,5 +251,34 @@ struct UnknownPieceTests {
         let 결과 = Segmenter.segment("아타마뷁이타이", in: Self.사전)
         #expect(결과.contains { $0.hangul == "아타마" && !$0.results.isEmpty })
         #expect(결과.contains { $0.hangul == "이타이" && !$0.results.isEmpty })
+    }
+}
+
+/// 조각이 문장의 어디에 섰는지에 따라 읽기가 갈리는 자리.
+@Suite("자리에 따른 읽기")
+struct PositionReadingTests {
+
+    @Test("문장 가운데의 데 는 で 다 — 맑은 て 로 읽지 않는다")
+    func 가운데_예사소리() {
+        // 조사 て(って)가 で 보다 흔해도, 모음 뒤의 ㄷ 은 흐리게 들린다
+        let 작은사전 = SegmenterTests.사전([("此処", "ここ", 100), ("で", "で", 150), ("って", "て", 170),
+                             ("何", "なに", 100)])
+        #expect(Segmenter.segment("코코데나니", in: 작은사전).kana == "ここでなに")
+        // 문장 첫머리에서는 그대로 맑게 읽을 수 있다
+        #expect(Segmenter.segment("데", in: 작은사전).kana == "て")
+    }
+
+    @Test("말끝의 와 는 は 가 아니다")
+    func 말끝_와() {
+        let 작은사전 = SegmenterTests.사전([("素敵", "すてき", 100), ("だ", "だ", 200),
+                             ("は", "は", 120), ("わ", "わ", 100)])
+        #expect(Segmenter.segment("스테키다와", in: 작은사전).kana == "すてきだわ")
+    }
+
+    @Test("종조사 よ 뒤에 だ 가 오면 ようだ 로 읽는다")
+    func 요다() {
+        let 작은사전 = SegmenterTests.사전([("の", "の", 200), ("よ", "よ", 120), ("だ", "だ", 200),
+                             ("様だ", "ようだ", 170)])
+        #expect(Segmenter.segment("노요다", in: 작은사전).kana == "のようだ")
     }
 }

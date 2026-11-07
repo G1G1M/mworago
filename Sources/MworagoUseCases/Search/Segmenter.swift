@@ -273,6 +273,36 @@ public enum Segmenter {
     /// 부사에는 열어 두고 있었다. 둘을 함께 막아야 `何処 へ` 가 선다.
     public static let defaultBoundPenalty = 40.0
 
+    /// **문장 가운데의 예사소리를 맑은소리로 읽으면 깎는 값.**
+    ///
+    /// 한국어는 낱말 첫머리에서만 ㄱ·ㄷ·ㅂ·ㅈ 이 맑게(か·た) 들리고, 모음 뒤에서는 흐리게
+    /// (が·だ) 들린다. 그래서 `Transliterator` 는 첫 음절의 `데` 를 で 와 て 둘 다로 편다.
+    /// 그런데 분절은 문장 가운데 조각도 첫 음절부터 펴서, `코코데` 의 `데` 가 조사 `て`
+    /// (って)로, `도모` 가 どうも 대신 `とも` 로 읽혔다. 문장 가운데에서 맑은 か·た 를 들은
+    /// 사람은 `카`·`타` 로 적는다.
+    ///
+    /// Tanaka 1,200문장에서 문장 가나가 맞은 수: 0 → 860, 15 → 893, 30 → 908, 60 → 908.
+    /// 더 올려도 그대로여서 30 을 골랐다. 분절 완전일치(610 → 611)와 낱말 케이스는 그대로다.
+    public static let defaultMedialDevoicePenalty = 30.0
+
+    /// 말끝 `와` 를 주제 조사 は 로 읽으면 깎는 값.
+    static let finalTopicPenalty = 30.0
+
+    /// `ようだ` · `ような` · `ように` · `ようで` 의 둘째 음절.
+    private static let afterYouOnly: Set<Character> = ["다", "나", "니", "데"]
+
+    private static let laxInitials: Set<Character> = ["ㄱ", "ㄷ", "ㅂ", "ㅈ"]
+    private static let voicedKana = Set("がぎぐげござじずぜぞだぢづでどばびぶべぼガギグゲゴザジズゼゾダヂヅデドバビブベボヴ")
+
+    /// 조각 첫소리가 예사소리인데 가나 첫 글자가 맑은소리로 읽혔는가.
+    static func devoicedAtStart(_ piece: String, _ result: SearchResult) -> Bool {
+        guard let first = HangulSyllable.decompose(String(piece.prefix(1)))?.first,
+              laxInitials.contains(first.initial),
+              let kana = result.matchedKana.first
+        else { return false }
+        return !voicedKana.contains(kana)
+    }
+
     /// 자립어 뒤에 조사가 서는 경계에 얹는 보너스.
     ///
     /// **조사가 뒷낱말에 삼켜지고 있었다.** `쿄다이가이마스카`(兄弟がいますか,
@@ -380,6 +410,11 @@ public enum Segmenter {
         // 2문장밖에 못 벌어 뺐다). 그때 2 · 3 · 4 · 6 이 603 · 606 · 605 · 595 였다.
         // 2~4 가 거의 같아 가운데를 골랐다. 낱말 케이스는 어느 값에서나 137/150 그대로다.
         weights.rankPenalty = 3
+        // **근거 없는 활용 읽기 벌점은 낱말 검색에만 문다.** 말뭉치(JESC)는 `開いた` 를
+        // `開い` + `た` 로 쪼개 세어서, 문장 안의 て·た 꼴은 말한 꼴 그대로 실린 것이
+        // 드물다. 그래서 분절에서는 `아이타`(開いた)가 `愛`+`た` 로 갈렸다
+        // (벌점 10 에서 완전일치 607 → 604).
+        weights.unattestedPenalty = 0
         return weights
     }()
 
@@ -393,6 +428,7 @@ public enum Segmenter {
                                unknownScore: Double = defaultUnknownScore,
                                boundPenalty: Double = defaultBoundPenalty,
                                junctionBonus: Double = defaultJunctionBonus,
+                               medialDevoicePenalty: Double = defaultMedialDevoicePenalty,
                                cache: SearchCache? = nil) -> [Segment] {
         var segments: [Segment] = []
         // 사람이 띄어 썼다면 그 뜻을 존중한다. 어절 안쪽만 사전을 보고 나눈다.
@@ -402,6 +438,7 @@ public enum Segmenter {
                                     unknownScore: unknownScore,
                                     boundPenalty: boundPenalty,
                                     junctionBonus: junctionBonus,
+                                    medialDevoicePenalty: medialDevoicePenalty,
                                     cache: cache)
         }
         return segments
@@ -415,6 +452,7 @@ public enum Segmenter {
                                     unknownScore: Double,
                                     boundPenalty: Double,
                                     junctionBonus: Double,
+                                    medialDevoicePenalty: Double,
                                     cache: SearchCache?) -> [Segment] {
         let syllables = Array(word)
         guard !syllables.isEmpty else { return [] }
@@ -426,6 +464,37 @@ public enum Segmenter {
             store.result(for: piece) {
                 Ranker.search(piece, in: index, frequency: frequency, weights: weights)
             }
+        }
+        // 문장 가운데 조각. 첫소리를 맑게 읽은 것을 깎아 다시 줄 세운다.
+        func lookup(_ piece: String, at start: Int) -> [SearchResult] {
+            let results = lookup(piece)
+            let final = start + piece.count == syllables.count
+            guard start > 0 else { return results }
+            var changed = false
+            let rescored = results.map { result -> SearchResult in
+                var penalty = 0.0
+                if devoicedAtStart(piece, result) { penalty += medialDevoicePenalty }
+                // **말끝의 `와` 는 は 가 아니다.** 주제 조사 は 로는 문장이 끝나지 않는다.
+                // `닷타와`(だったわ)의 `와` 가 は 로 읽혀 머리에 `は` 가 섰다.
+                if final, piece == "와", result.reading == "は" { penalty += finalTopicPenalty }
+                // **종조사 よ 뒤에는 だ·な·に·で 가 오지 않는다.** `노요다`(のようだ)가
+                // `の よ だ` 로 갈려 머리에서 `よう` 의 장음이 사라졌다.
+                if piece == "요", result.reading == "よ", !final,
+                   Self.afterYouOnly.contains(syllables[start + piece.count]) {
+                    penalty += finalTopicPenalty
+                }
+                guard penalty != 0 else { return result }
+                changed = true
+                return SearchResult(entry: result.entry, reading: result.reading,
+                                    matchedKana: result.matchedKana,
+                                    deinflection: result.deinflection,
+                                    score: result.score - penalty)
+            }
+            guard changed else { return results }
+            return rescored.enumerated()
+                .sorted { $0.element.score != $1.element.score ? $0.element.score > $1.element.score
+                                                               : $0.offset < $1.offset }
+                .map(\.element)
         }
 
         // best[i][갈래] = 앞에서부터 i음절까지를 나눈 최선의 방법. **갈래는 마지막 조각의 것**이다.
@@ -440,7 +509,7 @@ public enum Segmenter {
         for end in 1...syllables.count {
             for start in max(0, end - maxPieceLength)..<end {
                 let piece = String(syllables[start..<end])
-                let results = lookup(piece)
+                let results = lookup(piece, at: start)
                 // **모르는 조각은 길수록 나쁘다.** 길이와 무관하게 한 번만 깎으면
                 // 아는 낱말 하나 값보다 벌점이 커서, 다이죠부뷁 처럼 오타가 한 글자 붙은 것이
                 // 통째로 미지가 됐다 — 大丈夫 까지 함께 사라진다.
@@ -464,18 +533,18 @@ public enum Segmenter {
         }
 
         // 뒤에서부터 되짚어 조각을 모은다. 끝자리에서 가장 좋은 갈래부터 잡는다.
-        var pieces: [String] = []
+        var pieces: [(String, Int)] = []
         var cursor = syllables.count
         var role = best[cursor].enumerated()
             .compactMap { index, step in step.map { (Role(rawValue: index)!, $0.score) } }
             .max { $0.1 < $1.1 }?.0
         while cursor > 0, let current = role, let step = best[cursor][current.rawValue] {
-            pieces.append(String(syllables[step.start..<cursor]))
+            pieces.append((String(syllables[step.start..<cursor]), step.start))
             cursor = step.start
             role = step.previous
         }
-        let segments = pieces.reversed().map { piece -> Segment in
-            let results = lookup(piece)
+        let segments = pieces.reversed().map { piece, start -> Segment in
+            let results = lookup(piece, at: start)
             var segment = Segment(hangul: piece, results: results)
             // 사전이 `uk` 라고 한 낱말만 물어보면 된다. 그 밖에는 한자를 쓰는 것이 기본이다.
             if let top = results.first, top.entry.usuallyKana, let frequency,

@@ -16,6 +16,7 @@ enum TanakaCorpus {
         let headword: String   // 사전 표제어
         let reading: String    // 실제 문장에서의 읽기(가나)
         let surface: String?   // 문장에 나타난 형태. 활용했으면 표제어와 다르다
+        let lemma: String      // 표제어의 읽기(사전형). 카드 머리에 서야 하는 가나다
 
         var display: String { surface ?? headword }
     }
@@ -47,12 +48,12 @@ enum TanakaCorpus {
         let baseReading = reading ?? headword
 
         guard let surface else {
-            return Token(headword: headword, reading: baseReading, surface: nil)
+            return Token(headword: headword, reading: baseReading, surface: nil, lemma: baseReading)
         }
         guard let actual = InflectedReading.make(headword: headword, reading: baseReading, surface: surface) else {
             return nil   // 읽기를 만들 수 없으면 이 문장은 쓸 수 없다
         }
-        return Token(headword: headword, reading: actual, surface: surface)
+        return Token(headword: headword, reading: actual, surface: surface, lemma: baseReading)
     }
 
     /// 쓰는 대로와 읽는 대로가 다른 조사.
@@ -92,6 +93,7 @@ struct SegmentCase {
     let hangul: String          // 입력 — 붙여 쓴 한글 음차
     let words: [String]         // 정답 낱말(표기)
     let readings: [String]      // 정답 낱말의 읽기
+    let lemmas: [String]        // 정답 낱말의 사전형 읽기
     /// 각 낱말을 따로 음차한 것. 분절 결과와 맞대 보는 자리다.
     let pieces: [String]
 }
@@ -161,6 +163,7 @@ enum SegmentCaseBuilder {
             cases.append(SegmentCase(hangul: hangul,
                                      words: tokens.map(\.display),
                                      readings: tokens.map(\.reading),
+                                     lemmas: tokens.map(\.lemma),
                                      pieces: pieces))
         }
         return cases
@@ -173,6 +176,16 @@ enum SegmentCaseBuilder {
 enum SegmentEval {
     struct Score {
         var exact = 0            // 조각이 정답과 완전히 같은 문장 수
+        /// **사용자가 보는 가나가 다 맞은** 문장 수.
+        ///
+        /// 화면이 가나만 보이게 된 뒤로 맞고 틀림은 가나로 갈린다. 둘을 본다.
+        /// - 문장 머리: 조각의 가나(`Segment.kana`, 표면형)를 이은 것이 정답 읽기와 같다.
+        ///   경계가 Tanaka 와 달라도(`まじ` + `で`) 이어 붙인 가나가 같으면 맞다.
+        /// - 카드 머리: 정답 낱말과 자리가 꼭 맞는 조각은 1위의 사전형 읽기가 정답의 사전형
+        ///   읽기와 같다. `つかれた` 를 `吐く` 의 수동형으로 읽으면 머리는 맞아도 카드에
+        ///   `つく` 가 선다.
+        /// 같은 소리의 다른 표기(着る · 切る)는 가나로 갈리지 않으므로 맞는 것으로 친다.
+        var kanaExact = 0
         var senseHit = 0         // 그 조각의 1위 표제어가 정답 낱말과 같은 횟수
         var senseTotal = 0       // 견줄 수 있었던 조각 수(경계가 맞은 것만)
         var senseTop3 = 0        // 정답이 3위 안에 있는 횟수
@@ -207,6 +220,46 @@ enum SegmentEval {
         return result
     }
 
+    /// 가타카나를 히라가나로 — 사전은 クラス 를, Tanaka 는 ぬいぐるみ 를 어느 쪽으로든 적는다.
+    /// 장음 부호 `ー` 는 뺀다. `コンピュータ` · `コンピューター` 는 같은 낱말의 두 표기다.
+    static func hiragana(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.compactMap {
+            if $0 == "ー" { return nil }
+            return (0x30A1...0x30F6).contains($0.value) ? Unicode.Scalar($0.value - 0x60)! : $0
+        }))
+    }
+
+    /// 사용자가 보는 가나가 다 맞았는가(`Score.kanaExact`).
+    static func kanaMatches(_ segments: [Segment], _ testCase: SegmentCase) -> Bool {
+        guard hiragana(segments.kana) == hiragana(testCase.readings.joined()) else { return false }
+        // 정답 낱말의 자리(가나 글자 수로 센 [시작, 끝))와 사전형 읽기
+        var truth: [Range<Int>: String] = [:]
+        var cursor = 0
+        for (reading, lemma) in zip(testCase.readings, testCase.lemmas) {
+            truth[cursor..<cursor + reading.count] = lemma
+            cursor += reading.count
+        }
+        cursor = 0
+        for segment in segments {
+            let span = cursor..<cursor + segment.kana.count
+            cursor = span.upperBound
+            // Tanaka 는 읽기가 헷갈릴 때만 읽기를 적어서, 사전형이 한자로만 남은 낱말(`遣る`)은
+            // 견줄 가나가 없다. 그런 자리는 문장 머리가 맞은 것으로 갈음한다.
+            guard let lemma = truth[span], lemma.allSatisfy(\.isKana),
+                  let top = segment.results.first else { continue }
+            let mine = hiragana(top.reading), theirs = hiragana(lemma)
+            if mine == theirs { continue }
+            // 사전이 활용꼴째로 싣는 낱말(`ついている`)은 사전형이 달라도 같은 낱말이다 —
+            // 표면형에서 되돌릴 수 있고 정답의 어간으로 시작하면 받는다. `つかれた` 를
+            // `つく`(吐く 의 수동)로 읽은 것은 어간 `つかれ` 로 시작하지 않아 걸러진다.
+            let surface = hiragana(String(segments.kana.dropFirst(span.lowerBound).prefix(span.count)))
+            let forms = Set(Deinflector.candidates(for: surface).map { hiragana($0.form) })
+            if forms.contains(mine), mine.hasPrefix(String(theirs.dropLast())) { continue }
+            return false
+        }
+        return true
+    }
+
     /// `cache` 는 **가중치가 같은 동안만** 물려 쓸 수 있다. 조각을 찾아본 결과는
     /// 가중치가 정하고 조각 비용은 나눌 자리만 정하므로, 비용을 훑는 사이에는 그대로다.
     static func evaluate(_ cases: [SegmentCase], index: some DictionaryLookup,
@@ -227,6 +280,13 @@ enum SegmentEval {
             let mine = segments.map(\.hangul)
             score.total += 1
             if mine == testCase.pieces { score.exact += 1 }
+            else if ProcessInfo.processInfo.environment["SEG_FAILS"] != nil {
+                print("SEG\t\(testCase.hangul)\t\(testCase.pieces.joined(separator: " "))\t\(segments.map { "\($0.hangul)[\($0.results.first?.headword ?? "-")]" }.joined(separator: " "))")
+            }
+            if kanaMatches(segments, testCase) { score.kanaExact += 1 }
+            else if ProcessInfo.processInfo.environment["KANA_FAILS"] != nil {
+                print("KANA\t\(testCase.hangul)\t\(testCase.readings.joined(separator: " "))\t\(segments.map { "\($0.kana)[\($0.results.first?.reading ?? "-")]" }.joined(separator: " "))\t\(testCase.lemmas.joined(separator: " "))")
+            }
 
             // 경계가 맞은 문장에서만 뜻을 견준다. 경계가 어긋나면 무엇과 견줄지가 없다.
             //
