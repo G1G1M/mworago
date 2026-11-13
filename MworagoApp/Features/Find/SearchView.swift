@@ -41,6 +41,13 @@ struct SearchView: View {
     var preferences: any PreferenceStoring = InMemoryPreferences()
     @State private var recents: [String] = []
     static let recentsKey = "recent-searches"
+    /// 앱을 열지 않고 찾는 길을 알리는 쪽지를 띄울 때인가(`QuickFindTip`).
+    ///
+    /// `--quickfind-tip` 으로 센 것과 상관없이 띄운다. 세 번 찾아야 뜨는 것이라
+    /// 시뮬레이터로 화면을 보려면 매번 손으로 세 번 쳐야 했다.
+    @State private var quickFindTipDue = LaunchOptions.current.has("quickfind-tip")
+    /// 그 길의 안내를 펼쳐 놓았는가. `--quickfind-guide` 로 열린 채 띄운다.
+    @State private var showingQuickFind = LaunchOptions.current.has("quickfind-guide")
 
     var body: some View {
         ZStack {
@@ -171,6 +178,7 @@ struct SearchView: View {
         }
         .onAppear {
             recents = RecentQueries.decode(preferences.string(forKey: Self.recentsKey))
+            if QuickFindTip.isDue(in: preferences) { quickFindTipDue = true }
             // `--recents=갓코,다이죠부` 는 최근 찾은 것을 채운 채 띄운다. 시뮬레이터로는
             // 키보드를 내리는 손을 흉내 낼 수 없어 이 목록을 눈으로 볼 길이 없었다.
             if let seeded = LaunchOptions.current.value(for: "recents") {
@@ -215,6 +223,9 @@ struct SearchView: View {
         .sheet(isPresented: $showingGuide) {
             // 아이패드에서 medium 은 화면의 작은 조각이라 여섯 줄 중 둘만 보인다.
             TypingGuide()
+        }
+        .sheet(isPresented: $showingQuickFind) {
+            QuickFindGuideSheet()
         }
         // 담기 판. **화면에 하나만 둔다** — 갈피표는 카드마다 있지만
         // 묻는 자리는 하나여야 한다.
@@ -262,6 +273,20 @@ struct SearchView: View {
             resting {
                 VStack(alignment: .leading, spacing: 0) {
                     if !inputFocused { SearchPrompt() }
+                    // **안내문 밑, 바 바로 위에 선다.** 칠 셈으로 돌아온 사람의 눈이 머무는
+                    // 자리라, 다음에는 앱을 열지 않아도 된다는 말이 여기서 가장 잘 닿는다.
+                    // 바를 누르면 안내문과 함께 물러난다 — 치는 사람을 막지 않는다.
+                    if !inputFocused, quickFindTipDue {
+                        QuickFindTipCard(onOpen: {
+                                             showingQuickFind = true
+                                             closeQuickFindTip()
+                                         },
+                                         onClose: {
+                                             withAnimation(.easeOut(duration: 0.15)) {
+                                                 closeQuickFindTip()
+                                             }
+                                         })
+                    }
                     // **바를 눌렀을 때만 편다.** 처음부터 안내문 밑에 깔아 두었더니 빈 화면이
                     // 어수선해졌다. 칠 셈으로 바를 누른 순간이 「아까 그것」이 쓸모 있는 때다.
                     if inputFocused, !recents.isEmpty {
@@ -315,6 +340,15 @@ struct SearchView: View {
         guard next != recents else { return }
         recents = next
         preferences.set(RecentQueries.encode(next), forKey: Self.recentsKey)
+        // 목록이 바뀔 때만 센다 — 맨 위의 것을 또 연 것은 같은 찾기를 한 번 더 본 것이다.
+        QuickFindTip.noteFind(in: preferences)
+        if QuickFindTip.isDue(in: preferences) { quickFindTipDue = true }
+    }
+
+    /// 쪽지를 치운다. 안내를 열어 본 것도 치운 것으로 친다(`QuickFindTip`).
+    private func closeQuickFindTip() {
+        quickFindTipDue = false
+        QuickFindTip.dismiss(in: preferences)
     }
 
     /// 조각 하나를 비슷한 소리로 바꾼다. 사람이 띄어 쓴 자리는 그대로 남는다.
